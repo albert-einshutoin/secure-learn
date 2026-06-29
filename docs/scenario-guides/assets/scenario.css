@@ -97,6 +97,12 @@ h1, h2 {
 
 h1 { font-size: 40px; }
 h2 { font-size: 22px; }
+h3 {
+  margin: 0 0 10px;
+  font-size: 16px;
+  line-height: 1.35;
+  letter-spacing: 0;
+}
 
 .lead {
   max-width: 880px;
@@ -125,6 +131,104 @@ article {
 
 .grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+.track-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.track-card {
+  border-top: 5px solid var(--accent);
+}
+
+.track-card.beginner { border-top-color: var(--accent); }
+.track-card.experienced { border-top-color: var(--accent-2); }
+.track-card.review { border-top-color: var(--warn); }
+
+.track-card h3 {
+  color: var(--text);
+}
+
+.learning-diagram {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.diagram-node {
+  position: relative;
+  min-height: 150px;
+  padding: 14px 22px 14px 14px;
+  border: 1px solid var(--line);
+  border-left: 5px solid var(--accent-2);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.diagram-node::after {
+  content: ">";
+  position: absolute;
+  top: 50%;
+  right: 7px;
+  transform: translateY(-50%);
+  color: #7a8696;
+  font-weight: 800;
+}
+
+.diagram-node:last-child::after { content: ""; }
+
+.diagram-node strong {
+  display: block;
+  margin-top: 10px;
+  font-size: 15px;
+}
+
+.diagram-node p {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.node-label {
+  display: inline-flex;
+  min-width: 30px;
+  min-height: 30px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #e7f5f2;
+  color: var(--accent);
+  font-weight: 800;
+  font-size: 13px;
+}
+
+.role-lanes {
+  display: grid;
+  gap: 10px;
+}
+
+.role-lane {
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--accent);
+  border-radius: 8px;
+  background: #fbfcfe;
+}
+
+.role-lane:nth-child(2) { border-left-color: var(--accent-2); }
+.role-lane:nth-child(3) { border-left-color: var(--warn); }
+
+.role-lane span {
+  display: block;
+  margin-bottom: 4px;
+  font-weight: 800;
+}
+
+.role-lane p {
+  margin: 0;
+  color: var(--muted);
+}
 
 .meta-row, .links {
   display: flex;
@@ -230,5 +334,6 @@ li + li { margin-top: 6px; }
 @media (max-width: 900px) {
   .topbar { align-items: flex-start; flex-direction: column; }
   h1 { font-size: 30px; }
-  .grid.two, .grid.three, .flow { grid-template-columns: 1fr; }
+  .grid.two, .grid.three, .track-grid, .learning-diagram, .flow { grid-template-columns: 1fr; }
+  .diagram-node::after { content: ""; }
 }

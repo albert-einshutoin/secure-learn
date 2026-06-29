@@ -1626,6 +1626,85 @@ function scenarioSelfReview(scenario) {
   ];
 }
 
+function learningTrack(title, items, className = '') {
+  const classAttr = className ? ` ${className}` : '';
+  return `<article class="track-card${classAttr}"><h3>${escapeHtml(title)}</h3>${list(items)}</article>`;
+}
+
+function scenarioBeginnerTrack(scenario) {
+  return scenario.beginnerTrack || [
+    '最初に「抽象的に何を学ぶか」と「目的」を読み、何を守る演習かを言葉にする。',
+    '事前準備と安全境界を確認してから、実行コマンドを上から順に一つずつ実行する。',
+    `合格証跡の先頭項目「${scenario.evidence[0]}」を残し、ログまたはHTTP結果と対応付ける。`,
+  ];
+}
+
+function scenarioExperiencedTrack(scenario) {
+  return scenario.experiencedTrack || [
+    '攻撃/障害の再現だけで止めず、検知漏れ、誤検知、本番移行時の追加統制を洗い出す。',
+    'ツール活用と観測ポイントを読み、どの信号が意思決定に使えるかを評価する。',
+    `世界レベル課題の先頭項目「${scenario.worldClass[0]}」をPRレビュー観点へ落とす。`,
+  ];
+}
+
+function scenarioReviewTrack(scenario) {
+  return scenario.reviewTrack || [
+    '第三者が再現できるように、対象、時刻、payload、検索条件、判断理由を揃える。',
+    'Whitehat/SRE/Backendの観点で、誰がownerになり、どこでrollbackするかを決める。',
+    'セルフレビューの回答をincident reportまたはremediation PRの本文へ転記する。',
+  ];
+}
+
+function learningDiagram(nodes) {
+  return `<div class="learning-diagram" role="list">${nodes
+    .map(
+      ([label, title, text]) => `<div class="diagram-node" role="listitem">
+        <span class="node-label">${escapeHtml(label)}</span>
+        <strong>${escapeHtml(title)}</strong>
+        <p>${escapeHtml(text)}</p>
+      </div>`,
+    )
+    .join('')}</div>`;
+}
+
+function scenarioDiagram(scenario) {
+  return learningDiagram([
+    ['1', '理解', '抽象説明、目的、具体例で守る資産と失敗条件を把握する。'],
+    ['2', '準備', 'Docker、対象範囲、安全境界を確認して外部環境へ出さない。'],
+    ['3', '実行', 'Hands-on Flowと実行コマンドを小さく進める。'],
+    ['4', '観測', 'HTTP、ログ、検知イベント、メトリクスを対応付ける。'],
+    ['5', '証跡化', `合格証跡として${scenario.evidence[0]}を残す。`],
+    ['6', '深掘り', '世界レベル課題を本番運用、PR、runbookへ変換する。'],
+  ]);
+}
+
+function roleFocusMarkup(scenario) {
+  const roleCopy = [
+    [
+      'Whitehat',
+      scenario.roles.includes('Whitehat')
+        ? '攻撃を許可範囲に限定し、再現性、検知証跡、影響範囲を明確にする。'
+        : '補助観点として、許可範囲と証跡の安全性だけ確認する。',
+    ],
+    [
+      'SRE',
+      scenario.roles.includes('SRE')
+        ? 'SLO、可用性、レイテンシ、復旧判断、incident severityへ接続する。'
+        : '影響がある場合だけSLO、ログ量、復旧手順との差分を見る。',
+    ],
+    [
+      'Backend',
+      scenario.roles.includes('Backend')
+        ? '入力検証、認証認可、DB/API契約、エラー安全性、テストで再発を止める。'
+        : 'サービス露出、ログ、HTTP contract、依存関係への影響を確認する。',
+    ],
+  ];
+
+  return `<div class="role-lanes">${roleCopy
+    .map(([role, text]) => `<div class="role-lane"><span>${escapeHtml(role)}</span><p>${escapeHtml(text)}</p></div>`)
+    .join('')}</div>`;
+}
+
 function flowMarkup(flow) {
   return `<ol class="flow">${flow
     .map(([step, text]) => `<li><span>${escapeHtml(step)}</span><p>${escapeHtml(text)}</p></li>`)
@@ -1695,6 +1774,20 @@ function scenarioPage(scenario) {
       </article>
     </section>
 
+    <section>
+      <h2>読み方</h2>
+      <div class="track-grid">
+        ${learningTrack('初学者の見方', scenarioBeginnerTrack(scenario), 'beginner')}
+        ${learningTrack('経験者の深掘り', scenarioExperiencedTrack(scenario), 'experienced')}
+        ${learningTrack('レビューで見ること', scenarioReviewTrack(scenario), 'review')}
+      </div>
+    </section>
+
+    <section>
+      <h2>学習フロー図</h2>
+      ${scenarioDiagram(scenario)}
+    </section>
+
     <section class="grid two">
       <article>
         <h2>目的</h2>
@@ -1756,11 +1849,7 @@ function scenarioPage(scenario) {
     <section class="grid two">
       <article>
         <h2>Whitehat / SRE / Backend 観点</h2>
-        ${list([
-          scenario.roles.includes('Whitehat') ? 'Whitehat: 攻撃を許可範囲に限定し、再現性と検知証跡を残す。' : 'Whitehat: このシナリオでは補助観点として扱う。',
-          scenario.roles.includes('SRE') ? 'SRE: SLO、可用性、レイテンシ、復旧判断へ接続する。' : 'SRE: 影響がある場合だけSLO差分を確認する。',
-          scenario.roles.includes('Backend') ? 'Backend: 入力検証、契約、テスト、エラー安全性を確認する。' : 'Backend: サービス露出、ログ、HTTP契約との関係を確認する。',
-        ])}
+        ${roleFocusMarkup(scenario)}
       </article>
       <article>
         <h2>世界レベルへ足す課題</h2>
@@ -1803,6 +1892,38 @@ function indexPage() {
       <p class="eyebrow">World-class readiness review</p>
       <h1>シナリオ別ハンズオンHTML</h1>
       <p class="lead">${scenarios.length}シナリオを、抽象説明、具体例、実行フロー、確認項目、ツール活用、証跡、世界レベルへの追加課題まで追える形に整理しています。</p>
+    </section>
+
+    <section>
+      <h2>全体の読み方</h2>
+      <div class="track-grid">
+        ${learningTrack('初学者の見方', [
+          'S1から順に進み、抽象説明、事前準備、安全境界、実行コマンド、合格証跡の順で読む。',
+          '知らない用語が出たら、その場で全部理解しようとせず、具体例と観測ポイントへ戻る。',
+          '1シナリオごとに「何を守ったか」「何を証跡にしたか」を一文で残す。',
+        ], 'beginner')}
+        ${learningTrack('経験者の深掘り', [
+          '自分の得意領域から入り、世界レベル課題、検知漏れ、誤検知、本番移行条件をレビューする。',
+          'Whitehat、SRE、Backendのうち弱い役割の観点を重点的に読む。',
+          '既存業務ならどのrunbook、CI、SLO、PR reviewへ移すかを考える。',
+        ], 'experienced')}
+        ${learningTrack('完成判定', [
+          '攻撃や障害の再現だけでなく、検知、修正、回帰テスト、運用判断まで説明できる。',
+          '第三者が同じ手順で再現できる証跡を残している。',
+          '安全境界を守り、外部環境へpayload、scan、負荷を向けていない。',
+        ], 'review')}
+      </div>
+    </section>
+
+    <section>
+      <h2>全体学習図</h2>
+      ${learningDiagram([
+        ['S1-S7', '攻撃と検知', '偵察、認証攻撃、SQLi、DoS、OS監査を安全に再現する。'],
+        ['S8-S13', 'OSI理解', 'L2-L7の観測点と通信障害の切り分けを学ぶ。'],
+        ['S14-S21', 'SRE/Platform', 'incident、Linux internals、network edge、Kubernetesへ広げる。'],
+        ['S22-S29', 'Cloud/Backend/SDLC', 'IAM、IaC、observability、分散、API、supply chainを扱う。'],
+        ['S30-S33', '実務運用', 'Detection、EDR、performance、GitOps/OSS governanceで仕上げる。'],
+      ])}
     </section>
 
     <section class="grid three">
@@ -1938,6 +2059,12 @@ h1, h2 {
 
 h1 { font-size: 40px; }
 h2 { font-size: 22px; }
+h3 {
+  margin: 0 0 10px;
+  font-size: 16px;
+  line-height: 1.35;
+  letter-spacing: 0;
+}
 
 .lead {
   max-width: 880px;
@@ -1966,6 +2093,104 @@ article {
 
 .grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+.track-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.track-card {
+  border-top: 5px solid var(--accent);
+}
+
+.track-card.beginner { border-top-color: var(--accent); }
+.track-card.experienced { border-top-color: var(--accent-2); }
+.track-card.review { border-top-color: var(--warn); }
+
+.track-card h3 {
+  color: var(--text);
+}
+
+.learning-diagram {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.diagram-node {
+  position: relative;
+  min-height: 150px;
+  padding: 14px 22px 14px 14px;
+  border: 1px solid var(--line);
+  border-left: 5px solid var(--accent-2);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.diagram-node::after {
+  content: ">";
+  position: absolute;
+  top: 50%;
+  right: 7px;
+  transform: translateY(-50%);
+  color: #7a8696;
+  font-weight: 800;
+}
+
+.diagram-node:last-child::after { content: ""; }
+
+.diagram-node strong {
+  display: block;
+  margin-top: 10px;
+  font-size: 15px;
+}
+
+.diagram-node p {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.node-label {
+  display: inline-flex;
+  min-width: 30px;
+  min-height: 30px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #e7f5f2;
+  color: var(--accent);
+  font-weight: 800;
+  font-size: 13px;
+}
+
+.role-lanes {
+  display: grid;
+  gap: 10px;
+}
+
+.role-lane {
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--accent);
+  border-radius: 8px;
+  background: #fbfcfe;
+}
+
+.role-lane:nth-child(2) { border-left-color: var(--accent-2); }
+.role-lane:nth-child(3) { border-left-color: var(--warn); }
+
+.role-lane span {
+  display: block;
+  margin-bottom: 4px;
+  font-weight: 800;
+}
+
+.role-lane p {
+  margin: 0;
+  color: var(--muted);
+}
 
 .meta-row, .links {
   display: flex;
@@ -2071,7 +2296,8 @@ li + li { margin-top: 6px; }
 @media (max-width: 900px) {
   .topbar { align-items: flex-start; flex-direction: column; }
   h1 { font-size: 30px; }
-  .grid.two, .grid.three, .flow { grid-template-columns: 1fr; }
+  .grid.two, .grid.three, .track-grid, .learning-diagram, .flow { grid-template-columns: 1fr; }
+  .diagram-node::after { content: ""; }
 }
 `;
 

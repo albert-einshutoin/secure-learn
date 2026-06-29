@@ -32,6 +32,44 @@
       </article>
     </section>
 
+    <section>
+      <h2>読み方</h2>
+      <div class="track-grid">
+        <article class="track-card beginner"><h3>初学者の見方</h3><ul><li>最初に到達目標とカバー領域を読み、知らない用語を一つずつ潰す。</li><li>Docker実行のconfig、start、statusを順に実行し、どのprofileが動くか確認する。</li><li>合格証跡の先頭項目「process/socket/syscall/file descriptorを紐づけたメモがある」を残してから次フェーズへ進む。</li></ul></article>
+        <article class="track-card experienced"><h3>経験者の深掘り</h3><ul><li>自分の既存業務と照らし、欠けている運用、セキュリティ、テストの観点を洗い出す。</li><li>実行コマンドを単に通すだけでなく、失敗時のログ、metric、rollback条件を確認する。</li><li>次フェーズ判定「P11に進む前に、OS資源不足とアプリ障害をログだけで混同しない」をレビュー可能な証跡として説明する。</li></ul></article>
+        <article class="track-card review"><h3>レビューで見ること</h3><ul><li>前フェーズの未完了を放置せず、証跡、判断理由、残リスクを揃える。</li><li>Whitehat/SRE/Backendのどの役割で何を学んだかを一文で説明する。</li><li>本番へ持ち込む場合の追加権限、owner、承認、監視、rollbackを定義する。</li></ul></article>
+      </div>
+    </section>
+
+    <section>
+      <h2>学習フロー図</h2>
+      <div class="learning-diagram" role="list"><div class="diagram-node" role="listitem">
+        <span class="node-label">1</span>
+        <strong>理解</strong>
+        <p>到達目標、カバー領域、具体例で学習対象を把握する。</p>
+      </div><div class="diagram-node" role="listitem">
+        <span class="node-label">2</span>
+        <strong>準備</strong>
+        <p>前フェーズ証跡、安全境界、Docker profileを確認する。</p>
+      </div><div class="diagram-node" role="listitem">
+        <span class="node-label">3</span>
+        <strong>起動</strong>
+        <p>learning_phase.sh start p10で環境を起動する。</p>
+      </div><div class="diagram-node" role="listitem">
+        <span class="node-label">4</span>
+        <strong>実行</strong>
+        <p>実行コマンドとHands-on Flowを順番に進める。</p>
+      </div><div class="diagram-node" role="listitem">
+        <span class="node-label">5</span>
+        <strong>観測</strong>
+        <p>service health、ログ、メトリクス、テスト結果を対応付ける。</p>
+      </div><div class="diagram-node" role="listitem">
+        <span class="node-label">6</span>
+        <strong>判定</strong>
+        <p>合格証跡と次フェーズ判定を満たした根拠を残す。</p>
+      </div></div>
+    </section>
+
     <section class="grid two">
       <article>
         <h2>到達目標</h2>
