@@ -36,10 +36,13 @@ npm --prefix app test
 
 ```bash
 docker compose up -d --build
+npm --prefix app run test:integration
 scripts/backend_hands_on_tests.sh
 ```
 
-このスクリプトは、次をレポートします。
+DB integration test は `docker compose up -d --build` 後に、localhost限定の `127.0.0.1:15432` へ接続します。外部公開ではなく、ホスト上のテストからラボDBへ到達するためのローカル専用ポートです。
+
+backend hands-on script は、次をレポートします。
 
 | テスト | 観点 | 期待 |
 |--------|------|------|

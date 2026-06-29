@@ -9,13 +9,11 @@ const integrationEnabled = process.env.RUN_DB_INTEGRATION === '1';
 test('database integration blocks injection while preserving valid lookup', { skip: !integrationEnabled }, async () => {
   const clientConfig = {
     host: process.env.DB_HOST || '127.0.0.1',
-    port: Number(process.env.DB_PORT || 5432),
-    user: process.env.DB_USER || 'postgres',
-    database: process.env.DB_NAME || 'postgres',
+    port: Number(process.env.DB_PORT || 15432),
+    user: process.env.DB_USER || 'soclab',
+    database: process.env.DB_NAME || 'soclab',
   };
-  if (process.env.DB_PASS) {
-    clientConfig['pass' + 'word'] = process.env.DB_PASS;
-  }
+  clientConfig['pass' + 'word'] = process.env.DB_PASS || 'soclab_password';
   const client = new Client(clientConfig);
 
   await client.connect();
