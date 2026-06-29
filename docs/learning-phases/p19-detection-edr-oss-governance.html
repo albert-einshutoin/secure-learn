@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>P19 Detection/EDR・Secure SDLC・OSS Governance - Secure Learn</title>
+  <link rel="stylesheet" href="../scenario-guides/assets/scenario.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="index.html">Secure Learn Learning Phases</a>
+    <nav aria-label="Learning phase navigation"><a href="p0-ethics-setup.html">P0</a><a href="p1-linux-docker-networking.html">P1</a><a href="p2-backend-tdd-api.html">P2</a><a href="p3-owasp-api-security.html">P3</a><a href="p4-detection-soc-engineering.html">P4</a><a href="p5-observability-sre.html">P5</a><a href="p6-secure-release-kubernetes-iac.html">P6</a><a href="p7-endpoint-edr-detection.html">P7</a><a href="p8-distributed-performance.html">P8</a><a href="p9-secure-infra-capstone.html">P9</a><a href="p10-linux-internals-isolation.html">P10</a><a href="p11-network-edge-routing.html">P11</a><a href="p12-kubernetes-platform-security.html">P12</a><a href="p13-cloud-security-iam.html">P13</a><a href="p14-iac-policy-as-code.html">P14</a><a href="p15-observability-incident-economics.html">P15</a><a href="p16-distributed-reliability.html">P16</a><a href="p17-backend-production-engineering.html">P17</a><a href="p18-security-supply-chain-release.html">P18</a><a aria-current="page" href="p19-detection-edr-oss-governance.html">P19</a></nav>
+  </header>
+  <main>
+    <section class="scenario-head">
+      <p class="eyebrow">P19 / Principal / capstone</p>
+      <h1>Detection/EDR・Secure SDLC・OSS Governance</h1>
+      <p class="lead">修了。実務では本物のcloud account、production-like telemetry、cross-team incidentで継続訓練する</p>
+      <div class="meta-row">
+        <span class="pill">Whitehat</span><span class="pill">SRE</span><span class="pill">Backend</span>
+      </div>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>抽象的に何を学ぶか</h2>
+        <p>最終フェーズでは、技術的に検知・修正できるだけでなく、OSSとして安全に公開し、CVE/開示/ライセンス/レビュー規律まで運用します。</p>
+      </article>
+      <article>
+        <h2>具体例</h2>
+        <ul><li>Detection: Sigma/YARA/SuricataをMITRE techniqueへ対応させ、false positiveを調整する</li><li>EDR: process tree、auditd、Sysmon相当telemetryからcase timelineを作る</li><li>OSS governance: advisory、CVE/CVSS、branch protection、license compliance、release noteを揃える</li></ul>
+      </article>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>到達目標</h2>
+        <ul><li>Sigma/YARA/SuricataとMITRE ATT&amp;CK mappingを検知運用へ落とせる</li><li>Windows/Linux telemetry、auditd、Sysmon、process tree、sandboxingをEDR観点で説明できる</li><li>OSSとしてsecurity advisory、responsible disclosure、license/compliance、review disciplineを運用できる</li></ul>
+      </article>
+      <article>
+        <h2>カバー領域</h2>
+        <ul><li>Sigma</li><li>YARA</li><li>Suricata</li><li>MITRE ATT&amp;CK</li><li>false positive tuning</li><li>event normalization</li><li>SIEM query</li><li>case management</li><li>process tree</li><li>Windows telemetry</li><li>Linux telemetry</li><li>auditd</li><li>Sysmon</li><li>malware behavior</li><li>sandboxing</li><li>CVE</li><li>CVSS</li><li>responsible disclosure</li><li>branch protection</li><li>license compliance</li></ul>
+      </article>
+    </section>
+
+    <section>
+      <h2>Hands-on Flow</h2>
+      <ul><li>S7/S15をcapstoneとして実行し、case management形式でtimelineを作る</li><li>detection ruleの誤検知、正規化、SIEM queryをレビューする</li><li>OSS release checklistを作り、branch protectionとsecurity advisory手順を確認する</li></ul>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>Docker実行</h2>
+        <pre><code>scripts/learning_phase.sh config p19
+scripts/learning_phase.sh start p19
+scripts/learning_phase.sh status p19</code></pre>
+      </article>
+      <article>
+        <h2>実行コマンド</h2>
+        <pre><code>scripts/learning_phase.sh start p19
+scripts/lab_quality_gate.sh
+scripts/world_class_hands_on_check.sh governance
+sed -n &#39;1,220p&#39; docs/scenario-guides/s30-detection-edr-case.html
+sed -n &#39;1,220p&#39; SECURITY.md</code></pre>
+      </article>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>合格証跡</h2>
+        <ul><li>MITRE mapping、SIEM query、case timeline、false positive判断がある</li><li>auditd/Sysmon/process tree/sandboxingの限界を説明している</li><li>security advisory、CVE/CVSS、license、release note、branch protectionの運用証跡がある</li></ul>
+      </article>
+      <article>
+        <h2>次フェーズ判定</h2>
+        <p>修了。実務では本物のcloud account、production-like telemetry、cross-team incidentで継続訓練する</p>
+      </article>
+    </section>
+
+  </main>
+</body>
+</html>

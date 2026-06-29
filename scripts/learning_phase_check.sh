@@ -20,11 +20,25 @@ with open(sys.argv[1], encoding="utf-8") as fh:
     phases = json.load(fh)
 
 required = {"id", "slug", "level", "title", "profile", "roles", "skills", "objectives", "hands_on", "commands", "evidence", "next_gate"}
-profiles = {"base", "phase5-observability", "phase6-release", "phase8-distributed", "capstone"}
+profiles = {
+    "base",
+    "phase5-observability",
+    "phase6-release",
+    "phase8-distributed",
+    "phase10-linux-internals",
+    "phase11-network-edge",
+    "phase12-kubernetes-platform",
+    "phase13-cloud-security",
+    "phase14-iac-policy",
+    "phase15-advanced-observability",
+    "phase16-distributed-reliability",
+    "phase18-security-supply-chain",
+    "capstone",
+}
 ids = set()
 
-if len(phases) != 10:
-    raise SystemExit(f"expected 10 phases, found {len(phases)}")
+if len(phases) < 20:
+    raise SystemExit(f"expected at least 20 phases, found {len(phases)}")
 
 for phase in phases:
     missing = required - phase.keys()
@@ -43,7 +57,19 @@ PY
 node --check "$ROOT_DIR/scripts/generate_learning_phase_html.js"
 "$ROOT_DIR/scripts/learning_phase.sh" list >/dev/null
 
-for profile in phase5-observability phase6-release phase8-distributed capstone; do
+for profile in \
+  phase5-observability \
+  phase6-release \
+  phase8-distributed \
+  phase10-linux-internals \
+  phase11-network-edge \
+  phase12-kubernetes-platform \
+  phase13-cloud-security \
+  phase14-iac-policy \
+  phase15-advanced-observability \
+  phase16-distributed-reliability \
+  phase18-security-supply-chain \
+  capstone; do
   docker compose -f "$ROOT_DIR/docker-compose.yml" -f "$ROOT_DIR/docker-compose.learning.yml" --profile "$profile" config -q
 done
 
@@ -58,6 +84,8 @@ PY
   file="$GUIDE_DIR/$slug.html"
   [[ -f "$file" ]] || fail "missing generated guide: $slug.html"
   grep -q '<html lang="ja">' "$file" || fail "$slug.html must declare Japanese language"
+  grep -q '抽象的に何を学ぶか' "$file" || fail "$slug.html is missing abstract concept"
+  grep -q '具体例' "$file" || fail "$slug.html is missing concrete examples"
   grep -q 'Hands-on Flow' "$file" || fail "$slug.html is missing hands-on flow"
   grep -q '合格証跡' "$file" || fail "$slug.html is missing evidence criteria"
 done

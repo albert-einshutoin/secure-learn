@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>S16 Linux Internals・隔離境界 - Secure Learn</title>
+  <link rel="stylesheet" href="assets/scenario.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="index.html">Secure Learn Scenario Guides</a>
+    <nav aria-label="Scenario navigation"><a href="s1-portscan.html">S1</a><a href="s2-bruteforce.html">S2</a><a href="s3-sqli.html">S3</a><a href="s4-dos.html">S4</a><a href="s5-file-tamper.html">S5</a><a href="s6-privesc.html">S6</a><a href="s7-lateral.html">S7</a><a href="s8-arp.html">S8</a><a href="s9-icmp.html">S9</a><a href="s10-tcp-state.html">S10</a><a href="s11-session-stress.html">S11</a><a href="s12-tls-boundary.html">S12</a><a href="s13-dns.html">S13</a><a href="s14-sre-incident.html">S14</a><a href="s15-capstone.html">S15</a><a aria-current="page" href="s16-linux-internals-isolation.html">S16</a><a href="s17-ebpf-perf-forensics.html">S17</a><a href="s18-tcp-backlog-loadbalancer.html">S18</a><a href="s19-mtls-cert-rotation.html">S19</a><a href="s20-quic-bgp-cdn-edge.html">S20</a><a href="s21-kubernetes-platform.html">S21</a><a href="s22-cloud-iam-audit.html">S22</a><a href="s23-terraform-policy-drift.html">S23</a><a href="s24-burn-rate-observability.html">S24</a><a href="s25-otel-trace-log-correlation.html">S25</a><a href="s26-queue-idempotency-backpressure.html">S26</a><a href="s27-backend-migration-contract.html">S27</a><a href="s28-api-business-logic-abuse.html">S28</a><a href="s29-supply-chain-release.html">S29</a><a href="s30-detection-edr-case.html">S30</a><a href="s31-endpoint-sysmon-malware.html">S31</a><a href="s32-performance-flamegraph-db.html">S32</a><a href="s33-gitops-progressive-delivery.html">S33</a></nav>
+  </header>
+  <main>
+    <section class="scenario-head">
+      <p class="eyebrow">S16 / OS/Kernel / 上級</p>
+      <h1>Linux Internals・隔離境界</h1>
+      <p class="lead">systemd、cgroups、namespaces、seccomp、capabilitiesを、containerの障害調査と防御境界として扱う。</p>
+      <div class="meta-row">
+        <span class="score score-4">4/5 実務上級</span>
+        <span class="pill">SRE</span><span class="pill">Whitehat</span>
+      </div>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>抽象的に何を学ぶか</h2>
+        <p>Linux internalsは、プロセスがCPU、メモリ、ファイル、ネットワーク、syscall、権限をどう使っているかを読む訓練です。抽象的には、障害や侵害を「OS資源と隔離境界の変化」として説明します。</p>
+      </article>
+      <article>
+        <h2>具体例</h2>
+        <ul><li>cgroupsでCPU/memory制限があると、アプリは5xxではなくlatency悪化やOOMとして壊れる。</li><li>namespace内のrootはhost rootではないが、capabilityが広いと危険なsyscallやnetwork操作が可能になる。</li><li>strace/lsof/ssで、HTTP requestがsocket、file descriptor、syscall待ちとして見える。</li></ul>
+      </article>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>目的</h2>
+        <p>Linuxの資源管理と隔離機構を、container security、障害調査、SRE runbookに接続できるようにする。</p>
+      </article>
+      <article>
+        <h2>世界レベル評価</h2>
+        <p>実務上級に近い構成です。証跡、修正、運用判断まで扱えます。</p>
+      </article>
+    </section>
+
+    <section>
+      <h2>Hands-on Flow</h2>
+      <ol class="flow"><li><span>Observe</span><p>ps、ss、lsof、straceでappと通信の状態を見る。</p></li><li><span>Inspect</span><p>docker inspectでcap_drop、security_opt、read_only、resource設定を確認する。</p></li><li><span>Explain</span><p>namespace、cgroup、capability、seccompが守る範囲と守れない範囲を表にする。</p></li><li><span>Tune safely</span><p>kernel tuning値は変更せず、見るべき値と変更時のrollback条件を整理する。</p></li><li><span>Report</span><p>OS起因障害とアプリ起因障害を分けた調査メモを作る。</p></li></ol>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>実行コマンド</h2>
+        <pre><code>scripts/learning_phase.sh start p10
+docker exec learn-toolbox ss -tan
+docker exec learn-toolbox sh -lc &#39;curl -fsS http://app:3000/health &amp;&amp; lsof -iTCP -P -n | head&#39;
+docker inspect soc-lab-app | jq &#39;.[0].HostConfig.CapDrop, .[0].HostConfig.SecurityOpt&#39;
+scripts/world_class_hands_on_check.sh linux</code></pre>
+      </article>
+      <article>
+        <h2>合格証跡</h2>
+        <ul><li>process、socket、fd、syscallを対応付けた記録</li><li>capabilities/seccomp/cgroupの防御境界説明</li><li>kernel tuning候補とrollback条件</li><li>OS起因とアプリ起因の切り分け表</li></ul>
+      </article>
+    </section>
+
+    <section>
+      <h2>ツール活用</h2>
+      <table><thead><tr><th>Tool</th><th>使い方</th></tr></thead><tbody><tr><td><strong>ss/lsof</strong></td><td>socketとfile descriptorからresource exhaustionを切り分ける。</td></tr><tr><td><strong>strace</strong></td><td>syscall境界で詰まりを観測する。</td></tr><tr><td><strong>docker inspect</strong></td><td>capability、security_opt、mount、resource制限を見る。</td></tr><tr><td><strong>cgroups/namespaces</strong></td><td>container隔離の実体として説明する。</td></tr></tbody></table>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>Whitehat / SRE / Backend 観点</h2>
+        <ul><li>Whitehat: 攻撃を許可範囲に限定し、再現性と検知証跡を残す。</li><li>SRE: SLO、可用性、レイテンシ、復旧判断へ接続する。</li><li>Backend: サービス露出、ログ、HTTP契約との関係を確認する。</li></ul>
+      </article>
+      <article>
+        <h2>世界レベルへ足す課題</h2>
+        <ul><li>eBPF/perf flamegraphを本番相当環境で扱う。</li><li>seccomp profileとcapability最小化をCIで検査する。</li><li>kernel CVE時のnode drain、upgrade、rollback runbookを作る。</li></ul>
+      </article>
+    </section>
+
+    <section>
+      <h2>関連シナリオ</h2>
+      <div class="links"><a href="s1-portscan.html">S1 ポートスキャン</a><a href="s2-bruteforce.html">S2 APIブルートフォース</a><a href="s3-sqli.html">S3 SQLインジェクション</a><a href="s4-dos.html">S4 DoS攻撃</a></div>
+    </section>
+
+  </main>
+</body>
+</html>

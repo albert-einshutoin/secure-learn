@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>S19 TLS/mTLS・証明書ローテーション - Secure Learn</title>
+  <link rel="stylesheet" href="assets/scenario.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="index.html">Secure Learn Scenario Guides</a>
+    <nav aria-label="Scenario navigation"><a href="s1-portscan.html">S1</a><a href="s2-bruteforce.html">S2</a><a href="s3-sqli.html">S3</a><a href="s4-dos.html">S4</a><a href="s5-file-tamper.html">S5</a><a href="s6-privesc.html">S6</a><a href="s7-lateral.html">S7</a><a href="s8-arp.html">S8</a><a href="s9-icmp.html">S9</a><a href="s10-tcp-state.html">S10</a><a href="s11-session-stress.html">S11</a><a href="s12-tls-boundary.html">S12</a><a href="s13-dns.html">S13</a><a href="s14-sre-incident.html">S14</a><a href="s15-capstone.html">S15</a><a href="s16-linux-internals-isolation.html">S16</a><a href="s17-ebpf-perf-forensics.html">S17</a><a href="s18-tcp-backlog-loadbalancer.html">S18</a><a aria-current="page" href="s19-mtls-cert-rotation.html">S19</a><a href="s20-quic-bgp-cdn-edge.html">S20</a><a href="s21-kubernetes-platform.html">S21</a><a href="s22-cloud-iam-audit.html">S22</a><a href="s23-terraform-policy-drift.html">S23</a><a href="s24-burn-rate-observability.html">S24</a><a href="s25-otel-trace-log-correlation.html">S25</a><a href="s26-queue-idempotency-backpressure.html">S26</a><a href="s27-backend-migration-contract.html">S27</a><a href="s28-api-business-logic-abuse.html">S28</a><a href="s29-supply-chain-release.html">S29</a><a href="s30-detection-edr-case.html">S30</a><a href="s31-endpoint-sysmon-malware.html">S31</a><a href="s32-performance-flamegraph-db.html">S32</a><a href="s33-gitops-progressive-delivery.html">S33</a></nav>
+  </header>
+  <main>
+    <section class="scenario-head">
+      <p class="eyebrow">S19 / L6/Security / 上級</p>
+      <h1>TLS/mTLS・証明書ローテーション</h1>
+      <p class="lead">TLS handshake、mTLS、証明書期限、cipher policy、rotationをreleaseとincidentの両面で扱う。</p>
+      <div class="meta-row">
+        <span class="score score-4">4/5 実務上級</span>
+        <span class="pill">SRE</span><span class="pill">Backend</span><span class="pill">Whitehat</span>
+      </div>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>抽象的に何を学ぶか</h2>
+        <p>TLS/mTLSは暗号化だけでなく、identity、trust、期限、失効、互換性を運用する仕組みです。抽象的には、通信相手をどう信頼し、その信頼をどう更新するかを扱います。</p>
+      </article>
+      <article>
+        <h2>具体例</h2>
+        <ul><li>証明書期限切れはアプリdeployなしで全リクエストを止める。</li><li>mTLSではclient証明書の発行、失効、rotationがauthorization境界になる。</li><li>cipher policy更新は古いclientを切る可能性があるため互換性証跡が必要になる。</li></ul>
+      </article>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>目的</h2>
+        <p>TLS/mTLS failureをHTTP障害と分け、rotation、expiry alert、trust boundaryを設計できるようにする。</p>
+      </article>
+      <article>
+        <h2>世界レベル評価</h2>
+        <p>実務上級に近い構成です。証跡、修正、運用判断まで扱えます。</p>
+      </article>
+    </section>
+
+    <section>
+      <h2>Hands-on Flow</h2>
+      <ol class="flow"><li><span>Probe</span><p>openssl s_clientでhandshake情報または失敗理由を見る。</p></li><li><span>Boundary</span><p>TLS終端前後でIDS/WAF/appが見える情報を分ける。</p></li><li><span>Design</span><p>mTLSのCA、client cert、rotation、revocationを設計する。</p></li><li><span>Alert</span><p>expiry、handshake error、protocol downgradeを監視項目にする。</p></li><li><span>Release</span><p>証明書更新のcanaryとrollbackを決める。</p></li></ol>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>実行コマンド</h2>
+        <pre><code>scripts/learning_phase.sh start p11
+docker exec learn-toolbox openssl s_client -connect app:3000 -servername app &lt;/dev/null || true
+docker exec learn-toolbox openssl version
+scripts/world_class_hands_on_check.sh network
+sed -n &quot;1,220p&quot; docs/scenario-guides/s12-tls-boundary.html</code></pre>
+      </article>
+      <article>
+        <h2>合格証跡</h2>
+        <ul><li>TLS/mTLS trust boundary図</li><li>証明書期限とrotation手順</li><li>handshake failureの切り分け表</li><li>互換性とrollback判断</li></ul>
+      </article>
+    </section>
+
+    <section>
+      <h2>ツール活用</h2>
+      <table><thead><tr><th>Tool</th><th>使い方</th></tr></thead><tbody><tr><td><strong>openssl s_client</strong></td><td>handshake、SNI、証明書、protocolを確認する。</td></tr><tr><td><strong>Nginx/Envoy</strong></td><td>TLS終端、mTLS、cipher policyの実装候補にする。</td></tr><tr><td><strong>Prometheus alert</strong></td><td>cert expiryとhandshake errorを監視する。</td></tr><tr><td><strong>Release checklist</strong></td><td>rotationとrollbackを運用手順にする。</td></tr></tbody></table>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>Whitehat / SRE / Backend 観点</h2>
+        <ul><li>Whitehat: 攻撃を許可範囲に限定し、再現性と検知証跡を残す。</li><li>SRE: SLO、可用性、レイテンシ、復旧判断へ接続する。</li><li>Backend: 入力検証、契約、テスト、エラー安全性を確認する。</li></ul>
+      </article>
+      <article>
+        <h2>世界レベルへ足す課題</h2>
+        <ul><li>実TLS終端とmTLS labを追加する。</li><li>SPIFFE/SPIREやservice mesh identityへ拡張する。</li><li>証明書失効とemergency rotation drillを実施する。</li></ul>
+      </article>
+    </section>
+
+    <section>
+      <h2>関連シナリオ</h2>
+      <div class="links"><a href="s1-portscan.html">S1 ポートスキャン</a><a href="s2-bruteforce.html">S2 APIブルートフォース</a><a href="s3-sqli.html">S3 SQLインジェクション</a><a href="s4-dos.html">S4 DoS攻撃</a></div>
+    </section>
+
+  </main>
+</body>
+</html>

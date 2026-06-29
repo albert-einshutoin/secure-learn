@@ -9,7 +9,7 @@
 <body>
   <header class="topbar">
     <a class="brand" href="index.html">Secure Learn Learning Phases</a>
-    <nav aria-label="Learning phase navigation"><a href="p0-ethics-setup.html">P0</a><a href="p1-linux-docker-networking.html">P1</a><a href="p2-backend-tdd-api.html">P2</a><a aria-current="page" href="p3-owasp-api-security.html">P3</a><a href="p4-detection-soc-engineering.html">P4</a><a href="p5-observability-sre.html">P5</a><a href="p6-secure-release-kubernetes-iac.html">P6</a><a href="p7-endpoint-edr-detection.html">P7</a><a href="p8-distributed-performance.html">P8</a><a href="p9-secure-infra-capstone.html">P9</a></nav>
+    <nav aria-label="Learning phase navigation"><a href="p0-ethics-setup.html">P0</a><a href="p1-linux-docker-networking.html">P1</a><a href="p2-backend-tdd-api.html">P2</a><a aria-current="page" href="p3-owasp-api-security.html">P3</a><a href="p4-detection-soc-engineering.html">P4</a><a href="p5-observability-sre.html">P5</a><a href="p6-secure-release-kubernetes-iac.html">P6</a><a href="p7-endpoint-edr-detection.html">P7</a><a href="p8-distributed-performance.html">P8</a><a href="p9-secure-infra-capstone.html">P9</a><a href="p10-linux-internals-isolation.html">P10</a><a href="p11-network-edge-routing.html">P11</a><a href="p12-kubernetes-platform-security.html">P12</a><a href="p13-cloud-security-iam.html">P13</a><a href="p14-iac-policy-as-code.html">P14</a><a href="p15-observability-incident-economics.html">P15</a><a href="p16-distributed-reliability.html">P16</a><a href="p17-backend-production-engineering.html">P17</a><a href="p18-security-supply-chain-release.html">P18</a><a href="p19-detection-edr-oss-governance.html">P19</a></nav>
   </header>
   <main>
     <section class="scenario-head">
@@ -23,8 +23,19 @@
 
     <section class="grid two">
       <article>
+        <h2>抽象的に何を学ぶか</h2>
+        <p>OWASP API Security・認証認可・安全な失敗では、個別のコマンド暗記ではなく、SQLi、path traversal、認証失敗、認可失敗を安全に再現できるための判断軸を学びます。</p>
+      </article>
+      <article>
+        <h2>具体例</h2>
+        <ul><li>具体例: S2、S3を実行して認証攻撃とSQLi試行を検知する</li><li>具体例: 失敗時にcredential materialやstack traceが漏れないことを確認する</li><li>具体例: S28に進む前段としてBOLA/SSRF/Uploadのred test設計を書く</li></ul>
+      </article>
+    </section>
+
+    <section class="grid two">
+      <article>
         <h2>到達目標</h2>
-        <ul><li>SQLi、path traversal、認証失敗、認可失敗を安全に再現できる</li><li>攻撃結果、アプリログ、検知ログ、修正テストを一つの証跡にできる</li><li>IDOR/BOLA、SSRF、unsafe uploadなど未実装領域を課題化できる</li></ul>
+        <ul><li>SQLi、path traversal、認証失敗、認可失敗を安全に再現できる</li><li>攻撃結果、アプリログ、検知ログ、修正テストを一つの証跡にできる</li><li>IDOR/BOLA、SSRF、unsafe uploadなどをS28の高度API securityへ接続できる</li></ul>
       </article>
       <article>
         <h2>カバー領域</h2>
@@ -34,7 +45,7 @@
 
     <section>
       <h2>Hands-on Flow</h2>
-      <ul><li>S2、S3を実行して認証攻撃とSQLi試行を検知する</li><li>失敗時にcredential materialやstack traceが漏れないことを確認する</li><li>追加課題としてBOLA/SSRF/Uploadのred test設計を書く</li></ul>
+      <ul><li>S2、S3を実行して認証攻撃とSQLi試行を検知する</li><li>失敗時にcredential materialやstack traceが漏れないことを確認する</li><li>S28に進む前段としてBOLA/SSRF/Uploadのred test設計を書く</li></ul>
     </section>
 
     <section class="grid two">
@@ -56,7 +67,7 @@ sed -n &#39;1,220p&#39; docs/curriculum/owasp-api-security-track.md</code></pre>
     <section class="grid two">
       <article>
         <h2>合格証跡</h2>
-        <ul><li>攻撃payload、HTTP status、ログ、修正テストが揃っている</li><li>認証と認可を分けて説明している</li><li>未実装API security課題をIssue化できる</li></ul>
+        <ul><li>攻撃payload、HTTP status、ログ、修正テストが揃っている</li><li>認証と認可を分けて説明している</li><li>高度API security課題をS28のred testへ接続できる</li></ul>
       </article>
       <article>
         <h2>次フェーズ判定</h2>

@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>P11 Advanced Network・Edge Routing - Secure Learn</title>
+  <link rel="stylesheet" href="../scenario-guides/assets/scenario.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="index.html">Secure Learn Learning Phases</a>
+    <nav aria-label="Learning phase navigation"><a href="p0-ethics-setup.html">P0</a><a href="p1-linux-docker-networking.html">P1</a><a href="p2-backend-tdd-api.html">P2</a><a href="p3-owasp-api-security.html">P3</a><a href="p4-detection-soc-engineering.html">P4</a><a href="p5-observability-sre.html">P5</a><a href="p6-secure-release-kubernetes-iac.html">P6</a><a href="p7-endpoint-edr-detection.html">P7</a><a href="p8-distributed-performance.html">P8</a><a href="p9-secure-infra-capstone.html">P9</a><a href="p10-linux-internals-isolation.html">P10</a><a aria-current="page" href="p11-network-edge-routing.html">P11</a><a href="p12-kubernetes-platform-security.html">P12</a><a href="p13-cloud-security-iam.html">P13</a><a href="p14-iac-policy-as-code.html">P14</a><a href="p15-observability-incident-economics.html">P15</a><a href="p16-distributed-reliability.html">P16</a><a href="p17-backend-production-engineering.html">P17</a><a href="p18-security-supply-chain-release.html">P18</a><a href="p19-detection-edr-oss-governance.html">P19</a></nav>
+  </header>
+  <main>
+    <section class="scenario-head">
+      <p class="eyebrow">P11 / Lead 4 / phase11-network-edge</p>
+      <h1>Advanced Network・Edge Routing</h1>
+      <p class="lead">P12に進む前に、network障害をL3/L4/L7/edgeに分解して説明できる</p>
+      <div class="meta-row">
+        <span class="pill">SRE</span><span class="pill">Whitehat</span>
+      </div>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>抽象的に何を学ぶか</h2>
+        <p>Advanced networkでは、packet単体ではなく、clientからedge、load balancer、service、resolverまでの経路全体を障害ドメインとして扱います。</p>
+      </article>
+      <article>
+        <h2>具体例</h2>
+        <ul><li>TCP: SYN backlogや再送が増えるとHTTP 5xxではなく接続遅延として現れる</li><li>TLS/mTLS: 証明書期限、SNI、cipher policy、client certificate失敗をHTTP障害と分ける</li><li>BGP/Anycast/CDN: 実BGPは触らず、edge routingの切替判断と観測点を図にする</li></ul>
+      </article>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>到達目標</h2>
+        <ul><li>TCP再送、SYN backlog、timeoutをSLO劣化として説明できる</li><li>TLS/mTLSのhandshake failureを証明書、SNI、protocol、policyに分解できる</li><li>DNS、CDN、Anycast、L4/L7 LBの責務と観測ログを説明できる</li></ul>
+      </article>
+      <article>
+        <h2>カバー領域</h2>
+        <ul><li>TCP retransmission</li><li>SYN backlog</li><li>TLS handshake</li><li>mTLS</li><li>DNS resolver</li><li>BGP</li><li>Anycast</li><li>QUIC</li><li>HTTP/3</li><li>L4/L7 load balancer</li><li>CDN edge routing</li></ul>
+      </article>
+    </section>
+
+    <section>
+      <h2>Hands-on Flow</h2>
+      <ul><li>edge proxy profileを起動し、app直通とproxy経由のhealthを比較する</li><li>openssl s_clientでTLS endpointがない場合の失敗と、TLS終端がある場合に必要な証跡を整理する</li><li>DNS resolver、edge、originの障害切り分け表を作る</li></ul>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>Docker実行</h2>
+        <pre><code>scripts/learning_phase.sh config p11
+scripts/learning_phase.sh start p11
+scripts/learning_phase.sh status p11</code></pre>
+      </article>
+      <article>
+        <h2>実行コマンド</h2>
+        <pre><code>scripts/learning_phase.sh start p11
+curl -fsS http://localhost:8080/health
+docker exec learn-toolbox sh -lc &#39;getent hosts app learning-edge-proxy &amp;&amp; ss -tan&#39;
+docker exec learn-toolbox openssl s_client -connect app:3000 -servername app &lt;/dev/null || true
+sed -n &#39;1,220p&#39; docs/scenario-guides/s19-mtls-cert-rotation.html</code></pre>
+      </article>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>合格証跡</h2>
+        <ul><li>direct/proxy/DNSの切り分け結果がある</li><li>TLS/mTLSで必要な証跡と監視項目を列挙している</li><li>edge routing障害時のrollbackまたはtraffic shift判断がある</li></ul>
+      </article>
+      <article>
+        <h2>次フェーズ判定</h2>
+        <p>P12に進む前に、network障害をL3/L4/L7/edgeに分解して説明できる</p>
+      </article>
+    </section>
+
+  </main>
+</body>
+</html>

@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>P18 Security Engineering・Supply Chain・Release - Secure Learn</title>
+  <link rel="stylesheet" href="../scenario-guides/assets/scenario.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="index.html">Secure Learn Learning Phases</a>
+    <nav aria-label="Learning phase navigation"><a href="p0-ethics-setup.html">P0</a><a href="p1-linux-docker-networking.html">P1</a><a href="p2-backend-tdd-api.html">P2</a><a href="p3-owasp-api-security.html">P3</a><a href="p4-detection-soc-engineering.html">P4</a><a href="p5-observability-sre.html">P5</a><a href="p6-secure-release-kubernetes-iac.html">P6</a><a href="p7-endpoint-edr-detection.html">P7</a><a href="p8-distributed-performance.html">P8</a><a href="p9-secure-infra-capstone.html">P9</a><a href="p10-linux-internals-isolation.html">P10</a><a href="p11-network-edge-routing.html">P11</a><a href="p12-kubernetes-platform-security.html">P12</a><a href="p13-cloud-security-iam.html">P13</a><a href="p14-iac-policy-as-code.html">P14</a><a href="p15-observability-incident-economics.html">P15</a><a href="p16-distributed-reliability.html">P16</a><a href="p17-backend-production-engineering.html">P17</a><a aria-current="page" href="p18-security-supply-chain-release.html">P18</a><a href="p19-detection-edr-oss-governance.html">P19</a></nav>
+  </header>
+  <main>
+    <section class="scenario-head">
+      <p class="eyebrow">P18 / Lead 11 / phase18-security-supply-chain</p>
+      <h1>Security Engineering・Supply Chain・Release</h1>
+      <p class="lead">P19に進む前に、コードからartifact/release/開示まで一気通貫で説明できる</p>
+      <div class="meta-row">
+        <span class="pill">Whitehat</span><span class="pill">Backend</span><span class="pill">SRE</span>
+      </div>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>抽象的に何を学ぶか</h2>
+        <p>Security supply chainでは、コード脆弱性だけでなく、依存、build、artifact、secret、release経路まで攻撃面として扱います。</p>
+      </article>
+      <article>
+        <h2>具体例</h2>
+        <ul><li>SSRF/BOLA/upload: business logicとauthorizationの抜けをred testで固定する</li><li>SBOM/SAST/DAST/SCA: 依存とコードと実行中APIを別々の観点で検査する</li><li>artifact signing/release: どのcommitからどのimageが出たかを検証可能にする</li></ul>
+      </article>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>到達目標</h2>
+        <ul><li>OWASP API Top 10の上位リスクをhands-on testへ変換できる</li><li>SBOM、SAST、DAST、SCA、secret scanning、artifact signingの役割を説明できる</li><li>GitOps、feature flag、blue-green/canary、rollback safetyをrelease gateにできる</li></ul>
+      </article>
+      <article>
+        <h2>カバー領域</h2>
+        <ul><li>threat modeling</li><li>OWASP API Top 10</li><li>SSRF</li><li>IDOR</li><li>BOLA</li><li>unsafe upload</li><li>RCE</li><li>SBOM</li><li>SAST</li><li>DAST</li><li>SCA</li><li>secret scanning</li><li>artifact signing</li><li>GitOps</li><li>feature flag</li><li>blue-green</li><li>canary</li><li>rollback safety</li></ul>
+      </article>
+    </section>
+
+    <section>
+      <h2>Hands-on Flow</h2>
+      <ul><li>npm audit、OpenAPI contract、backend hands-onをまとめてsecurity gateとして実行する</li><li>SSRF/BOLA/upload/RCEの安全なred test設計をHTMLに沿って作る</li><li>release checklistで署名、SBOM、rollback、migration互換性を確認する</li></ul>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>Docker実行</h2>
+        <pre><code>scripts/learning_phase.sh config p18
+scripts/learning_phase.sh start p18
+scripts/learning_phase.sh status p18</code></pre>
+      </article>
+      <article>
+        <h2>実行コマンド</h2>
+        <pre><code>scripts/learning_phase.sh start p18
+npm --prefix app audit --omit=dev --audit-level=high
+scripts/backend_hands_on_tests.sh
+scripts/world_class_hands_on_check.sh supply-chain
+sed -n &#39;1,220p&#39; docs/scenario-guides/s29-supply-chain-release.html</code></pre>
+      </article>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>合格証跡</h2>
+        <ul><li>OWASP API、SBOM/SAST/DAST/SCA、secret scanningのcoverage mapがある</li><li>release gateとrollback条件が書かれている</li><li>CVE/CVSS、security advisory、responsible disclosureの判断がある</li></ul>
+      </article>
+      <article>
+        <h2>次フェーズ判定</h2>
+        <p>P19に進む前に、コードからartifact/release/開示まで一気通貫で説明できる</p>
+      </article>
+    </section>
+
+  </main>
+</body>
+</html>

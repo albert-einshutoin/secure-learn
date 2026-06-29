@@ -9,7 +9,7 @@
 <body>
   <header class="topbar">
     <a class="brand" href="index.html">Secure Learn Scenario Guides</a>
-    <nav aria-label="Scenario navigation"><a href="s1-portscan.html">S1</a><a href="s2-bruteforce.html">S2</a><a href="s3-sqli.html">S3</a><a href="s4-dos.html">S4</a><a href="s5-file-tamper.html">S5</a><a href="s6-privesc.html">S6</a><a aria-current="page" href="s7-lateral.html">S7</a><a href="s8-arp.html">S8</a><a href="s9-icmp.html">S9</a><a href="s10-tcp-state.html">S10</a><a href="s11-session-stress.html">S11</a><a href="s12-tls-boundary.html">S12</a><a href="s13-dns.html">S13</a><a href="s14-sre-incident.html">S14</a><a href="s15-capstone.html">S15</a></nav>
+    <nav aria-label="Scenario navigation"><a href="s1-portscan.html">S1</a><a href="s2-bruteforce.html">S2</a><a href="s3-sqli.html">S3</a><a href="s4-dos.html">S4</a><a href="s5-file-tamper.html">S5</a><a href="s6-privesc.html">S6</a><a aria-current="page" href="s7-lateral.html">S7</a><a href="s8-arp.html">S8</a><a href="s9-icmp.html">S9</a><a href="s10-tcp-state.html">S10</a><a href="s11-session-stress.html">S11</a><a href="s12-tls-boundary.html">S12</a><a href="s13-dns.html">S13</a><a href="s14-sre-incident.html">S14</a><a href="s15-capstone.html">S15</a><a href="s16-linux-internals-isolation.html">S16</a><a href="s17-ebpf-perf-forensics.html">S17</a><a href="s18-tcp-backlog-loadbalancer.html">S18</a><a href="s19-mtls-cert-rotation.html">S19</a><a href="s20-quic-bgp-cdn-edge.html">S20</a><a href="s21-kubernetes-platform.html">S21</a><a href="s22-cloud-iam-audit.html">S22</a><a href="s23-terraform-policy-drift.html">S23</a><a href="s24-burn-rate-observability.html">S24</a><a href="s25-otel-trace-log-correlation.html">S25</a><a href="s26-queue-idempotency-backpressure.html">S26</a><a href="s27-backend-migration-contract.html">S27</a><a href="s28-api-business-logic-abuse.html">S28</a><a href="s29-supply-chain-release.html">S29</a><a href="s30-detection-edr-case.html">S30</a><a href="s31-endpoint-sysmon-malware.html">S31</a><a href="s32-performance-flamegraph-db.html">S32</a><a href="s33-gitops-progressive-delivery.html">S33</a></nav>
   </header>
   <main>
     <section class="scenario-head">
@@ -20,6 +20,17 @@
         <span class="score score-4">4/5 実務上級</span>
         <span class="pill">Whitehat</span><span class="pill">SRE</span><span class="pill">Backend</span>
       </div>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>抽象的に何を学ぶか</h2>
+        <p>横断インシデントは、単発の攻撃手順ではなく、複数レイヤーの検知をtimeline化し、MTTD/MTTR、影響範囲、改善PRまでまとめる。</p>
+      </article>
+      <article>
+        <h2>具体例</h2>
+        <ul><li>Start: /scripts/s7_lateral.shで段階的な攻撃チェーンを実行する。</li><li>Correlate: source.ip、timestamp、event.actionでSuricata/App/Fail2ban/Auditdを繋ぐ。</li><li>Contain: BANやサービス保護の判断を記録する。</li></ul>
+      </article>
     </section>
 
     <section class="grid two">

@@ -11,9 +11,11 @@ RUN apk add --no-cache \
   netcat-openbsd \
   openssl \
   postgresql-client \
+  procps \
   redis \
   strace \
   tcpdump \
+  util-linux \
   && addgroup -g 10002 -S learner \
   && adduser -S learner -u 10002 -G learner
 

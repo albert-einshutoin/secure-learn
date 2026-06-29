@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>P10 Linux Internals・Container Isolation - Secure Learn</title>
+  <link rel="stylesheet" href="../scenario-guides/assets/scenario.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="index.html">Secure Learn Learning Phases</a>
+    <nav aria-label="Learning phase navigation"><a href="p0-ethics-setup.html">P0</a><a href="p1-linux-docker-networking.html">P1</a><a href="p2-backend-tdd-api.html">P2</a><a href="p3-owasp-api-security.html">P3</a><a href="p4-detection-soc-engineering.html">P4</a><a href="p5-observability-sre.html">P5</a><a href="p6-secure-release-kubernetes-iac.html">P6</a><a href="p7-endpoint-edr-detection.html">P7</a><a href="p8-distributed-performance.html">P8</a><a href="p9-secure-infra-capstone.html">P9</a><a aria-current="page" href="p10-linux-internals-isolation.html">P10</a><a href="p11-network-edge-routing.html">P11</a><a href="p12-kubernetes-platform-security.html">P12</a><a href="p13-cloud-security-iam.html">P13</a><a href="p14-iac-policy-as-code.html">P14</a><a href="p15-observability-incident-economics.html">P15</a><a href="p16-distributed-reliability.html">P16</a><a href="p17-backend-production-engineering.html">P17</a><a href="p18-security-supply-chain-release.html">P18</a><a href="p19-detection-edr-oss-governance.html">P19</a></nav>
+  </header>
+  <main>
+    <section class="scenario-head">
+      <p class="eyebrow">P10 / Lead 3 / phase10-linux-internals</p>
+      <h1>Linux Internals・Container Isolation</h1>
+      <p class="lead">P11に進む前に、OS資源不足とアプリ障害をログだけで混同しない</p>
+      <div class="meta-row">
+        <span class="pill">SRE</span><span class="pill">Whitehat</span>
+      </div>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>抽象的に何を学ぶか</h2>
+        <p>Linux internalsでは、アプリの障害や侵害をOSの資源管理、隔離、システムコール、権限境界として読む訓練をします。抽象的には「プロセスが何を許可され、何に詰まり、どの証跡を残すか」を説明する力です。</p>
+      </article>
+      <article>
+        <h2>具体例</h2>
+        <ul><li>cgroups: containerにCPU/memory制限をかけた時、p95 latencyとOOMのどちらが先に悪化するかを観測する</li><li>namespaces/capabilities: rootに見えるprocessでもhost rootではない理由を説明し、cap_dropで攻撃面を減らす</li><li>strace/lsof/ss: API遅延時にopen file、socket、syscall待ちを切り分ける</li></ul>
+      </article>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>到達目標</h2>
+        <ul><li>process、thread、file descriptor、socket、signalを運用証跡として読める</li><li>namespace、cgroup、capability、seccompがcontainer securityにどう効くか説明できる</li><li>strace、lsof、ss、tcpdump、perf/eBPFの使い分けを判断できる</li></ul>
+      </article>
+      <article>
+        <h2>カバー領域</h2>
+        <ul><li>systemd</li><li>cgroups</li><li>namespaces</li><li>seccomp</li><li>capabilities</li><li>eBPF</li><li>perf</li><li>strace</li><li>lsof</li><li>kernel tuning</li></ul>
+      </article>
+    </section>
+
+    <section>
+      <h2>Hands-on Flow</h2>
+      <ul><li>learning toolboxでps、ss、lsof、straceを使い、appへのHTTP requestがsocket/syscallとして見えることを確認する</li><li>docker inspectでcapabilities、security_opt、resource制限を確認する</li><li>kernel tuning項目を変更せず、どの値を本番で見るべきかrunbookに整理する</li></ul>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>Docker実行</h2>
+        <pre><code>scripts/learning_phase.sh config p10
+scripts/learning_phase.sh start p10
+scripts/learning_phase.sh status p10</code></pre>
+      </article>
+      <article>
+        <h2>実行コマンド</h2>
+        <pre><code>scripts/learning_phase.sh start p10
+docker exec learn-toolbox ss -tan
+docker exec learn-toolbox sh -lc &#39;curl -fsS http://app:3000/health &amp;&amp; lsof -iTCP -P -n | head&#39;
+docker inspect soc-lab-app | jq &#39;.[0].HostConfig.CapDrop, .[0].HostConfig.SecurityOpt&#39;
+sed -n &#39;1,220p&#39; docs/learning-phases/p10-linux-internals-isolation.html</code></pre>
+      </article>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>合格証跡</h2>
+        <ul><li>process/socket/syscall/file descriptorを紐づけたメモがある</li><li>container isolationで守れることと守れないことを分けて説明している</li><li>capability/seccomp/cgroupの改善案に影響範囲とrollback条件がある</li></ul>
+      </article>
+      <article>
+        <h2>次フェーズ判定</h2>
+        <p>P11に進む前に、OS資源不足とアプリ障害をログだけで混同しない</p>
+      </article>
+    </section>
+
+  </main>
+</body>
+</html>

@@ -25,15 +25,17 @@
 | 4 | SRE実務 | S14 | 監視、SLO、インシデント対応を運用に接続する |
 | 5 | 修了課題 | S15 | ホワイトハット/SRE 両面の最終証跡を作る |
 | 6 | 業務レベル拡張 | Professional tracks | OWASP、backend TDD、Kubernetes、SRE、supply chain を補完する |
-| 7 | 大手セキュアインフラ準備 | P0-P9 Learning Docker | Linux、Docker、Backend、Detection、Observability、Kubernetes、分散システム、Capstone を段階的に通す |
+| 7 | 大手セキュアインフラ準備 | P0-P19 Learning Docker | Linux、Docker、Backend、Detection、Observability、Kubernetes、分散システム、Cloud/IaC、Supply Chain、Release Governance を段階的に通す |
+| 8 | 世界レベル補完 | S16-S33 | Linux internals、BGP/Anycast、mTLS、Kubernetes platform、Cloud IAM、Terraform/OPA、burn-rate、OpenTelemetry、Kafka/Temporal、migration、BOLA/SSRF、SBOM、EDR、flamegraph、GitOpsを実務証跡へ接続する |
 
 ## Learning Docker
 
-初学者から大手セキュアインフラ実務レベルまでの段階的な入口は [Secure Infrastructure Learning Docker](secure-infra-learning-docker.md) にまとめています。
+初学者から大手セキュアインフラ実務レベルまでの段階的な入口は [Secure Infrastructure Learning Docker](secure-infra-learning-docker.md) にまとめています。各HTMLは「抽象的に何を学ぶか」と「具体例」を分けているため、単なるコマンド列ではなく、実務で説明する判断軸を追えます。
 
 ```bash
 scripts/learning_phase.sh list
-scripts/learning_phase.sh start p5
+scripts/learning_phase.sh start p10
+scripts/world_class_hands_on_check.sh all
 ```
 
 ## 修了の定義
@@ -44,4 +46,5 @@ scripts/learning_phase.sh start p5
 - 少なくとも3つの Suricata/Fail2ban/Auditd ルールを自分で調整し、検知漏れと誤検知の影響を説明している
 - 1つ以上のアプリケーション脆弱性について、安全な修正設計とテスト観点を提示している
 - SLO 違反時の判断、顧客影響、暫定対応、恒久対応をインシデントレポートにまとめている
+- Cloud/IaC/Supply Chain/Release/OSS governance の高度領域について、HTMLの具体例に沿った証跡を作成している
 - 第三者環境へ攻撃しない倫理・法的制約を明記し、学習ログから秘密情報を除去している

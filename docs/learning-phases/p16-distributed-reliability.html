@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>P16 Distributed Systems・Data Reliability - Secure Learn</title>
+  <link rel="stylesheet" href="../scenario-guides/assets/scenario.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="index.html">Secure Learn Learning Phases</a>
+    <nav aria-label="Learning phase navigation"><a href="p0-ethics-setup.html">P0</a><a href="p1-linux-docker-networking.html">P1</a><a href="p2-backend-tdd-api.html">P2</a><a href="p3-owasp-api-security.html">P3</a><a href="p4-detection-soc-engineering.html">P4</a><a href="p5-observability-sre.html">P5</a><a href="p6-secure-release-kubernetes-iac.html">P6</a><a href="p7-endpoint-edr-detection.html">P7</a><a href="p8-distributed-performance.html">P8</a><a href="p9-secure-infra-capstone.html">P9</a><a href="p10-linux-internals-isolation.html">P10</a><a href="p11-network-edge-routing.html">P11</a><a href="p12-kubernetes-platform-security.html">P12</a><a href="p13-cloud-security-iam.html">P13</a><a href="p14-iac-policy-as-code.html">P14</a><a href="p15-observability-incident-economics.html">P15</a><a aria-current="page" href="p16-distributed-reliability.html">P16</a><a href="p17-backend-production-engineering.html">P17</a><a href="p18-security-supply-chain-release.html">P18</a><a href="p19-detection-edr-oss-governance.html">P19</a></nav>
+  </header>
+  <main>
+    <section class="scenario-head">
+      <p class="eyebrow">P16 / Lead 9 / phase16-distributed-reliability</p>
+      <h1>Distributed Systems・Data Reliability</h1>
+      <p class="lead">P17に進む前に、部分失敗前提のbackend/SRE設計ができる</p>
+      <div class="meta-row">
+        <span class="pill">SRE</span><span class="pill">Backend</span>
+      </div>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>抽象的に何を学ぶか</h2>
+        <p>分散システムでは、1回のHTTP成功ではなく、重複、遅延、順序入れ替わり、部分失敗が起きてもデータとSLOを守る設計を学びます。</p>
+      </article>
+      <article>
+        <h2>具体例</h2>
+        <ul><li>idempotency: retryで同じ支払い/作成処理が2回実行されないようkeyを持つ</li><li>backpressure: queue backlogが増えた時に429、shed load、consumer scaleのどれを選ぶか判断する</li><li>replication/sharding: consistencyとavailabilityのどちらを犠牲にするかを明示する</li></ul>
+      </article>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>到達目標</h2>
+        <ul><li>Kafka/PubSub/Temporal/queueのfailure modeを説明できる</li><li>retry/backoff/idempotency/backpressureをAPI contractに落とせる</li><li>leader election、consistency、sharding、replicationの運用リスクを説明できる</li></ul>
+      </article>
+      <article>
+        <h2>カバー領域</h2>
+        <ul><li>queue</li><li>Kafka</li><li>PubSub</li><li>Temporal</li><li>retry</li><li>backoff</li><li>idempotency</li><li>backpressure</li><li>leader election</li><li>consistency</li><li>sharding</li><li>replication</li></ul>
+      </article>
+    </section>
+
+    <section>
+      <h2>Hands-on Flow</h2>
+      <ul><li>Redis profileでqueue/backlogの代替演習を行う</li><li>同じrequestを複数回送ってidempotency設計をレビューする</li><li>consumer停止、retry storm、backlog増加のrunbookを書く</li></ul>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>Docker実行</h2>
+        <pre><code>scripts/learning_phase.sh config p16
+scripts/learning_phase.sh start p16
+scripts/learning_phase.sh status p16</code></pre>
+      </article>
+      <article>
+        <h2>実行コマンド</h2>
+        <pre><code>scripts/learning_phase.sh start p16
+docker exec learn-toolbox redis-cli -h learning-redis PING
+scripts/world_class_hands_on_check.sh distributed
+sed -n &#39;1,220p&#39; docs/scenario-guides/s26-queue-idempotency-backpressure.html</code></pre>
+      </article>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>合格証跡</h2>
+        <ul><li>retry/backoff/idempotencyのAPI設計メモがある</li><li>queue backlogとSLO影響を説明している</li><li>consistency、replication、shardingの選択理由がある</li></ul>
+      </article>
+      <article>
+        <h2>次フェーズ判定</h2>
+        <p>P17に進む前に、部分失敗前提のbackend/SRE設計ができる</p>
+      </article>
+    </section>
+
+  </main>
+</body>
+</html>

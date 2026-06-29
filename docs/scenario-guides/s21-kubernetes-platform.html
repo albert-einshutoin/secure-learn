@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>S21 Kubernetes本番運用・Platform Guardrails - Secure Learn</title>
+  <link rel="stylesheet" href="assets/scenario.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="index.html">Secure Learn Scenario Guides</a>
+    <nav aria-label="Scenario navigation"><a href="s1-portscan.html">S1</a><a href="s2-bruteforce.html">S2</a><a href="s3-sqli.html">S3</a><a href="s4-dos.html">S4</a><a href="s5-file-tamper.html">S5</a><a href="s6-privesc.html">S6</a><a href="s7-lateral.html">S7</a><a href="s8-arp.html">S8</a><a href="s9-icmp.html">S9</a><a href="s10-tcp-state.html">S10</a><a href="s11-session-stress.html">S11</a><a href="s12-tls-boundary.html">S12</a><a href="s13-dns.html">S13</a><a href="s14-sre-incident.html">S14</a><a href="s15-capstone.html">S15</a><a href="s16-linux-internals-isolation.html">S16</a><a href="s17-ebpf-perf-forensics.html">S17</a><a href="s18-tcp-backlog-loadbalancer.html">S18</a><a href="s19-mtls-cert-rotation.html">S19</a><a href="s20-quic-bgp-cdn-edge.html">S20</a><a aria-current="page" href="s21-kubernetes-platform.html">S21</a><a href="s22-cloud-iam-audit.html">S22</a><a href="s23-terraform-policy-drift.html">S23</a><a href="s24-burn-rate-observability.html">S24</a><a href="s25-otel-trace-log-correlation.html">S25</a><a href="s26-queue-idempotency-backpressure.html">S26</a><a href="s27-backend-migration-contract.html">S27</a><a href="s28-api-business-logic-abuse.html">S28</a><a href="s29-supply-chain-release.html">S29</a><a href="s30-detection-edr-case.html">S30</a><a href="s31-endpoint-sysmon-malware.html">S31</a><a href="s32-performance-flamegraph-db.html">S32</a><a href="s33-gitops-progressive-delivery.html">S33</a></nav>
+  </header>
+  <main>
+    <section class="scenario-head">
+      <p class="eyebrow">S21 / Kubernetes / 上級</p>
+      <h1>Kubernetes本番運用・Platform Guardrails</h1>
+      <p class="lead">Helm、Kustomize、Operator/CRD、Admission、RBAC、NetworkPolicy、PodSecurity、HPA/VPA、upgradeを本番運用として扱う。</p>
+      <div class="meta-row">
+        <span class="score score-4">4/5 実務上級</span>
+        <span class="pill">SRE</span><span class="pill">Whitehat</span><span class="pill">Backend</span>
+      </div>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>抽象的に何を学ぶか</h2>
+        <p>Kubernetes本番運用はyaml適用ではなく、危険な変更を入れない仕組み、壊れても戻せる仕組み、upgradeしても契約を守る仕組みを作ることです。</p>
+      </article>
+      <article>
+        <h2>具体例</h2>
+        <ul><li>Admissionでprivileged podやlatest imageを拒否する。</li><li>RBACでsecretを読めるServiceAccountを限定し、NetworkPolicyでeast-west通信を絞る。</li><li>CRD/Operator upgrade前にAPI deprecationとrollback条件を確認する。</li></ul>
+      </article>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>目的</h2>
+        <p>Kubernetesをdeployment targetではなく、policyとoperabilityを持つplatformとして説明できるようにする。</p>
+      </article>
+      <article>
+        <h2>世界レベル評価</h2>
+        <p>実務上級に近い構成です。証跡、修正、運用判断まで扱えます。</p>
+      </article>
+    </section>
+
+    <section>
+      <h2>Hands-on Flow</h2>
+      <ol class="flow"><li><span>Read</span><p>k8s/baseのDeployment、Service、HPA、NetworkPolicy、StatefulSetを読む。</p></li><li><span>Validate</span><p>scripts/k8s_static_check.shで最低限のguardrailを検査する。</p></li><li><span>Design</span><p>Helm/Kustomize/Admission/RBAC/PodSecurityの追加設計を書く。</p></li><li><span>Operate</span><p>cluster upgrade、multi-cluster、service meshのrisk tableを作る。</p></li><li><span>Review</span><p>manifest diff reviewで拒否すべき変更を列挙する。</p></li></ol>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>実行コマンド</h2>
+        <pre><code>scripts/learning_phase.sh start p12
+scripts/k8s_static_check.sh
+find k8s/base -type f -maxdepth 2 -print
+sed -n &quot;1,220p&quot; docs/runbooks/kubernetes-operations.md
+scripts/world_class_hands_on_check.sh kubernetes</code></pre>
+      </article>
+      <article>
+        <h2>合格証跡</h2>
+        <ul><li>manifestごとの安全条件説明</li><li>Admission/RBAC/NetworkPolicyの設計案</li><li>upgradeとrollback手順</li><li>service mesh/multi-cluster導入時のリスク評価</li></ul>
+      </article>
+    </section>
+
+    <section>
+      <h2>ツール活用</h2>
+      <table><thead><tr><th>Tool</th><th>使い方</th></tr></thead><tbody><tr><td><strong>Kustomize/Helm</strong></td><td>環境差分とrelease unitを管理する。</td></tr><tr><td><strong>Admission Controller</strong></td><td>policy違反をclusterへ入る前に拒否する。</td></tr><tr><td><strong>RBAC/NetworkPolicy/PodSecurity</strong></td><td>identity、network、runtimeの境界を作る。</td></tr><tr><td><strong>HPA/VPA</strong></td><td>capacityとresource requestを運用する。</td></tr></tbody></table>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>Whitehat / SRE / Backend 観点</h2>
+        <ul><li>Whitehat: 攻撃を許可範囲に限定し、再現性と検知証跡を残す。</li><li>SRE: SLO、可用性、レイテンシ、復旧判断へ接続する。</li><li>Backend: 入力検証、契約、テスト、エラー安全性を確認する。</li></ul>
+      </article>
+      <article>
+        <h2>世界レベルへ足す課題</h2>
+        <ul><li>kind/minikubeでAdmission policyを実行する。</li><li>OPA Gatekeeper/KyvernoをCIとclusterに入れる。</li><li>service mesh mTLSとtraffic shiftingを実測する。</li></ul>
+      </article>
+    </section>
+
+    <section>
+      <h2>関連シナリオ</h2>
+      <div class="links"><a href="s1-portscan.html">S1 ポートスキャン</a><a href="s2-bruteforce.html">S2 APIブルートフォース</a><a href="s3-sqli.html">S3 SQLインジェクション</a><a href="s4-dos.html">S4 DoS攻撃</a></div>
+    </section>
+
+  </main>
+</body>
+</html>

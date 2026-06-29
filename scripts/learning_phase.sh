@@ -10,11 +10,11 @@ usage() {
   cat <<'USAGE'
 Usage:
   scripts/learning_phase.sh list
-  scripts/learning_phase.sh guide <p0..p9>
-  scripts/learning_phase.sh config <p0..p9>
-  scripts/learning_phase.sh start <p0..p9>
-  scripts/learning_phase.sh stop <p0..p9>
-  scripts/learning_phase.sh status <p0..p9>
+  scripts/learning_phase.sh guide <p0..p19>
+  scripts/learning_phase.sh config <p0..p19>
+  scripts/learning_phase.sh start <p0..p19>
+  scripts/learning_phase.sh stop <p0..p19>
+  scripts/learning_phase.sh status <p0..p19>
 
 Examples:
   scripts/learning_phase.sh list

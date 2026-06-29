@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>S20 QUIC/HTTP3・BGP/Anycast・CDN Edge - Secure Learn</title>
+  <link rel="stylesheet" href="assets/scenario.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="index.html">Secure Learn Scenario Guides</a>
+    <nav aria-label="Scenario navigation"><a href="s1-portscan.html">S1</a><a href="s2-bruteforce.html">S2</a><a href="s3-sqli.html">S3</a><a href="s4-dos.html">S4</a><a href="s5-file-tamper.html">S5</a><a href="s6-privesc.html">S6</a><a href="s7-lateral.html">S7</a><a href="s8-arp.html">S8</a><a href="s9-icmp.html">S9</a><a href="s10-tcp-state.html">S10</a><a href="s11-session-stress.html">S11</a><a href="s12-tls-boundary.html">S12</a><a href="s13-dns.html">S13</a><a href="s14-sre-incident.html">S14</a><a href="s15-capstone.html">S15</a><a href="s16-linux-internals-isolation.html">S16</a><a href="s17-ebpf-perf-forensics.html">S17</a><a href="s18-tcp-backlog-loadbalancer.html">S18</a><a href="s19-mtls-cert-rotation.html">S19</a><a aria-current="page" href="s20-quic-bgp-cdn-edge.html">S20</a><a href="s21-kubernetes-platform.html">S21</a><a href="s22-cloud-iam-audit.html">S22</a><a href="s23-terraform-policy-drift.html">S23</a><a href="s24-burn-rate-observability.html">S24</a><a href="s25-otel-trace-log-correlation.html">S25</a><a href="s26-queue-idempotency-backpressure.html">S26</a><a href="s27-backend-migration-contract.html">S27</a><a href="s28-api-business-logic-abuse.html">S28</a><a href="s29-supply-chain-release.html">S29</a><a href="s30-detection-edr-case.html">S30</a><a href="s31-endpoint-sysmon-malware.html">S31</a><a href="s32-performance-flamegraph-db.html">S32</a><a href="s33-gitops-progressive-delivery.html">S33</a></nav>
+  </header>
+  <main>
+    <section class="scenario-head">
+      <p class="eyebrow">S20 / Internet Edge / 上級</p>
+      <h1>QUIC/HTTP3・BGP/Anycast・CDN Edge</h1>
+      <p class="lead">QUIC/HTTP3、BGP、Anycast、CDN routingを、直接操作せずに設計・観測・障害対応として学ぶ。</p>
+      <div class="meta-row">
+        <span class="score score-3">3/5 実務中級</span>
+        <span class="pill">SRE</span><span class="pill">Whitehat</span>
+      </div>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>抽象的に何を学ぶか</h2>
+        <p>Internet edgeは自分のサーバだけで完結しません。抽象的には、clientがどのedgeに到達し、どのprotocolでoriginへ流れ、どの証跡で問題を切り分けるかを扱います。</p>
+      </article>
+      <article>
+        <h2>具体例</h2>
+        <ul><li>Anycast障害では一部地域だけが別edgeへ吸われ、全体監視では見逃すことがある。</li><li>QUICはUDPなので、TCP前提のmiddleboxやpacket capture設計では見え方が変わる。</li><li>CDN cache purgeやorigin shield変更は、securityとavailabilityの両方に影響する。</li></ul>
+      </article>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>目的</h2>
+        <p>BGP/Anycast/CDNを危険に操作せず、観測点、ログ、rollback、vendor escalationの設計をできるようにする。</p>
+      </article>
+      <article>
+        <h2>世界レベル評価</h2>
+        <p>基礎から実務中級の土台を作る構成です。高度領域はS16以降の専門シナリオへ接続します。</p>
+      </article>
+    </section>
+
+    <section>
+      <h2>Hands-on Flow</h2>
+      <ol class="flow"><li><span>Map</span><p>client、DNS、CDN edge、origin、LB、appの経路図を作る。</p></li><li><span>Protocol</span><p>TCP/HTTP2とUDP/QUICで観測点が変わることを整理する。</p></li><li><span>Failure</span><p>地域限定、resolver限定、cache限定の障害パターンを作る。</p></li><li><span>Evidence</span><p>edge log、origin log、DNS log、synthetic probeの必要性を書く。</p></li><li><span>Escalate</span><p>vendorへ渡すべきtimestamp、colo、ray id相当、traceを定義する。</p></li></ol>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>実行コマンド</h2>
+        <pre><code>scripts/learning_phase.sh start p11
+docker exec learn-toolbox sh -lc &quot;dig localhost || true; curl -I http://app:3000/health&quot;
+scripts/world_class_hands_on_check.sh edge
+sed -n &quot;1,220p&quot; docs/scenario-guides/s20-quic-bgp-cdn-edge.html</code></pre>
+      </article>
+      <article>
+        <h2>合格証跡</h2>
+        <ul><li>edge routing経路図</li><li>QUIC/HTTP3とTCP/HTTP2の観測差分</li><li>CDN/BGP障害時の必要ログ一覧</li><li>vendor escalation template</li></ul>
+      </article>
+    </section>
+
+    <section>
+      <h2>ツール活用</h2>
+      <table><thead><tr><th>Tool</th><th>使い方</th></tr></thead><tbody><tr><td><strong>dig/curl</strong></td><td>DNSとHTTPの基本観測を行う。</td></tr><tr><td><strong>CDN logs</strong></td><td>実運用ではedge colo、cache status、request idを見る。</td></tr><tr><td><strong>Synthetic probe</strong></td><td>地域/ISP差分を監視する。</td></tr><tr><td><strong>Runbook</strong></td><td>BGP/CDN vendor escalationに必要な証跡を定義する。</td></tr></tbody></table>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>Whitehat / SRE / Backend 観点</h2>
+        <ul><li>Whitehat: 攻撃を許可範囲に限定し、再現性と検知証跡を残す。</li><li>SRE: SLO、可用性、レイテンシ、復旧判断へ接続する。</li><li>Backend: サービス露出、ログ、HTTP契約との関係を確認する。</li></ul>
+      </article>
+      <article>
+        <h2>世界レベルへ足す課題</h2>
+        <ul><li>実CDN sandboxでcache rule、WAF、origin fallbackを検証する。</li><li>multi-region synthetic monitoringを追加する。</li><li>BGP leak/route hijackをtabletop exercise化する。</li></ul>
+      </article>
+    </section>
+
+    <section>
+      <h2>関連シナリオ</h2>
+      <div class="links"><a href="s1-portscan.html">S1 ポートスキャン</a><a href="s2-bruteforce.html">S2 APIブルートフォース</a><a href="s3-sqli.html">S3 SQLインジェクション</a><a href="s4-dos.html">S4 DoS攻撃</a></div>
+    </section>
+
+  </main>
+</body>
+</html>

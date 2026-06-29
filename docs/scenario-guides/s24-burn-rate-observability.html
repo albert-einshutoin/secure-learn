@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>S24 Burn-rate Alert・RED/USE・Alert Fatigue - Secure Learn</title>
+  <link rel="stylesheet" href="assets/scenario.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="index.html">Secure Learn Scenario Guides</a>
+    <nav aria-label="Scenario navigation"><a href="s1-portscan.html">S1</a><a href="s2-bruteforce.html">S2</a><a href="s3-sqli.html">S3</a><a href="s4-dos.html">S4</a><a href="s5-file-tamper.html">S5</a><a href="s6-privesc.html">S6</a><a href="s7-lateral.html">S7</a><a href="s8-arp.html">S8</a><a href="s9-icmp.html">S9</a><a href="s10-tcp-state.html">S10</a><a href="s11-session-stress.html">S11</a><a href="s12-tls-boundary.html">S12</a><a href="s13-dns.html">S13</a><a href="s14-sre-incident.html">S14</a><a href="s15-capstone.html">S15</a><a href="s16-linux-internals-isolation.html">S16</a><a href="s17-ebpf-perf-forensics.html">S17</a><a href="s18-tcp-backlog-loadbalancer.html">S18</a><a href="s19-mtls-cert-rotation.html">S19</a><a href="s20-quic-bgp-cdn-edge.html">S20</a><a href="s21-kubernetes-platform.html">S21</a><a href="s22-cloud-iam-audit.html">S22</a><a href="s23-terraform-policy-drift.html">S23</a><a aria-current="page" href="s24-burn-rate-observability.html">S24</a><a href="s25-otel-trace-log-correlation.html">S25</a><a href="s26-queue-idempotency-backpressure.html">S26</a><a href="s27-backend-migration-contract.html">S27</a><a href="s28-api-business-logic-abuse.html">S28</a><a href="s29-supply-chain-release.html">S29</a><a href="s30-detection-edr-case.html">S30</a><a href="s31-endpoint-sysmon-malware.html">S31</a><a href="s32-performance-flamegraph-db.html">S32</a><a href="s33-gitops-progressive-delivery.html">S33</a></nav>
+  </header>
+  <main>
+    <section class="scenario-head">
+      <p class="eyebrow">S24 / Observability/SRE / 上級</p>
+      <h1>Burn-rate Alert・RED/USE・Alert Fatigue</h1>
+      <p class="lead">SLI/SLO、error budget、multi-window burn-rate、RED/USE metrics、alert fatigueを実測結果へ接続する。</p>
+      <div class="meta-row">
+        <span class="score score-4">4/5 実務上級</span>
+        <span class="pill">SRE</span><span class="pill">Backend</span>
+      </div>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>抽象的に何を学ぶか</h2>
+        <p>Observabilityはdashboardを増やすことではなく、顧客影響を判断する質問に答えられる信号を作ることです。</p>
+      </article>
+      <article>
+        <h2>具体例</h2>
+        <ul><li>5分burn-rateが高いが1時間では低い場合、pageではなくticketにする。</li><li>RED metricsでAPI影響を、USE metricsでnode/resource飽和を分ける。</li><li>user_idをmetric labelに入れるとhigh cardinalityで監視基盤を壊す。</li></ul>
+      </article>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>目的</h2>
+        <p>SLO違反を検知し、alertの緊急度、owner、actionを判断できるようにする。</p>
+      </article>
+      <article>
+        <h2>世界レベル評価</h2>
+        <p>実務上級に近い構成です。証跡、修正、運用判断まで扱えます。</p>
+      </article>
+    </section>
+
+    <section>
+      <h2>Hands-on Flow</h2>
+      <ol class="flow"><li><span>Baseline</span><p>load testでp95とerror rateを取得する。</p></li><li><span>Budget</span><p>SLOとerror budget消費を計算する。</p></li><li><span>Alert</span><p>multi-window burn-rateのpage条件とticket条件を決める。</p></li><li><span>Correlate</span><p>log、metric、traceをどの質問に使うか整理する。</p></li><li><span>Reduce noise</span><p>alert fatigueを減らすdedup、silence、routingを設計する。</p></li></ol>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>実行コマンド</h2>
+        <pre><code>scripts/learning_phase.sh start p15
+REQUESTS=120 CONCURRENCY=8 scripts/load_hands_on_tests.sh
+curl -fsS http://localhost:9090/-/ready
+scripts/world_class_hands_on_check.sh observability</code></pre>
+      </article>
+      <article>
+        <h2>合格証跡</h2>
+        <ul><li>SLI/SLO/error budget計算</li><li>burn-rate alert条件</li><li>RED/USE metrics設計</li><li>alert fatigue削減方針</li></ul>
+      </article>
+    </section>
+
+    <section>
+      <h2>ツール活用</h2>
+      <table><thead><tr><th>Tool</th><th>使い方</th></tr></thead><tbody><tr><td><strong>Prometheus</strong></td><td>SLIとburn-rateをquery化する。</td></tr><tr><td><strong>Grafana</strong></td><td>incident中の判断画面を作る。</td></tr><tr><td><strong>OpenTelemetry</strong></td><td>trace/log/metric correlationを設計する。</td></tr><tr><td><strong>SLO report</strong></td><td>error budget消費をpostmortemへ残す。</td></tr></tbody></table>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>Whitehat / SRE / Backend 観点</h2>
+        <ul><li>Whitehat: このシナリオでは補助観点として扱う。</li><li>SRE: SLO、可用性、レイテンシ、復旧判断へ接続する。</li><li>Backend: 入力検証、契約、テスト、エラー安全性を確認する。</li></ul>
+      </article>
+      <article>
+        <h2>世界レベルへ足す課題</h2>
+        <ul><li>PromQLでmulti-window burn-rate alertを実装する。</li><li>trace_id/request_idを全ログへ通す。</li><li>high-cardinality guardrailをCIで検査する。</li></ul>
+      </article>
+    </section>
+
+    <section>
+      <h2>関連シナリオ</h2>
+      <div class="links"><a href="s1-portscan.html">S1 ポートスキャン</a><a href="s2-bruteforce.html">S2 APIブルートフォース</a><a href="s3-sqli.html">S3 SQLインジェクション</a><a href="s4-dos.html">S4 DoS攻撃</a></div>
+    </section>
+
+  </main>
+</body>
+</html>

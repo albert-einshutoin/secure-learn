@@ -12,6 +12,14 @@ services:
       - phase5-observability
       - phase6-release
       - phase8-distributed
+      - phase10-linux-internals
+      - phase11-network-edge
+      - phase12-kubernetes-platform
+      - phase13-cloud-security
+      - phase14-iac-policy
+      - phase15-advanced-observability
+      - phase16-distributed-reliability
+      - phase18-security-supply-chain
       - capstone
     command: ["sleep", "infinity"]
     networks:
@@ -33,6 +41,7 @@ services:
     container_name: learning-blackbox
     profiles:
       - phase5-observability
+      - phase15-advanced-observability
       - capstone
     command:
       - --config.file=/etc/blackbox_exporter/config.yml
@@ -51,6 +60,7 @@ services:
     container_name: learning-prometheus
     profiles:
       - phase5-observability
+      - phase15-advanced-observability
       - capstone
     command:
       - --config.file=/etc/prometheus/prometheus.yml
@@ -77,6 +87,7 @@ services:
     container_name: learning-grafana
     profiles:
       - phase5-observability
+      - phase15-advanced-observability
       - capstone
     ports:
       - "3001:3000"
@@ -97,6 +108,7 @@ services:
     container_name: learning-otel-collector
     profiles:
       - phase5-observability
+      - phase15-advanced-observability
       - capstone
     command:
       - --config=/etc/otelcol/config.yml
@@ -117,6 +129,8 @@ services:
     container_name: learning-edge-proxy
     profiles:
       - phase6-release
+      - phase11-network-edge
+      - phase12-kubernetes-platform
       - capstone
     ports:
       - "8080:8080"
@@ -137,6 +151,7 @@ services:
     container_name: learning-redis
     profiles:
       - phase8-distributed
+      - phase16-distributed-reliability
       - capstone
     command: ["redis-server", "--appendonly", "yes", "--save", "60", "1"]
     ports:

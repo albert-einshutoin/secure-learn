@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>S25 OpenTelemetry・Trace/Log Correlation - Secure Learn</title>
+  <link rel="stylesheet" href="assets/scenario.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="index.html">Secure Learn Scenario Guides</a>
+    <nav aria-label="Scenario navigation"><a href="s1-portscan.html">S1</a><a href="s2-bruteforce.html">S2</a><a href="s3-sqli.html">S3</a><a href="s4-dos.html">S4</a><a href="s5-file-tamper.html">S5</a><a href="s6-privesc.html">S6</a><a href="s7-lateral.html">S7</a><a href="s8-arp.html">S8</a><a href="s9-icmp.html">S9</a><a href="s10-tcp-state.html">S10</a><a href="s11-session-stress.html">S11</a><a href="s12-tls-boundary.html">S12</a><a href="s13-dns.html">S13</a><a href="s14-sre-incident.html">S14</a><a href="s15-capstone.html">S15</a><a href="s16-linux-internals-isolation.html">S16</a><a href="s17-ebpf-perf-forensics.html">S17</a><a href="s18-tcp-backlog-loadbalancer.html">S18</a><a href="s19-mtls-cert-rotation.html">S19</a><a href="s20-quic-bgp-cdn-edge.html">S20</a><a href="s21-kubernetes-platform.html">S21</a><a href="s22-cloud-iam-audit.html">S22</a><a href="s23-terraform-policy-drift.html">S23</a><a href="s24-burn-rate-observability.html">S24</a><a aria-current="page" href="s25-otel-trace-log-correlation.html">S25</a><a href="s26-queue-idempotency-backpressure.html">S26</a><a href="s27-backend-migration-contract.html">S27</a><a href="s28-api-business-logic-abuse.html">S28</a><a href="s29-supply-chain-release.html">S29</a><a href="s30-detection-edr-case.html">S30</a><a href="s31-endpoint-sysmon-malware.html">S31</a><a href="s32-performance-flamegraph-db.html">S32</a><a href="s33-gitops-progressive-delivery.html">S33</a></nav>
+  </header>
+  <main>
+    <section class="scenario-head">
+      <p class="eyebrow">S25 / Observability / 上級</p>
+      <h1>OpenTelemetry・Trace/Log Correlation</h1>
+      <p class="lead">OpenTelemetry、tracing、log correlation、high-cardinality対策をbackendとSREの共通設計にする。</p>
+      <div class="meta-row">
+        <span class="score score-3">3/5 実務中級</span>
+        <span class="pill">SRE</span><span class="pill">Backend</span>
+      </div>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>抽象的に何を学ぶか</h2>
+        <p>Trace/log correlationは、障害時に「遅いrequestがどの依存で詰まったか」を追うための設計です。抽象的には、分散した証跡を一つの因果関係へ戻します。</p>
+      </article>
+      <article>
+        <h2>具体例</h2>
+        <ul><li>request_idがapp log、proxy log、DB logにあれば1リクエストの旅を追える。</li><li>span attributeにuser_idを無制限に入れるとコストとcardinalityが爆発する。</li><li>sampling率は障害調査能力とコストのトレードオフになる。</li></ul>
+      </article>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>目的</h2>
+        <p>trace、metric、logの責務を分け、相関ID、sampling、cardinality、retentionを設計できるようにする。</p>
+      </article>
+      <article>
+        <h2>世界レベル評価</h2>
+        <p>基礎から実務中級の土台を作る構成です。高度領域はS16以降の専門シナリオへ接続します。</p>
+      </article>
+    </section>
+
+    <section>
+      <h2>Hands-on Flow</h2>
+      <ol class="flow"><li><span>Start</span><p>otel collector profileを起動する。</p></li><li><span>Design</span><p>request_id/trace_idをどこで生成し、どこへ伝播するかを書く。</p></li><li><span>Control</span><p>cardinalityが高い属性と低い属性を分類する。</p></li><li><span>Cost</span><p>samplingとretentionの方針を決める。</p></li><li><span>Incident</span><p>slow request調査の手順をrunbook化する。</p></li></ol>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>実行コマンド</h2>
+        <pre><code>scripts/learning_phase.sh start p15
+curl -fsS http://localhost:4318/ || true
+scripts/world_class_hands_on_check.sh observability
+sed -n &quot;1,160p&quot; learning/otel/otel-collector.yml</code></pre>
+      </article>
+      <article>
+        <h2>合格証跡</h2>
+        <ul><li>trace/log correlation設計</li><li>samplingとretentionの方針</li><li>high-cardinality禁止例</li><li>slow request runbook</li></ul>
+      </article>
+    </section>
+
+    <section>
+      <h2>ツール活用</h2>
+      <table><thead><tr><th>Tool</th><th>使い方</th></tr></thead><tbody><tr><td><strong>OpenTelemetry Collector</strong></td><td>trace/metric/logを受けてexportする中継点。</td></tr><tr><td><strong>trace_id/request_id</strong></td><td>ログとtraceを結ぶキー。</td></tr><tr><td><strong>Sampling</strong></td><td>コストと調査能力を調整する。</td></tr><tr><td><strong>Cardinality review</strong></td><td>label/attribute爆発を防ぐ。</td></tr></tbody></table>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>Whitehat / SRE / Backend 観点</h2>
+        <ul><li>Whitehat: このシナリオでは補助観点として扱う。</li><li>SRE: SLO、可用性、レイテンシ、復旧判断へ接続する。</li><li>Backend: 入力検証、契約、テスト、エラー安全性を確認する。</li></ul>
+      </article>
+      <article>
+        <h2>世界レベルへ足す課題</h2>
+        <ul><li>アプリにOTel SDKを実装し、spanを実送信する。</li><li>logs/metrics/tracesを同じincident IDで相関する。</li><li>observability cost budgetを運用する。</li></ul>
+      </article>
+    </section>
+
+    <section>
+      <h2>関連シナリオ</h2>
+      <div class="links"><a href="s1-portscan.html">S1 ポートスキャン</a><a href="s2-bruteforce.html">S2 APIブルートフォース</a><a href="s3-sqli.html">S3 SQLインジェクション</a><a href="s4-dos.html">S4 DoS攻撃</a></div>
+    </section>
+
+  </main>
+</body>
+</html>

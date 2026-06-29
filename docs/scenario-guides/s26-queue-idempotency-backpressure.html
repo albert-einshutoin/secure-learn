@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>S26 Queue・Idempotency・Backpressure - Secure Learn</title>
+  <link rel="stylesheet" href="assets/scenario.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="index.html">Secure Learn Scenario Guides</a>
+    <nav aria-label="Scenario navigation"><a href="s1-portscan.html">S1</a><a href="s2-bruteforce.html">S2</a><a href="s3-sqli.html">S3</a><a href="s4-dos.html">S4</a><a href="s5-file-tamper.html">S5</a><a href="s6-privesc.html">S6</a><a href="s7-lateral.html">S7</a><a href="s8-arp.html">S8</a><a href="s9-icmp.html">S9</a><a href="s10-tcp-state.html">S10</a><a href="s11-session-stress.html">S11</a><a href="s12-tls-boundary.html">S12</a><a href="s13-dns.html">S13</a><a href="s14-sre-incident.html">S14</a><a href="s15-capstone.html">S15</a><a href="s16-linux-internals-isolation.html">S16</a><a href="s17-ebpf-perf-forensics.html">S17</a><a href="s18-tcp-backlog-loadbalancer.html">S18</a><a href="s19-mtls-cert-rotation.html">S19</a><a href="s20-quic-bgp-cdn-edge.html">S20</a><a href="s21-kubernetes-platform.html">S21</a><a href="s22-cloud-iam-audit.html">S22</a><a href="s23-terraform-policy-drift.html">S23</a><a href="s24-burn-rate-observability.html">S24</a><a href="s25-otel-trace-log-correlation.html">S25</a><a aria-current="page" href="s26-queue-idempotency-backpressure.html">S26</a><a href="s27-backend-migration-contract.html">S27</a><a href="s28-api-business-logic-abuse.html">S28</a><a href="s29-supply-chain-release.html">S29</a><a href="s30-detection-edr-case.html">S30</a><a href="s31-endpoint-sysmon-malware.html">S31</a><a href="s32-performance-flamegraph-db.html">S32</a><a href="s33-gitops-progressive-delivery.html">S33</a></nav>
+  </header>
+  <main>
+    <section class="scenario-head">
+      <p class="eyebrow">S26 / Distributed Systems / 上級</p>
+      <h1>Queue・Idempotency・Backpressure</h1>
+      <p class="lead">Kafka/PubSub/Temporal相当の非同期処理を、retry、backoff、idempotency、backpressureとして設計する。</p>
+      <div class="meta-row">
+        <span class="score score-4">4/5 実務上級</span>
+        <span class="pill">Backend</span><span class="pill">SRE</span>
+      </div>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>抽象的に何を学ぶか</h2>
+        <p>分散システムでは「1回送れば1回処理される」と仮定できません。抽象的には、重複、遅延、順序入れ替わり、部分失敗を前提に契約を作ります。</p>
+      </article>
+      <article>
+        <h2>具体例</h2>
+        <ul><li>producer retryで同じmessageが2回届いても、idempotency keyで二重登録を防ぐ。</li><li>consumerが遅い時にqueue backlogを見てscale、shed、degradeを判断する。</li><li>Temporal workflowではactivity retryとcompensationを明示する。</li></ul>
+      </article>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>目的</h2>
+        <p>queue/cache依存のfailure modeをAPI契約、SLO、運用runbookへ落とせるようにする。</p>
+      </article>
+      <article>
+        <h2>世界レベル評価</h2>
+        <p>実務上級に近い構成です。証跡、修正、運用判断まで扱えます。</p>
+      </article>
+    </section>
+
+    <section>
+      <h2>Hands-on Flow</h2>
+      <ol class="flow"><li><span>Start</span><p>Redis profileを起動し、queueの代替としてlist/backlogを扱う。</p></li><li><span>Retry</span><p>同じ処理を複数回送る時のidempotency条件を書く。</p></li><li><span>Backpressure</span><p>backlog増加時の429、degrade、scale判断を作る。</p></li><li><span>Consistency</span><p>leader election、replication、shardingの選択理由を書く。</p></li><li><span>Report</span><p>partial failure前提のrunbookを作る。</p></li></ol>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>実行コマンド</h2>
+        <pre><code>scripts/learning_phase.sh start p16
+docker exec learn-toolbox redis-cli -h learning-redis PING
+docker exec learn-toolbox redis-cli -h learning-redis LPUSH lab-queue job-1 job-1
+docker exec learn-toolbox redis-cli -h learning-redis LLEN lab-queue
+scripts/world_class_hands_on_check.sh distributed</code></pre>
+      </article>
+      <article>
+        <h2>合格証跡</h2>
+        <ul><li>retry/backoff/idempotency設計</li><li>backlog時のSLO影響と判断</li><li>leader election/consistency/shardingの選択理由</li><li>partial failure runbook</li></ul>
+      </article>
+    </section>
+
+    <section>
+      <h2>ツール活用</h2>
+      <table><thead><tr><th>Tool</th><th>使い方</th></tr></thead><tbody><tr><td><strong>Redis list</strong></td><td>queue/backlogの最小モデルとして使う。</td></tr><tr><td><strong>Kafka/PubSub</strong></td><td>実運用でのpartition、consumer lag、ackを設計する。</td></tr><tr><td><strong>Temporal</strong></td><td>workflow、retry、compensationを設計する。</td></tr><tr><td><strong>Idempotency key</strong></td><td>重複処理を安全にするAPI契約。</td></tr></tbody></table>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>Whitehat / SRE / Backend 観点</h2>
+        <ul><li>Whitehat: このシナリオでは補助観点として扱う。</li><li>SRE: SLO、可用性、レイテンシ、復旧判断へ接続する。</li><li>Backend: 入力検証、契約、テスト、エラー安全性を確認する。</li></ul>
+      </article>
+      <article>
+        <h2>世界レベルへ足す課題</h2>
+        <ul><li>Kafka/Redpanda profileを追加してconsumer lagを実測する。</li><li>Temporal workflowでcompensationを実装する。</li><li>chaos testでbroker停止とrecoveryを測る。</li></ul>
+      </article>
+    </section>
+
+    <section>
+      <h2>関連シナリオ</h2>
+      <div class="links"><a href="s1-portscan.html">S1 ポートスキャン</a><a href="s2-bruteforce.html">S2 APIブルートフォース</a><a href="s3-sqli.html">S3 SQLインジェクション</a><a href="s4-dos.html">S4 DoS攻撃</a></div>
+    </section>
+
+  </main>
+</body>
+</html>

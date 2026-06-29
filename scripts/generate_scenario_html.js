@@ -43,10 +43,10 @@ const benchmarks = [
 ];
 
 const globalGaps = [
-  'API Securityの上位領域では、IDOR/BOLA、SSRF、unsafe file upload、CSRF/CORS、business logic abuseを追加すると世界レベルに近づく。',
-  'SRE領域では、burn-rate alert、metrics/traces、canary、rollback drill、backup/restore、capacity planningを実測化する余地がある。',
-  'Backend領域では、schema validation、pagination、migration/rollback、transaction、concurrency、contract compatibilityをさらに深掘りできる。',
-  'Cloud領域では、IAM/RBAC、Ingress/TLS、image scan、SBOM、secret rotation、policy-as-codeをCIへ組み込む余地がある。',
+  'API Securityの上位領域はS28で、IDOR/BOLA、SSRF、unsafe upload、RCE、business logic abuseとして扱う。',
+  'SRE/Observabilityの上位領域はS24-S25で、burn-rate alert、metrics/logs/traces、high-cardinality、alert fatigueとして扱う。',
+  'Backend/Distributed/Performanceの上位領域はS26-S27/S32で、idempotency、migration/rollback、transaction、pagination、query planとして扱う。',
+  'Cloud/IaC/Supply Chain/Releaseの上位領域はS22-S23/S29/S33で、IAM、KMS、OPA、SBOM、signing、canary、advisoryとして扱う。',
 ];
 
 const scenarios = [
@@ -684,6 +684,865 @@ const scenarios = [
   },
 ];
 
+const advancedScenarios = [
+  {
+    id: 'S16',
+    slug: 's16-linux-internals-isolation',
+    title: 'Linux Internals・隔離境界',
+    layer: 'OS/Kernel',
+    level: '上級',
+    roles: ['SRE', 'Whitehat'],
+    score: 4,
+    summary: 'systemd、cgroups、namespaces、seccomp、capabilitiesを、containerの障害調査と防御境界として扱う。',
+    concept: 'Linux internalsは、プロセスがCPU、メモリ、ファイル、ネットワーク、syscall、権限をどう使っているかを読む訓練です。抽象的には、障害や侵害を「OS資源と隔離境界の変化」として説明します。',
+    examples: [
+      'cgroupsでCPU/memory制限があると、アプリは5xxではなくlatency悪化やOOMとして壊れる。',
+      'namespace内のrootはhost rootではないが、capabilityが広いと危険なsyscallやnetwork操作が可能になる。',
+      'strace/lsof/ssで、HTTP requestがsocket、file descriptor、syscall待ちとして見える。',
+    ],
+    objective: 'Linuxの資源管理と隔離機構を、container security、障害調査、SRE runbookに接続できるようにする。',
+    flow: [
+      ['Observe', 'ps、ss、lsof、straceでappと通信の状態を見る。'],
+      ['Inspect', 'docker inspectでcap_drop、security_opt、read_only、resource設定を確認する。'],
+      ['Explain', 'namespace、cgroup、capability、seccompが守る範囲と守れない範囲を表にする。'],
+      ['Tune safely', 'kernel tuning値は変更せず、見るべき値と変更時のrollback条件を整理する。'],
+      ['Report', 'OS起因障害とアプリ起因障害を分けた調査メモを作る。'],
+    ],
+    commands: [
+      'scripts/learning_phase.sh start p10',
+      'docker exec learn-toolbox ss -tan',
+      "docker exec learn-toolbox sh -lc 'curl -fsS http://app:3000/health && lsof -iTCP -P -n | head'",
+      "docker inspect soc-lab-app | jq '.[0].HostConfig.CapDrop, .[0].HostConfig.SecurityOpt'",
+      'scripts/world_class_hands_on_check.sh linux',
+    ],
+    tools: [
+      ['ss/lsof', 'socketとfile descriptorからresource exhaustionを切り分ける。'],
+      ['strace', 'syscall境界で詰まりを観測する。'],
+      ['docker inspect', 'capability、security_opt、mount、resource制限を見る。'],
+      ['cgroups/namespaces', 'container隔離の実体として説明する。'],
+    ],
+    evidence: [
+      'process、socket、fd、syscallを対応付けた記録',
+      'capabilities/seccomp/cgroupの防御境界説明',
+      'kernel tuning候補とrollback条件',
+      'OS起因とアプリ起因の切り分け表',
+    ],
+    worldClass: [
+      'eBPF/perf flamegraphを本番相当環境で扱う。',
+      'seccomp profileとcapability最小化をCIで検査する。',
+      'kernel CVE時のnode drain、upgrade、rollback runbookを作る。',
+    ],
+  },
+  {
+    id: 'S17',
+    slug: 's17-ebpf-perf-forensics',
+    title: 'eBPF・perf・低レイヤー可観測性',
+    layer: 'Kernel/Observability',
+    level: '上級',
+    roles: ['SRE', 'Whitehat'],
+    score: 3,
+    summary: 'eBPF、perf、flamegraph、syscall telemetryを、性能調査と侵害調査の共通言語として整理する。',
+    concept: 'eBPF/perfは、アプリログに出ないCPU、syscall、network、file accessを低オーバーヘッドで見るための方法です。抽象的には、ユーザー空間から見えない挙動を安全に観測する技術です。',
+    examples: [
+      'CPU高騰時、HTTP handlerではなくcrypto、JSON parse、DB client待ちのどこが熱いかを見る。',
+      '怪しいprocessがどのfileやnetworkへ触れたかをevent streamとして記録する。',
+      '本番ではroot権限とprivacy影響があるため、取得範囲と保存期間を決める。',
+    ],
+    objective: 'perf/eBPFを無闇に実行するのではなく、観測したい質問、権限、コスト、プライバシーを定義できるようにする。',
+    flow: [
+      ['Question', 'CPU、syscall、network、file accessのどれを見たいか決める。'],
+      ['Local proxy', 'ラボではstrace、ss、lsofで代替観測する。'],
+      ['Design', '本番でeBPFを使う場合の権限、範囲、retentionを設計する。'],
+      ['Correlate', '低レイヤーeventをrequest_idやincident timelineへ繋ぐ。'],
+      ['Control', '観測ツール自体の負荷と機密情報露出を評価する。'],
+    ],
+    commands: [
+      'scripts/learning_phase.sh start p10',
+      "docker exec learn-toolbox sh -lc 'ss -tan && lsof -iTCP -P -n | head'",
+      'scripts/world_class_hands_on_check.sh linux',
+      'sed -n "1,220p" docs/templates/incident-report.md',
+    ],
+    tools: [
+      ['perf', 'CPU sampleとflamegraphでhot pathを見る。'],
+      ['eBPF', 'syscall、network、file eventを低オーバーヘッドで観測する。'],
+      ['strace', 'ラボでsyscall観測を安全に代替する。'],
+      ['Incident timeline', 'kernel/userland eventを時系列に繋ぐ。'],
+    ],
+    evidence: [
+      '観測したい質問と選んだtoolの理由',
+      '低レイヤーeventとアプリ/SLOの対応',
+      '権限、負荷、privacyのリスク評価',
+      '本番導入時のrollbackと停止条件',
+    ],
+    worldClass: [
+      'BCC/bpftrace/Cilium Tetragonなどで実イベントを取得する。',
+      'flamegraphをPRの性能証跡として扱う。',
+      'EDR telemetryとSRE telemetryの重複/責務を整理する。',
+    ],
+  },
+  {
+    id: 'S18',
+    slug: 's18-tcp-backlog-loadbalancer',
+    title: 'TCP再送・SYN backlog・Load Balancer',
+    layer: 'L4/L7 Edge',
+    level: '上級',
+    roles: ['SRE', 'Whitehat'],
+    score: 4,
+    summary: 'TCP再送、SYN backlog、conntrack、L4/L7 load balancer logを、SLO劣化の根拠として扱う。',
+    concept: 'TCPやload balancerの障害は、アプリログに到達しないことがあります。抽象的には、requestがアプリに届く前にどこで落ちたかを観測点ごとに切り分けます。',
+    examples: [
+      'SYN backlogが溢れるとアプリにはrequestが来ず、clientはtimeoutや再送を見る。',
+      'L7 LBはHTTP statusを出せるが、L4 LBはconnection resetやtimeoutの証跡が中心になる。',
+      'conntrack枯渇はpodやappではなくnode/network層のcapacity問題になる。',
+    ],
+    objective: 'L4/L7の観測点を整理し、アプリ障害、LB障害、network capacityを分けてincident判断できるようにする。',
+    flow: [
+      ['Baseline', 'app直通とedge proxy経由のhealth latencyを測る。'],
+      ['Observe', 'ss、tcpdump、nginx access log、app access logを比較する。'],
+      ['Model', 'SYN backlog、conntrack、timeoutのfailure modeを図にする。'],
+      ['Decide', 'scale out、rate limit、LB timeout変更、rollbackの条件を決める。'],
+      ['Report', 'どの観測点に証跡があり、どこにないかを明記する。'],
+    ],
+    commands: [
+      'scripts/learning_phase.sh start p11',
+      'curl -fsS http://localhost:8080/health',
+      'docker exec learn-toolbox ss -tan',
+      'scripts/load_hands_on_tests.sh',
+      'scripts/world_class_hands_on_check.sh network',
+    ],
+    tools: [
+      ['ss/tcpdump', 'connection state、再送、reset、timeoutの手がかりを見る。'],
+      ['Nginx edge proxy', 'L7 proxyのaccess/error logを観測点にする。'],
+      ['SRE load scripts', 'p95/p99とfailure countを定量化する。'],
+      ['Runbook', 'LB/app/networkの切り分け順を固定する。'],
+    ],
+    evidence: [
+      'direct/proxyのlatency差分',
+      'connection stateとHTTP logの対応',
+      'SYN backlog/conntrack/LB timeoutの説明',
+      'capacityまたはrollback判断',
+    ],
+    worldClass: [
+      'real LB/NLB/ALB/Envoy logsを取り込む。',
+      'packet lossとretransmissionをblackbox SLIへ接続する。',
+      'load balancer config変更をcanary化する。',
+    ],
+  },
+  {
+    id: 'S19',
+    slug: 's19-mtls-cert-rotation',
+    title: 'TLS/mTLS・証明書ローテーション',
+    layer: 'L6/Security',
+    level: '上級',
+    roles: ['SRE', 'Backend', 'Whitehat'],
+    score: 4,
+    summary: 'TLS handshake、mTLS、証明書期限、cipher policy、rotationをreleaseとincidentの両面で扱う。',
+    concept: 'TLS/mTLSは暗号化だけでなく、identity、trust、期限、失効、互換性を運用する仕組みです。抽象的には、通信相手をどう信頼し、その信頼をどう更新するかを扱います。',
+    examples: [
+      '証明書期限切れはアプリdeployなしで全リクエストを止める。',
+      'mTLSではclient証明書の発行、失効、rotationがauthorization境界になる。',
+      'cipher policy更新は古いclientを切る可能性があるため互換性証跡が必要になる。',
+    ],
+    objective: 'TLS/mTLS failureをHTTP障害と分け、rotation、expiry alert、trust boundaryを設計できるようにする。',
+    flow: [
+      ['Probe', 'openssl s_clientでhandshake情報または失敗理由を見る。'],
+      ['Boundary', 'TLS終端前後でIDS/WAF/appが見える情報を分ける。'],
+      ['Design', 'mTLSのCA、client cert、rotation、revocationを設計する。'],
+      ['Alert', 'expiry、handshake error、protocol downgradeを監視項目にする。'],
+      ['Release', '証明書更新のcanaryとrollbackを決める。'],
+    ],
+    commands: [
+      'scripts/learning_phase.sh start p11',
+      'docker exec learn-toolbox openssl s_client -connect app:3000 -servername app </dev/null || true',
+      'docker exec learn-toolbox openssl version',
+      'scripts/world_class_hands_on_check.sh network',
+      'sed -n "1,220p" docs/scenario-guides/s12-tls-boundary.html',
+    ],
+    tools: [
+      ['openssl s_client', 'handshake、SNI、証明書、protocolを確認する。'],
+      ['Nginx/Envoy', 'TLS終端、mTLS、cipher policyの実装候補にする。'],
+      ['Prometheus alert', 'cert expiryとhandshake errorを監視する。'],
+      ['Release checklist', 'rotationとrollbackを運用手順にする。'],
+    ],
+    evidence: [
+      'TLS/mTLS trust boundary図',
+      '証明書期限とrotation手順',
+      'handshake failureの切り分け表',
+      '互換性とrollback判断',
+    ],
+    worldClass: [
+      '実TLS終端とmTLS labを追加する。',
+      'SPIFFE/SPIREやservice mesh identityへ拡張する。',
+      '証明書失効とemergency rotation drillを実施する。',
+    ],
+  },
+  {
+    id: 'S20',
+    slug: 's20-quic-bgp-cdn-edge',
+    title: 'QUIC/HTTP3・BGP/Anycast・CDN Edge',
+    layer: 'Internet Edge',
+    level: '上級',
+    roles: ['SRE', 'Whitehat'],
+    score: 3,
+    summary: 'QUIC/HTTP3、BGP、Anycast、CDN routingを、直接操作せずに設計・観測・障害対応として学ぶ。',
+    concept: 'Internet edgeは自分のサーバだけで完結しません。抽象的には、clientがどのedgeに到達し、どのprotocolでoriginへ流れ、どの証跡で問題を切り分けるかを扱います。',
+    examples: [
+      'Anycast障害では一部地域だけが別edgeへ吸われ、全体監視では見逃すことがある。',
+      'QUICはUDPなので、TCP前提のmiddleboxやpacket capture設計では見え方が変わる。',
+      'CDN cache purgeやorigin shield変更は、securityとavailabilityの両方に影響する。',
+    ],
+    objective: 'BGP/Anycast/CDNを危険に操作せず、観測点、ログ、rollback、vendor escalationの設計をできるようにする。',
+    flow: [
+      ['Map', 'client、DNS、CDN edge、origin、LB、appの経路図を作る。'],
+      ['Protocol', 'TCP/HTTP2とUDP/QUICで観測点が変わることを整理する。'],
+      ['Failure', '地域限定、resolver限定、cache限定の障害パターンを作る。'],
+      ['Evidence', 'edge log、origin log、DNS log、synthetic probeの必要性を書く。'],
+      ['Escalate', 'vendorへ渡すべきtimestamp、colo、ray id相当、traceを定義する。'],
+    ],
+    commands: [
+      'scripts/learning_phase.sh start p11',
+      'docker exec learn-toolbox sh -lc "dig localhost || true; curl -I http://app:3000/health"',
+      'scripts/world_class_hands_on_check.sh edge',
+      'sed -n "1,220p" docs/scenario-guides/s20-quic-bgp-cdn-edge.html',
+    ],
+    tools: [
+      ['dig/curl', 'DNSとHTTPの基本観測を行う。'],
+      ['CDN logs', '実運用ではedge colo、cache status、request idを見る。'],
+      ['Synthetic probe', '地域/ISP差分を監視する。'],
+      ['Runbook', 'BGP/CDN vendor escalationに必要な証跡を定義する。'],
+    ],
+    evidence: [
+      'edge routing経路図',
+      'QUIC/HTTP3とTCP/HTTP2の観測差分',
+      'CDN/BGP障害時の必要ログ一覧',
+      'vendor escalation template',
+    ],
+    worldClass: [
+      '実CDN sandboxでcache rule、WAF、origin fallbackを検証する。',
+      'multi-region synthetic monitoringを追加する。',
+      'BGP leak/route hijackをtabletop exercise化する。',
+    ],
+  },
+  {
+    id: 'S21',
+    slug: 's21-kubernetes-platform',
+    title: 'Kubernetes本番運用・Platform Guardrails',
+    layer: 'Kubernetes',
+    level: '上級',
+    roles: ['SRE', 'Whitehat', 'Backend'],
+    score: 4,
+    summary: 'Helm、Kustomize、Operator/CRD、Admission、RBAC、NetworkPolicy、PodSecurity、HPA/VPA、upgradeを本番運用として扱う。',
+    concept: 'Kubernetes本番運用はyaml適用ではなく、危険な変更を入れない仕組み、壊れても戻せる仕組み、upgradeしても契約を守る仕組みを作ることです。',
+    examples: [
+      'Admissionでprivileged podやlatest imageを拒否する。',
+      'RBACでsecretを読めるServiceAccountを限定し、NetworkPolicyでeast-west通信を絞る。',
+      'CRD/Operator upgrade前にAPI deprecationとrollback条件を確認する。',
+    ],
+    objective: 'Kubernetesをdeployment targetではなく、policyとoperabilityを持つplatformとして説明できるようにする。',
+    flow: [
+      ['Read', 'k8s/baseのDeployment、Service、HPA、NetworkPolicy、StatefulSetを読む。'],
+      ['Validate', 'scripts/k8s_static_check.shで最低限のguardrailを検査する。'],
+      ['Design', 'Helm/Kustomize/Admission/RBAC/PodSecurityの追加設計を書く。'],
+      ['Operate', 'cluster upgrade、multi-cluster、service meshのrisk tableを作る。'],
+      ['Review', 'manifest diff reviewで拒否すべき変更を列挙する。'],
+    ],
+    commands: [
+      'scripts/learning_phase.sh start p12',
+      'scripts/k8s_static_check.sh',
+      'find k8s/base -type f -maxdepth 2 -print',
+      'sed -n "1,220p" docs/runbooks/kubernetes-operations.md',
+      'scripts/world_class_hands_on_check.sh kubernetes',
+    ],
+    tools: [
+      ['Kustomize/Helm', '環境差分とrelease unitを管理する。'],
+      ['Admission Controller', 'policy違反をclusterへ入る前に拒否する。'],
+      ['RBAC/NetworkPolicy/PodSecurity', 'identity、network、runtimeの境界を作る。'],
+      ['HPA/VPA', 'capacityとresource requestを運用する。'],
+    ],
+    evidence: [
+      'manifestごとの安全条件説明',
+      'Admission/RBAC/NetworkPolicyの設計案',
+      'upgradeとrollback手順',
+      'service mesh/multi-cluster導入時のリスク評価',
+    ],
+    worldClass: [
+      'kind/minikubeでAdmission policyを実行する。',
+      'OPA Gatekeeper/KyvernoをCIとclusterに入れる。',
+      'service mesh mTLSとtraffic shiftingを実測する。',
+    ],
+  },
+  {
+    id: 'S22',
+    slug: 's22-cloud-iam-audit',
+    title: 'Cloud IAM/KMS/VPC/Audit Logs',
+    layer: 'Cloud Security',
+    level: '上級',
+    roles: ['Whitehat', 'SRE'],
+    score: 4,
+    summary: 'AWS/GCP/Azure共通のIAM、KMS、VPC、Security Group、Audit Logs、Org policyを設計レビューする。',
+    concept: 'Cloud securityはサービス名の暗記ではなく、誰が、どのnetworkから、どのkeyで、何を変更し、その証跡が残るかを制御することです。',
+    examples: [
+      'IAM wildcardを見つけ、action/resource/conditionに分解する。',
+      'KMS keyのrotation、owner、break-glass、deletion protectionを定義する。',
+      'CloudTrail/Audit Logsから変更者、source IP、対象resourceをtimeline化する。',
+    ],
+    objective: 'cloud accountを実際に触らず、設計レビューとincident evidenceの観点を安全に身につける。',
+    flow: [
+      ['Review', 'サンプルIAM/Audit logを見て危険な権限と不足ログを指摘する。'],
+      ['Network', 'public/private subnet、security group、private endpointを図にする。'],
+      ['Key', 'KMS/secret rotationとbreak-glassの手順を書く。'],
+      ['Govern', 'Org policy/SCPで禁止すべき操作を定義する。'],
+      ['Report', 'cloud incident timelineをincident reportへ転記する。'],
+    ],
+    commands: [
+      'scripts/learning_phase.sh start p13',
+      'scripts/world_class_hands_on_check.sh cloud',
+      'sed -n "1,220p" docs/scenario-guides/s22-cloud-iam-audit.html',
+      'sed -n "1,220p" docs/templates/incident-report.md',
+    ],
+    tools: [
+      ['IAM policy review', 'wildcard、condition不足、cross-account trustを見る。'],
+      ['KMS/Secrets Manager', 'key owner、rotation、auditを設計する。'],
+      ['CloudTrail/Audit Logs', '変更証跡をincident timelineへ変換する。'],
+      ['VPC/Security Group', 'private networkingとegress制御を設計する。'],
+    ],
+    evidence: [
+      'IAM/KMS/VPC/Auditの設計レビュー',
+      '過剰権限とpublic exposureの指摘',
+      'Org policy/SCP案',
+      'secret rotationとbreak-glass手順',
+    ],
+    worldClass: [
+      '実sandbox cloud accountでread-only auditを行う。',
+      'CloudTrail/Audit LogsをSIEMへ取り込む。',
+      'multi-account landing zoneのguardrailを実装する。',
+    ],
+  },
+  {
+    id: 'S23',
+    slug: 's23-terraform-policy-drift',
+    title: 'Terraform・Drift Detection・OPA',
+    layer: 'IaC',
+    level: '上級',
+    roles: ['SRE', 'Whitehat'],
+    score: 4,
+    summary: 'Terraform module、state、drift、OPA/Conftest、CI plan reviewを、infra変更の安全装置として扱う。',
+    concept: 'IaCは環境構築の自動化だけではなく、変更意図、差分、policy違反、driftをレビュー可能にする仕組みです。',
+    examples: [
+      '0.0.0.0/0 ingressやpublic bucketをpolicyで拒否する。',
+      'prod/stageのstateを分け、module inputだけで差分を表現する。',
+      'console手変更をdriftとして検出し、緊急対応後にcodeへ戻す。',
+    ],
+    objective: 'IaC変更をplan、policy、state、drift、rollbackの5点でレビューできるようにする。',
+    flow: [
+      ['Read', 'Terraform風サンプルを読み、危険なdiffを指摘する。'],
+      ['Policy', 'OPA/Conftest相当の禁止条件を文章化する。'],
+      ['CI', 'plan outputにsecurity reviewerが何をコメントするかを書く。'],
+      ['Drift', '手変更を検出した時の復旧方針を決める。'],
+      ['Promote', 'dev/stage/prodの環境分離と承認を設計する。'],
+    ],
+    commands: [
+      'scripts/learning_phase.sh start p14',
+      'scripts/world_class_hands_on_check.sh iac',
+      'sed -n "1,220p" docs/scenario-guides/s23-terraform-policy-drift.html',
+      'sed -n "1,220p" docs/templates/vulnerability-remediation-pr.md',
+    ],
+    tools: [
+      ['Terraform plan', 'resource差分、destroy、public exposureを見る。'],
+      ['OPA/Conftest', '組織policyをCIで機械的に評価する。'],
+      ['State backend', 'locking、encryption、environment separationを確認する。'],
+      ['Drift detection', '手変更とcode差分を検出する。'],
+    ],
+    evidence: [
+      'plan review comment',
+      'policy-as-code禁止条件',
+      'state/drift/environment分離の説明',
+      '例外承認と期限',
+    ],
+    worldClass: [
+      'terraform plan JSONとOPA/Regoを実行する。',
+      'drift detectionをscheduled CIへ入れる。',
+      'cloud asset inventoryとIaC stateを照合する。',
+    ],
+  },
+  {
+    id: 'S24',
+    slug: 's24-burn-rate-observability',
+    title: 'Burn-rate Alert・RED/USE・Alert Fatigue',
+    layer: 'Observability/SRE',
+    level: '上級',
+    roles: ['SRE', 'Backend'],
+    score: 4,
+    summary: 'SLI/SLO、error budget、multi-window burn-rate、RED/USE metrics、alert fatigueを実測結果へ接続する。',
+    concept: 'Observabilityはdashboardを増やすことではなく、顧客影響を判断する質問に答えられる信号を作ることです。',
+    examples: [
+      '5分burn-rateが高いが1時間では低い場合、pageではなくticketにする。',
+      'RED metricsでAPI影響を、USE metricsでnode/resource飽和を分ける。',
+      'user_idをmetric labelに入れるとhigh cardinalityで監視基盤を壊す。',
+    ],
+    objective: 'SLO違反を検知し、alertの緊急度、owner、actionを判断できるようにする。',
+    flow: [
+      ['Baseline', 'load testでp95とerror rateを取得する。'],
+      ['Budget', 'SLOとerror budget消費を計算する。'],
+      ['Alert', 'multi-window burn-rateのpage条件とticket条件を決める。'],
+      ['Correlate', 'log、metric、traceをどの質問に使うか整理する。'],
+      ['Reduce noise', 'alert fatigueを減らすdedup、silence、routingを設計する。'],
+    ],
+    commands: [
+      'scripts/learning_phase.sh start p15',
+      'REQUESTS=120 CONCURRENCY=8 scripts/load_hands_on_tests.sh',
+      'curl -fsS http://localhost:9090/-/ready',
+      'scripts/world_class_hands_on_check.sh observability',
+    ],
+    tools: [
+      ['Prometheus', 'SLIとburn-rateをquery化する。'],
+      ['Grafana', 'incident中の判断画面を作る。'],
+      ['OpenTelemetry', 'trace/log/metric correlationを設計する。'],
+      ['SLO report', 'error budget消費をpostmortemへ残す。'],
+    ],
+    evidence: [
+      'SLI/SLO/error budget計算',
+      'burn-rate alert条件',
+      'RED/USE metrics設計',
+      'alert fatigue削減方針',
+    ],
+    worldClass: [
+      'PromQLでmulti-window burn-rate alertを実装する。',
+      'trace_id/request_idを全ログへ通す。',
+      'high-cardinality guardrailをCIで検査する。',
+    ],
+  },
+  {
+    id: 'S25',
+    slug: 's25-otel-trace-log-correlation',
+    title: 'OpenTelemetry・Trace/Log Correlation',
+    layer: 'Observability',
+    level: '上級',
+    roles: ['SRE', 'Backend'],
+    score: 3,
+    summary: 'OpenTelemetry、tracing、log correlation、high-cardinality対策をbackendとSREの共通設計にする。',
+    concept: 'Trace/log correlationは、障害時に「遅いrequestがどの依存で詰まったか」を追うための設計です。抽象的には、分散した証跡を一つの因果関係へ戻します。',
+    examples: [
+      'request_idがapp log、proxy log、DB logにあれば1リクエストの旅を追える。',
+      'span attributeにuser_idを無制限に入れるとコストとcardinalityが爆発する。',
+      'sampling率は障害調査能力とコストのトレードオフになる。',
+    ],
+    objective: 'trace、metric、logの責務を分け、相関ID、sampling、cardinality、retentionを設計できるようにする。',
+    flow: [
+      ['Start', 'otel collector profileを起動する。'],
+      ['Design', 'request_id/trace_idをどこで生成し、どこへ伝播するかを書く。'],
+      ['Control', 'cardinalityが高い属性と低い属性を分類する。'],
+      ['Cost', 'samplingとretentionの方針を決める。'],
+      ['Incident', 'slow request調査の手順をrunbook化する。'],
+    ],
+    commands: [
+      'scripts/learning_phase.sh start p15',
+      'curl -fsS http://localhost:4318/ || true',
+      'scripts/world_class_hands_on_check.sh observability',
+      'sed -n "1,160p" learning/otel/otel-collector.yml',
+    ],
+    tools: [
+      ['OpenTelemetry Collector', 'trace/metric/logを受けてexportする中継点。'],
+      ['trace_id/request_id', 'ログとtraceを結ぶキー。'],
+      ['Sampling', 'コストと調査能力を調整する。'],
+      ['Cardinality review', 'label/attribute爆発を防ぐ。'],
+    ],
+    evidence: [
+      'trace/log correlation設計',
+      'samplingとretentionの方針',
+      'high-cardinality禁止例',
+      'slow request runbook',
+    ],
+    worldClass: [
+      'アプリにOTel SDKを実装し、spanを実送信する。',
+      'logs/metrics/tracesを同じincident IDで相関する。',
+      'observability cost budgetを運用する。',
+    ],
+  },
+  {
+    id: 'S26',
+    slug: 's26-queue-idempotency-backpressure',
+    title: 'Queue・Idempotency・Backpressure',
+    layer: 'Distributed Systems',
+    level: '上級',
+    roles: ['Backend', 'SRE'],
+    score: 4,
+    summary: 'Kafka/PubSub/Temporal相当の非同期処理を、retry、backoff、idempotency、backpressureとして設計する。',
+    concept: '分散システムでは「1回送れば1回処理される」と仮定できません。抽象的には、重複、遅延、順序入れ替わり、部分失敗を前提に契約を作ります。',
+    examples: [
+      'producer retryで同じmessageが2回届いても、idempotency keyで二重登録を防ぐ。',
+      'consumerが遅い時にqueue backlogを見てscale、shed、degradeを判断する。',
+      'Temporal workflowではactivity retryとcompensationを明示する。',
+    ],
+    objective: 'queue/cache依存のfailure modeをAPI契約、SLO、運用runbookへ落とせるようにする。',
+    flow: [
+      ['Start', 'Redis profileを起動し、queueの代替としてlist/backlogを扱う。'],
+      ['Retry', '同じ処理を複数回送る時のidempotency条件を書く。'],
+      ['Backpressure', 'backlog増加時の429、degrade、scale判断を作る。'],
+      ['Consistency', 'leader election、replication、shardingの選択理由を書く。'],
+      ['Report', 'partial failure前提のrunbookを作る。'],
+    ],
+    commands: [
+      'scripts/learning_phase.sh start p16',
+      'docker exec learn-toolbox redis-cli -h learning-redis PING',
+      'docker exec learn-toolbox redis-cli -h learning-redis LPUSH lab-queue job-1 job-1',
+      'docker exec learn-toolbox redis-cli -h learning-redis LLEN lab-queue',
+      'scripts/world_class_hands_on_check.sh distributed',
+    ],
+    tools: [
+      ['Redis list', 'queue/backlogの最小モデルとして使う。'],
+      ['Kafka/PubSub', '実運用でのpartition、consumer lag、ackを設計する。'],
+      ['Temporal', 'workflow、retry、compensationを設計する。'],
+      ['Idempotency key', '重複処理を安全にするAPI契約。'],
+    ],
+    evidence: [
+      'retry/backoff/idempotency設計',
+      'backlog時のSLO影響と判断',
+      'leader election/consistency/shardingの選択理由',
+      'partial failure runbook',
+    ],
+    worldClass: [
+      'Kafka/Redpanda profileを追加してconsumer lagを実測する。',
+      'Temporal workflowでcompensationを実装する。',
+      'chaos testでbroker停止とrecoveryを測る。',
+    ],
+  },
+  {
+    id: 'S27',
+    slug: 's27-backend-migration-contract',
+    title: 'Schema Migration・API Compatibility',
+    layer: 'Backend Production',
+    level: '上級',
+    roles: ['Backend', 'SRE'],
+    score: 4,
+    summary: 'schema migration/rollback、transaction、race condition、pagination、API versioning、OpenAPI compatibilityを扱う。',
+    concept: 'Backend productionは、APIが動くことではなく、変更しても既存clientとデータを壊さないことです。抽象的には、互換性と復旧可能性を設計します。',
+    examples: [
+      'column renameはadd new column、dual write、backfill、read switch、drop oldの順に分ける。',
+      'paginationなしの一覧APIは負荷と情報漏洩の両方の問題になる。',
+      'API versioningではold clientが残る期間とdeprecation policyを決める。',
+    ],
+    objective: 'DB/API変更をmigration、contract、transaction、performance、rollbackの観点でreviewできるようにする。',
+    flow: [
+      ['Test', 'unit/integration/OpenAPI contractを実行する。'],
+      ['Design', 'expand/contract migrationとrollback手順を書く。'],
+      ['Concurrency', 'race conditionとtransaction境界のred testを設計する。'],
+      ['Scale', 'pagination、index、query plan、connection poolの確認項目を作る。'],
+      ['Compat', 'API versioningとdeprecation noticeを設計する。'],
+    ],
+    commands: [
+      'npm --prefix app test',
+      'npm --prefix app run test:integration',
+      'scripts/backend_hands_on_tests.sh',
+      'scripts/world_class_hands_on_check.sh backend',
+      'sed -n "1,220p" docs/api/openapi.yaml',
+    ],
+    tools: [
+      ['OpenAPI contract', 'breaking changeを検出する。'],
+      ['DB integration test', '実DB境界の安全性を確認する。'],
+      ['Migration checklist', 'expand/contractとrollbackを確認する。'],
+      ['Load test', 'p95/p99とquery bottleneckを推測する。'],
+    ],
+    evidence: [
+      'migration/rollback plan',
+      'contract compatibility test',
+      'race condition test案',
+      'pagination/index/query plan review',
+    ],
+    worldClass: [
+      '実migration toolを導入しrollback drillを行う。',
+      'contract testをconsumer-drivenにする。',
+      'query plan regressionをCIで検査する。',
+    ],
+  },
+  {
+    id: 'S28',
+    slug: 's28-api-business-logic-abuse',
+    title: 'BOLA/SSRF/Unsafe Upload/RCE',
+    layer: 'API Security',
+    level: '上級',
+    roles: ['Whitehat', 'Backend'],
+    score: 4,
+    summary: 'IDOR/BOLA、SSRF、unsafe upload、RCE、business logic abuseを安全なred test設計として扱う。',
+    concept: 'API securityの上位リスクは、単純な文字列payloadではなく、認可境界、外部通信、ファイル処理、状態遷移の設計ミスとして現れます。',
+    examples: [
+      'BOLA: guestが他人のresource idを指定して読めないことを確認する。',
+      'SSRF: metadata IPやinternal hostへserver-side fetchできないようallowlistを使う。',
+      'unsafe upload/RCE: extension、MIME、content、保存先、実行権限を分けて防ぐ。',
+    ],
+    objective: '危険な攻撃を外部へ向けず、閉域ラボ内でred test、修正方針、検知方針へ落とす。',
+    flow: [
+      ['Model', 'resource owner、actor、action、state transitionを表にする。'],
+      ['Red test', 'BOLA/SSRF/upload/RCEの失敗すべきケースを書く。'],
+      ['Control', 'authorization、egress allowlist、file validation、sandboxを設計する。'],
+      ['Detect', '異常なresource access、egress、upload、process spawnの検知を考える。'],
+      ['Report', 'CWE/CVSSと再発防止テストをPR化する。'],
+    ],
+    commands: [
+      'scripts/learning_phase.sh start p18',
+      'scripts/backend_hands_on_tests.sh',
+      'scripts/world_class_hands_on_check.sh api-security',
+      'sed -n "1,220p" docs/curriculum/owasp-api-security-track.md',
+    ],
+    tools: [
+      ['OWASP API Top 10', 'BOLA、auth、resource consumption、SSRFをcoverage mapにする。'],
+      ['OpenAPI', 'undocumented endpointとbreaking changeを見つける。'],
+      ['Backend tests', '認可と入力検証の回帰を固定する。'],
+      ['SIEM', '異常なresource/egress/upload/process eventを検知する。'],
+    ],
+    evidence: [
+      'BOLA/SSRF/upload/RCE red test設計',
+      '認可/egress/file/sandbox制御案',
+      'CWE/CVSSと影響評価',
+      '再発防止テストと検知案',
+    ],
+    worldClass: [
+      '実endpointを追加し、red-green-refactorで修正する。',
+      'DASTを安全profileでCI実行する。',
+      'business logic abuseをstate machine testにする。',
+    ],
+  },
+  {
+    id: 'S29',
+    slug: 's29-supply-chain-release',
+    title: 'Supply Chain・SBOM・Secure Release',
+    layer: 'Secure SDLC',
+    level: '上級',
+    roles: ['Whitehat', 'Backend', 'SRE'],
+    score: 4,
+    summary: 'SBOM、SAST、DAST、SCA、secret scanning、artifact signing、provenance、release noteをrelease gateへ統合する。',
+    concept: 'Supply chain securityは、コードだけでなく依存、CI、artifact、署名、配布、脆弱性開示までを攻撃面として扱います。',
+    examples: [
+      'SCAは依存CVE、SASTはコードpattern、DASTは実行中API、SBOMは部品表を担当する。',
+      'artifact signingで、mainのどのcommitからimageが作られたか検証可能にする。',
+      'secret scanningで漏洩を早期検知し、rotationまでを手順化する。',
+    ],
+    objective: 'secure releaseをCI結果、SBOM、scan、署名、rollback、advisoryの証跡で説明できるようにする。',
+    flow: [
+      ['Inventory', 'package-lockとDocker imageからcomponent inventoryを作る。'],
+      ['Scan', 'npm audit、secret scanning、SAST/DAST/SCAの役割を整理する。'],
+      ['Provenance', 'commit、CI run、artifact、release noteを紐づける。'],
+      ['Sign', 'artifact signingとverificationの導入手順を書く。'],
+      ['Disclose', 'security advisory、CVE/CVSS、responsible disclosureを確認する。'],
+    ],
+    commands: [
+      'npm --prefix app audit --omit=dev --audit-level=high',
+      'scripts/world_class_hands_on_check.sh supply-chain',
+      'sed -n "1,220p" SECURITY.md',
+      'sed -n "1,220p" docs/templates/vulnerability-remediation-pr.md',
+    ],
+    tools: [
+      ['SBOM', 'component、version、license、vulnerabilityを一覧化する。'],
+      ['SAST/DAST/SCA', 'コード、実行中API、依存を別々に検査する。'],
+      ['Secret scanning', '漏洩検知とrotationを行う。'],
+      ['Signing/provenance', 'artifactの出自を検証する。'],
+    ],
+    evidence: [
+      'SBOM/SAST/DAST/SCA coverage map',
+      'CI run、commit、artifactの対応',
+      'secret rotation手順',
+      'security advisoryとrelease note案',
+    ],
+    worldClass: [
+      'CycloneDX/Syft、cosign、SLSA provenanceを実行する。',
+      'container image scanとlicense policyをCIに入れる。',
+      'security advisory dry-runを実施する。',
+    ],
+  },
+  {
+    id: 'S30',
+    slug: 's30-detection-edr-case',
+    title: 'Detection Engineering・EDR Case Management',
+    layer: 'Detection/EDR',
+    level: '上級',
+    roles: ['Whitehat', 'SRE'],
+    score: 4,
+    summary: 'Sigma、YARA、Suricata、MITRE ATT&CK、false positive tuning、event normalization、SIEM query、case managementを扱う。',
+    concept: 'Detection engineeringはalertを増やすことではなく、攻撃仮説、telemetry、正規化、誤検知調整、case判断を一つの運用にすることです。',
+    examples: [
+      'Suricata ruleをMITRE techniqueへ対応させ、何を検知できて何を検知できないかを書く。',
+      'Sigma/YARAはvendor非依存の検知意図として保存し、SIEM queryへ変換する。',
+      'false positiveが多いruleはthreshold、allowlist、context enrichmentで調整する。',
+    ],
+    objective: '検知ルールを作るだけでなく、case triage、owner、severity、closure reasonまで運用できるようにする。',
+    flow: [
+      ['Hypothesis', '攻撃仮説と必要telemetryを定義する。'],
+      ['Normalize', 'source.ip、user.name、process.name、event.actionなどのfieldを揃える。'],
+      ['Map', 'MITRE ATT&CK techniqueとruleを対応させる。'],
+      ['Tune', 'false positive/false negativeを評価する。'],
+      ['Case', 'case management形式でtimeline、severity、closureを書く。'],
+    ],
+    commands: [
+      'scripts/learning_phase.sh start p19',
+      'docker exec soc-lab-suricata tail -50 /var/log/suricata/fast.log',
+      'scripts/world_class_hands_on_check.sh detection',
+      'sed -n "1,220p" docs/soc-playbook.md',
+      'sed -n "1,220p" docs/templates/incident-report.md',
+    ],
+    tools: [
+      ['Sigma/YARA', 'vendor非依存の検知意図を書く。'],
+      ['Suricata', 'network detectionの実ルールを検証する。'],
+      ['MITRE ATT&CK', '検知coverageとgapを説明する。'],
+      ['SIEM/Case management', 'alertをincident判断へ変換する。'],
+    ],
+    evidence: [
+      'attack hypothesisとtelemetry要件',
+      'MITRE mapping',
+      'false positive tuning結果',
+      'case timelineとclosure reason',
+    ],
+    worldClass: [
+      'SigmaをElastic/KQLへ変換して実検索する。',
+      'case management systemへticketを作る。',
+      'detection-as-codeのunit testを追加する。',
+    ],
+  },
+  {
+    id: 'S31',
+    slug: 's31-endpoint-sysmon-malware',
+    title: 'Endpoint Telemetry・Sysmon・Malware Behavior',
+    layer: 'Endpoint/EDR',
+    level: '上級',
+    roles: ['Whitehat', 'SRE'],
+    score: 3,
+    summary: 'process tree、Windows/Linux telemetry、auditd、Sysmon、kernel/userland境界、malware behavior、sandboxingを扱う。',
+    concept: 'Endpoint/EDRでは、processが何を起動し、どのfile/network/registryへ触れたかを因果関係として追います。抽象的には、振る舞いから悪性/正常を判断する訓練です。',
+    examples: [
+      'Linuxではauditd execve、file write、uid changeをprocess timelineにする。',
+      'WindowsではSysmon Event ID 1/3/7/11などでprocess/network/image/fileを追う。',
+      'malware behaviorは実malwareを動かさず、sandboxで観測する前提と安全範囲を定義する。',
+    ],
+    objective: 'endpoint telemetryをnetwork/API/SIEM eventと相関し、EDR製品に依存しない調査力を作る。',
+    flow: [
+      ['Collect', 'auditdのfile/process/privilege eventを確認する。'],
+      ['Model', 'process treeとparent-child関係を書く。'],
+      ['Map', 'Sysmon相当のWindows telemetryに置き換える。'],
+      ['Behavior', 'persistence、credential access、lateral movementなどの振る舞いを分類する。'],
+      ['Contain', 'isolation、kill process、credential rotationの判断を書く。'],
+    ],
+    commands: [
+      'scripts/learning_phase.sh start p19',
+      'sed -n "1,220p" auditd/README.md',
+      'scripts/world_class_hands_on_check.sh endpoint',
+      'sed -n "1,220p" docs/templates/incident-report.md',
+    ],
+    tools: [
+      ['auditd', 'Linux endpoint telemetryを収集する。'],
+      ['Sysmon', 'Windows process/network/file/image telemetryの代表例。'],
+      ['Process tree', 'parent-child関係から侵害経路を読む。'],
+      ['Sandbox', 'malware behaviorを隔離環境で観測する。'],
+    ],
+    evidence: [
+      'process treeとtimeline',
+      'auditd/Sysmon field mapping',
+      'malware behavior分類',
+      'containmentとcredential rotation判断',
+    ],
+    worldClass: [
+      'Windows labとSysmon configを追加する。',
+      'EDR telemetryをSIEM正規化schemaへ流す。',
+      'malware sandbox reportのtriage演習を行う。',
+    ],
+  },
+  {
+    id: 'S32',
+    slug: 's32-performance-flamegraph-db',
+    title: 'Performance Engineering・Flamegraph・DB Query Plan',
+    layer: 'Performance',
+    level: '上級',
+    roles: ['Backend', 'SRE'],
+    score: 4,
+    summary: 'profiling、load test、p95/p99、connection pool、N+1、GC、CPU flamegraph、memory leak、DB index/query planを扱う。',
+    concept: 'Performance engineeringは速くする作業ではなく、どのresourceがどのSLOを壊しているかを証拠で特定し、変更の副作用を測る作業です。',
+    examples: [
+      'p50は正常でもp99が悪い場合、一部requestのDB queryやlockが原因かもしれない。',
+      'N+1は平均負荷では見えにくく、データ量増加で急にSLOを壊す。',
+      'flamegraphはCPU hot path、heap profileはmemory leak、query planはDB bottleneckを見る。',
+    ],
+    objective: '性能劣化をCPU、memory、GC、DB、network、poolに分解し、改善PRの証跡を作れるようにする。',
+    flow: [
+      ['Measure', 'load testでp95/p99とfailureを取る。'],
+      ['Hypothesize', 'CPU、memory、DB、connection pool、networkの仮説を立てる。'],
+      ['Profile', 'ラボではNode build/testとOS観測を使い、実務ではflamegraph/query planへ拡張する。'],
+      ['Fix safely', 'index、pagination、pool、cache、backpressureの副作用を比較する。'],
+      ['Verify', 'before/afterのSLOとrollback条件を記録する。'],
+    ],
+    commands: [
+      'REQUESTS=120 CONCURRENCY=8 scripts/load_hands_on_tests.sh',
+      'npm --prefix app test',
+      'scripts/world_class_hands_on_check.sh performance',
+      'sed -n "1,220p" docs/templates/backend-test-report.md',
+    ],
+    tools: [
+      ['Load test', 'p95/p99、throughput、failureを測る。'],
+      ['Flamegraph/profiler', 'CPU hot pathを特定する。'],
+      ['DB query plan', 'index、scan、join、sortを確認する。'],
+      ['Heap/GC tools', 'memory leakとGC pauseを調査する。'],
+    ],
+    evidence: [
+      'p95/p99とthroughput',
+      'bottleneck仮説と反証',
+      'query plan/index/pool設計',
+      'before/afterとrollback条件',
+    ],
+    worldClass: [
+      'Clinic.js/0x/perfでNode flamegraphを生成する。',
+      'PostgreSQL EXPLAIN ANALYZEをintegration labへ入れる。',
+      'performance regression gateをCIに追加する。',
+    ],
+  },
+  {
+    id: 'S33',
+    slug: 's33-gitops-progressive-delivery',
+    title: 'GitOps・Progressive Delivery・OSS Governance',
+    layer: 'Release/OSS',
+    level: 'Principal',
+    roles: ['SRE', 'Backend', 'Whitehat'],
+    score: 4,
+    summary: 'GitOps、progressive delivery、feature flag、blue-green/canary、rollback safety、artifact signing、CVE/CVSS、responsible disclosure、branch protection、license complianceを扱う。',
+    concept: 'Release engineeringとOSS運用は、変更を速く出すことではなく、誰が何をreviewし、どう段階的に出し、問題時にどう戻し、利用者へどう伝えるかを決めることです。',
+    examples: [
+      'feature flagで新機能をdeployとreleaseに分け、障害時はflag offで戻す。',
+      'canaryで1% trafficだけ新versionへ流し、SLOが悪化したら自動/手動rollbackする。',
+      'security advisoryでは影響version、回避策、修正版、CVSS、謝辞、公開タイミングを管理する。',
+    ],
+    objective: '安全なrelease、rollback、開示、OSS complianceを一つのoperating modelとして説明できるようにする。',
+    flow: [
+      ['Plan', 'release scope、risk、migration compatibility、rollbackを整理する。'],
+      ['Progress', 'blue-green/canary/feature flagの選択理由を書く。'],
+      ['Protect', 'branch protection、review、CI required checks、artifact signingを確認する。'],
+      ['Disclose', 'security advisory、CVE/CVSS、responsible disclosureを準備する。'],
+      ['Review', 'release note、license、compliance、post-release monitoringを確認する。'],
+    ],
+    commands: [
+      'scripts/learning_phase.sh start p19',
+      'scripts/lab_quality_gate.sh',
+      'scripts/world_class_hands_on_check.sh governance',
+      'sed -n "1,220p" SECURITY.md',
+      'sed -n "1,220p" CONTRIBUTING.md',
+    ],
+    tools: [
+      ['GitOps', 'Git diffとPR reviewを運用の正とする。'],
+      ['Feature flag', 'deployとreleaseを分離する。'],
+      ['Canary/blue-green', '段階的にtrafficを移す。'],
+      ['Security advisory', 'CVE/CVSSとresponsible disclosureを管理する。'],
+    ],
+    evidence: [
+      'release checklist',
+      'canary/rollback条件',
+      'branch protectionとrequired checks',
+      'advisory、CVE/CVSS、license complianceの確認',
+    ],
+    worldClass: [
+      'Argo CD/FluxでGitOps環境を構築する。',
+      'Flag管理とautomated rollbackを実装する。',
+      'release signing、provenance、advisory dry-runをCIに入れる。',
+    ],
+  },
+];
+
+scenarios.push(...advancedScenarios);
+
 function escapeHtml(value) {
   return String(value)
     .replace(/&/g, '&amp;')
@@ -705,6 +1564,14 @@ function toolTable(tools) {
   return `<table><thead><tr><th>Tool</th><th>使い方</th></tr></thead><tbody>${tools
     .map(([tool, use]) => `<tr><td><strong>${escapeHtml(tool)}</strong></td><td>${escapeHtml(use)}</td></tr>`)
     .join('')}</tbody></table>`;
+}
+
+function scenarioConcept(scenario) {
+  return scenario.concept || `${scenario.title}は、単発の攻撃手順ではなく、${scenario.objective}`;
+}
+
+function scenarioExamples(scenario) {
+  return scenario.examples || scenario.flow.slice(0, 3).map(([step, text]) => `${step}: ${text}`);
 }
 
 function flowMarkup(flow) {
@@ -767,12 +1634,23 @@ function scenarioPage(scenario) {
 
     <section class="grid two">
       <article>
+        <h2>抽象的に何を学ぶか</h2>
+        <p>${escapeHtml(scenarioConcept(scenario))}</p>
+      </article>
+      <article>
+        <h2>具体例</h2>
+        ${list(scenarioExamples(scenario))}
+      </article>
+    </section>
+
+    <section class="grid two">
+      <article>
         <h2>目的</h2>
         <p>${escapeHtml(scenario.objective)}</p>
       </article>
       <article>
         <h2>世界レベル評価</h2>
-        <p>${scenario.score >= 4 ? '実務上級に近い構成です。証跡、修正、運用判断まで扱えます。' : '基礎から実務中級までは有効です。世界レベルには追加課題の実測化が必要です。'}</p>
+        <p>${scenario.score >= 4 ? '実務上級に近い構成です。証跡、修正、運用判断まで扱えます。' : '基礎から実務中級の土台を作る構成です。高度領域はS16以降の専門シナリオへ接続します。'}</p>
       </article>
     </section>
 
@@ -846,18 +1724,18 @@ function indexPage() {
     `    <section class="scenario-head">
       <p class="eyebrow">World-class readiness review</p>
       <h1>シナリオ別ハンズオンHTML</h1>
-      <p class="lead">15シナリオを、実行フロー、確認項目、ツール活用、証跡、世界レベルへの追加課題まで追える形に整理しています。</p>
+      <p class="lead">${scenarios.length}シナリオを、抽象説明、具体例、実行フロー、確認項目、ツール活用、証跡、世界レベルへの追加課題まで追える形に整理しています。</p>
     </section>
 
     <section class="grid three">
       ${roleCoverage
-        .map(([role, count]) => `<article><h2>${role}</h2><p class="big">${count}/15</p><p>この観点を主対象または副対象として扱うシナリオ数です。</p></article>`)
+        .map(([role, count]) => `<article><h2>${role}</h2><p class="big">${count}/${scenarios.length}</p><p>この観点を主対象または副対象として扱うシナリオ数です。</p></article>`)
         .join('')}
     </section>
 
     <section>
       <h2>総合評価</h2>
-      <p>現在のSecure Learnは、ネットワーク偵察、認証攻撃、SQLi修正、OS監査、SLO/incident drill、Kubernetes基礎までを持つため、実務中級から上級入口の教材として成立しています。世界レベルを名乗るには、API business logic、cloud/IAM、observability、supply chain、release engineeringをさらに実測化する余地があります。</p>
+      <p>現在のSecure Learnは、基礎15シナリオに加えて、Linux internals、cloud/IAM、IaC、Kubernetes platform、observability、distributed systems、backend production、supply chain、EDR、release governanceまでを順番に学ぶ高度シナリオを含みます。各ページは「抽象的に何を学ぶか」と「手元で何をするか」を分け、実務で説明可能な証跡へ接続します。</p>
       ${list(globalGaps)}
     </section>
 

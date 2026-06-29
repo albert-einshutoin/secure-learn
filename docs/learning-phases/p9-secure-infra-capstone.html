@@ -9,13 +9,13 @@
 <body>
   <header class="topbar">
     <a class="brand" href="index.html">Secure Learn Learning Phases</a>
-    <nav aria-label="Learning phase navigation"><a href="p0-ethics-setup.html">P0</a><a href="p1-linux-docker-networking.html">P1</a><a href="p2-backend-tdd-api.html">P2</a><a href="p3-owasp-api-security.html">P3</a><a href="p4-detection-soc-engineering.html">P4</a><a href="p5-observability-sre.html">P5</a><a href="p6-secure-release-kubernetes-iac.html">P6</a><a href="p7-endpoint-edr-detection.html">P7</a><a href="p8-distributed-performance.html">P8</a><a aria-current="page" href="p9-secure-infra-capstone.html">P9</a></nav>
+    <nav aria-label="Learning phase navigation"><a href="p0-ethics-setup.html">P0</a><a href="p1-linux-docker-networking.html">P1</a><a href="p2-backend-tdd-api.html">P2</a><a href="p3-owasp-api-security.html">P3</a><a href="p4-detection-soc-engineering.html">P4</a><a href="p5-observability-sre.html">P5</a><a href="p6-secure-release-kubernetes-iac.html">P6</a><a href="p7-endpoint-edr-detection.html">P7</a><a href="p8-distributed-performance.html">P8</a><a aria-current="page" href="p9-secure-infra-capstone.html">P9</a><a href="p10-linux-internals-isolation.html">P10</a><a href="p11-network-edge-routing.html">P11</a><a href="p12-kubernetes-platform-security.html">P12</a><a href="p13-cloud-security-iam.html">P13</a><a href="p14-iac-policy-as-code.html">P14</a><a href="p15-observability-incident-economics.html">P15</a><a href="p16-distributed-reliability.html">P16</a><a href="p17-backend-production-engineering.html">P17</a><a href="p18-security-supply-chain-release.html">P18</a><a href="p19-detection-edr-oss-governance.html">P19</a></nav>
   </header>
   <main>
     <section class="scenario-head">
       <p class="eyebrow">P9 / Lead 2 / capstone</p>
       <h1>大手セキュアインフラ相当Capstone</h1>
-      <p class="lead">修了。実務ではさらに本物のcloud account、multi-region、production trafficで訓練する</p>
+      <p class="lead">P10に進む前に、複数領域の証跡を一つのportfolioとして説明できる</p>
       <div class="meta-row">
         <span class="pill">Whitehat</span><span class="pill">SRE</span><span class="pill">Backend</span>
       </div>
@@ -23,8 +23,19 @@
 
     <section class="grid two">
       <article>
+        <h2>抽象的に何を学ぶか</h2>
+        <p>大手セキュアインフラ相当Capstoneでは、個別のコマンド暗記ではなく、攻撃、検知、修正、SLO、リリース、rollback、postmortemを一つの成果物にできるための判断軸を学びます。</p>
+      </article>
+      <article>
+        <h2>具体例</h2>
+        <ul><li>具体例: capstone profileで観測、edge proxy、Redisを同時に起動する</li><li>具体例: S15を実施し、脆弱性レポート、postmortem、release checklistを作る</li><li>具体例: Cloud/IAM、SBOM、SAST/DAST/SCA、secret rotationをS16-S33の高度課題へ接続する</li></ul>
+      </article>
+    </section>
+
+    <section class="grid two">
+      <article>
         <h2>到達目標</h2>
-        <ul><li>攻撃、検知、修正、SLO、リリース、rollback、postmortemを一つの成果物にできる</li><li>CrowdStrike/Cloudflare/Palo Alto級のセキュアインフラ面接で説明できる証跡を作る</li><li>未実装領域をroadmap、Issue、PR単位へ分解できる</li></ul>
+        <ul><li>攻撃、検知、修正、SLO、リリース、rollback、postmortemを一つの成果物にできる</li><li>CrowdStrike/Cloudflare/Palo Alto級のセキュアインフラ面接で説明できる証跡を作る</li><li>高度領域をS16-S33のroadmap、Issue、PR単位へ分解できる</li></ul>
       </article>
       <article>
         <h2>カバー領域</h2>
@@ -34,7 +45,7 @@
 
     <section>
       <h2>Hands-on Flow</h2>
-      <ul><li>capstone profileで観測、edge proxy、Redisを同時に起動する</li><li>S15を実施し、脆弱性レポート、postmortem、release checklistを作る</li><li>Cloud/IAM、SBOM、SAST/DAST/SCA、secret rotationを次期課題として設計する</li></ul>
+      <ul><li>capstone profileで観測、edge proxy、Redisを同時に起動する</li><li>S15を実施し、脆弱性レポート、postmortem、release checklistを作る</li><li>Cloud/IAM、SBOM、SAST/DAST/SCA、secret rotationをS16-S33の高度課題へ接続する</li></ul>
     </section>
 
     <section class="grid two">
@@ -60,7 +71,7 @@ sed -n &#39;1,220p&#39; docs/curriculum/world-class-scenario-evaluation.md</code
       </article>
       <article>
         <h2>次フェーズ判定</h2>
-        <p>修了。実務ではさらに本物のcloud account、multi-region、production trafficで訓練する</p>
+        <p>P10に進む前に、複数領域の証跡を一つのportfolioとして説明できる</p>
       </article>
     </section>
 

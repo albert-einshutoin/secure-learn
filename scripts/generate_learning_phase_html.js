@@ -27,6 +27,14 @@ function commandBlock(commands) {
   return `<pre><code>${escapeHtml(commands.join('\n'))}</code></pre>`;
 }
 
+function phaseConcept(phase) {
+  return phase.concept || `${phase.title}では、個別のコマンド暗記ではなく、${phase.objectives[0]}ための判断軸を学びます。`;
+}
+
+function phaseExamples(phase) {
+  return phase.examples || phase.hands_on.map((item) => `具体例: ${item}`);
+}
+
 function nav(currentId) {
   return phases
     .map((phase) => {
@@ -68,6 +76,17 @@ function phasePage(phase) {
       <div class="meta-row">
         ${phase.roles.map((role) => `<span class="pill">${escapeHtml(role)}</span>`).join('')}
       </div>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>抽象的に何を学ぶか</h2>
+        <p>${escapeHtml(phaseConcept(phase))}</p>
+      </article>
+      <article>
+        <h2>具体例</h2>
+        ${list(phaseExamples(phase))}
+      </article>
     </section>
 
     <section class="grid two">
@@ -169,10 +188,10 @@ function indexPage() {
         <tbody>
           <tr><td>App</td><td>http://localhost:3000</td><td>P1+</td></tr>
           <tr><td>Kibana</td><td>http://localhost:5601</td><td>P4+</td></tr>
-          <tr><td>Prometheus</td><td>http://localhost:9090</td><td>P5/P9</td></tr>
-          <tr><td>Grafana</td><td>http://localhost:3001</td><td>P5/P9</td></tr>
-          <tr><td>Edge proxy</td><td>http://localhost:8080</td><td>P6/P9</td></tr>
-          <tr><td>Redis</td><td>127.0.0.1:6380</td><td>P8/P9</td></tr>
+          <tr><td>Prometheus</td><td>http://localhost:9090</td><td>P5/P15/P19</td></tr>
+          <tr><td>Grafana</td><td>http://localhost:3001</td><td>P5/P15/P19</td></tr>
+          <tr><td>Edge proxy</td><td>http://localhost:8080</td><td>P6/P11/P12/P19</td></tr>
+          <tr><td>Redis</td><td>127.0.0.1:6380</td><td>P8/P16/P19</td></tr>
         </tbody>
       </table>
     </section>

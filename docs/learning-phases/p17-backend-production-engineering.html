@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>P17 Backend Production Engineering - Secure Learn</title>
+  <link rel="stylesheet" href="../scenario-guides/assets/scenario.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="index.html">Secure Learn Learning Phases</a>
+    <nav aria-label="Learning phase navigation"><a href="p0-ethics-setup.html">P0</a><a href="p1-linux-docker-networking.html">P1</a><a href="p2-backend-tdd-api.html">P2</a><a href="p3-owasp-api-security.html">P3</a><a href="p4-detection-soc-engineering.html">P4</a><a href="p5-observability-sre.html">P5</a><a href="p6-secure-release-kubernetes-iac.html">P6</a><a href="p7-endpoint-edr-detection.html">P7</a><a href="p8-distributed-performance.html">P8</a><a href="p9-secure-infra-capstone.html">P9</a><a href="p10-linux-internals-isolation.html">P10</a><a href="p11-network-edge-routing.html">P11</a><a href="p12-kubernetes-platform-security.html">P12</a><a href="p13-cloud-security-iam.html">P13</a><a href="p14-iac-policy-as-code.html">P14</a><a href="p15-observability-incident-economics.html">P15</a><a href="p16-distributed-reliability.html">P16</a><a aria-current="page" href="p17-backend-production-engineering.html">P17</a><a href="p18-security-supply-chain-release.html">P18</a><a href="p19-detection-edr-oss-governance.html">P19</a></nav>
+  </header>
+  <main>
+    <section class="scenario-head">
+      <p class="eyebrow">P17 / Lead 10 / base</p>
+      <h1>Backend Production Engineering</h1>
+      <p class="lead">P18に進む前に、backend変更を運用・セキュリティ・互換性の3軸でreviewできる</p>
+      <div class="meta-row">
+        <span class="pill">Backend</span><span class="pill">SRE</span><span class="pill">Whitehat</span>
+      </div>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>抽象的に何を学ぶか</h2>
+        <p>Backend productionでは、ローカルで動くAPIではなく、schema変更、互換性、同時実行、負荷、障害時にも顧客契約を壊さないAPIを作ります。</p>
+      </article>
+      <article>
+        <h2>具体例</h2>
+        <ul><li>migration: expand/contractで旧versionと新versionを同時に動かせる</li><li>race condition: 同時更新で二重処理やlost updateが起きないようtransaction境界を決める</li><li>pagination/API versioning: 大量データと互換性をcontract testで守る</li></ul>
+      </article>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>到達目標</h2>
+        <ul><li>schema migration/rollbackとAPI compatibilityを設計できる</li><li>transaction、race condition、pagination、rate limitをテスト観点に落とせる</li><li>DB index/query plan、N+1、connection poolを性能問題として説明できる</li></ul>
+      </article>
+      <article>
+        <h2>カバー領域</h2>
+        <ul><li>schema migration</li><li>rollback</li><li>transaction</li><li>race condition</li><li>pagination</li><li>API versioning</li><li>OpenAPI compatibility</li><li>contract testing</li><li>rate limit design</li><li>DB index</li><li>query plan</li></ul>
+      </article>
+    </section>
+
+    <section>
+      <h2>Hands-on Flow</h2>
+      <ul><li>app testとOpenAPI contract testを実行する</li><li>migration rollback、pagination、API versioningのred/green test案を書く</li><li>load test結果からDB/APIのbottleneck仮説を立てる</li></ul>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>Docker実行</h2>
+        <pre><code>scripts/learning_phase.sh config p17
+scripts/learning_phase.sh start p17
+scripts/learning_phase.sh status p17</code></pre>
+      </article>
+      <article>
+        <h2>実行コマンド</h2>
+        <pre><code>npm --prefix app test
+npm --prefix app run test:integration
+scripts/backend_hands_on_tests.sh
+REQUESTS=120 CONCURRENCY=8 scripts/load_hands_on_tests.sh
+sed -n &#39;1,220p&#39; docs/scenario-guides/s27-backend-migration-contract.html</code></pre>
+      </article>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>合格証跡</h2>
+        <ul><li>migration/rollback/API compatibilityのテスト設計がある</li><li>race conditionとtransaction境界の説明がある</li><li>p95/p99、query plan、index、connection poolの改善仮説がある</li></ul>
+      </article>
+      <article>
+        <h2>次フェーズ判定</h2>
+        <p>P18に進む前に、backend変更を運用・セキュリティ・互換性の3軸でreviewできる</p>
+      </article>
+    </section>
+
+  </main>
+</body>
+</html>

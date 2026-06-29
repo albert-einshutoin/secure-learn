@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>S33 GitOps・Progressive Delivery・OSS Governance - Secure Learn</title>
+  <link rel="stylesheet" href="assets/scenario.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="index.html">Secure Learn Scenario Guides</a>
+    <nav aria-label="Scenario navigation"><a href="s1-portscan.html">S1</a><a href="s2-bruteforce.html">S2</a><a href="s3-sqli.html">S3</a><a href="s4-dos.html">S4</a><a href="s5-file-tamper.html">S5</a><a href="s6-privesc.html">S6</a><a href="s7-lateral.html">S7</a><a href="s8-arp.html">S8</a><a href="s9-icmp.html">S9</a><a href="s10-tcp-state.html">S10</a><a href="s11-session-stress.html">S11</a><a href="s12-tls-boundary.html">S12</a><a href="s13-dns.html">S13</a><a href="s14-sre-incident.html">S14</a><a href="s15-capstone.html">S15</a><a href="s16-linux-internals-isolation.html">S16</a><a href="s17-ebpf-perf-forensics.html">S17</a><a href="s18-tcp-backlog-loadbalancer.html">S18</a><a href="s19-mtls-cert-rotation.html">S19</a><a href="s20-quic-bgp-cdn-edge.html">S20</a><a href="s21-kubernetes-platform.html">S21</a><a href="s22-cloud-iam-audit.html">S22</a><a href="s23-terraform-policy-drift.html">S23</a><a href="s24-burn-rate-observability.html">S24</a><a href="s25-otel-trace-log-correlation.html">S25</a><a href="s26-queue-idempotency-backpressure.html">S26</a><a href="s27-backend-migration-contract.html">S27</a><a href="s28-api-business-logic-abuse.html">S28</a><a href="s29-supply-chain-release.html">S29</a><a href="s30-detection-edr-case.html">S30</a><a href="s31-endpoint-sysmon-malware.html">S31</a><a href="s32-performance-flamegraph-db.html">S32</a><a aria-current="page" href="s33-gitops-progressive-delivery.html">S33</a></nav>
+  </header>
+  <main>
+    <section class="scenario-head">
+      <p class="eyebrow">S33 / Release/OSS / Principal</p>
+      <h1>GitOps・Progressive Delivery・OSS Governance</h1>
+      <p class="lead">GitOps、progressive delivery、feature flag、blue-green/canary、rollback safety、artifact signing、CVE/CVSS、responsible disclosure、branch protection、license complianceを扱う。</p>
+      <div class="meta-row">
+        <span class="score score-4">4/5 実務上級</span>
+        <span class="pill">SRE</span><span class="pill">Backend</span><span class="pill">Whitehat</span>
+      </div>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>抽象的に何を学ぶか</h2>
+        <p>Release engineeringとOSS運用は、変更を速く出すことではなく、誰が何をreviewし、どう段階的に出し、問題時にどう戻し、利用者へどう伝えるかを決めることです。</p>
+      </article>
+      <article>
+        <h2>具体例</h2>
+        <ul><li>feature flagで新機能をdeployとreleaseに分け、障害時はflag offで戻す。</li><li>canaryで1% trafficだけ新versionへ流し、SLOが悪化したら自動/手動rollbackする。</li><li>security advisoryでは影響version、回避策、修正版、CVSS、謝辞、公開タイミングを管理する。</li></ul>
+      </article>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>目的</h2>
+        <p>安全なrelease、rollback、開示、OSS complianceを一つのoperating modelとして説明できるようにする。</p>
+      </article>
+      <article>
+        <h2>世界レベル評価</h2>
+        <p>実務上級に近い構成です。証跡、修正、運用判断まで扱えます。</p>
+      </article>
+    </section>
+
+    <section>
+      <h2>Hands-on Flow</h2>
+      <ol class="flow"><li><span>Plan</span><p>release scope、risk、migration compatibility、rollbackを整理する。</p></li><li><span>Progress</span><p>blue-green/canary/feature flagの選択理由を書く。</p></li><li><span>Protect</span><p>branch protection、review、CI required checks、artifact signingを確認する。</p></li><li><span>Disclose</span><p>security advisory、CVE/CVSS、responsible disclosureを準備する。</p></li><li><span>Review</span><p>release note、license、compliance、post-release monitoringを確認する。</p></li></ol>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>実行コマンド</h2>
+        <pre><code>scripts/learning_phase.sh start p19
+scripts/lab_quality_gate.sh
+scripts/world_class_hands_on_check.sh governance
+sed -n &quot;1,220p&quot; SECURITY.md
+sed -n &quot;1,220p&quot; CONTRIBUTING.md</code></pre>
+      </article>
+      <article>
+        <h2>合格証跡</h2>
+        <ul><li>release checklist</li><li>canary/rollback条件</li><li>branch protectionとrequired checks</li><li>advisory、CVE/CVSS、license complianceの確認</li></ul>
+      </article>
+    </section>
+
+    <section>
+      <h2>ツール活用</h2>
+      <table><thead><tr><th>Tool</th><th>使い方</th></tr></thead><tbody><tr><td><strong>GitOps</strong></td><td>Git diffとPR reviewを運用の正とする。</td></tr><tr><td><strong>Feature flag</strong></td><td>deployとreleaseを分離する。</td></tr><tr><td><strong>Canary/blue-green</strong></td><td>段階的にtrafficを移す。</td></tr><tr><td><strong>Security advisory</strong></td><td>CVE/CVSSとresponsible disclosureを管理する。</td></tr></tbody></table>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>Whitehat / SRE / Backend 観点</h2>
+        <ul><li>Whitehat: 攻撃を許可範囲に限定し、再現性と検知証跡を残す。</li><li>SRE: SLO、可用性、レイテンシ、復旧判断へ接続する。</li><li>Backend: 入力検証、契約、テスト、エラー安全性を確認する。</li></ul>
+      </article>
+      <article>
+        <h2>世界レベルへ足す課題</h2>
+        <ul><li>Argo CD/FluxでGitOps環境を構築する。</li><li>Flag管理とautomated rollbackを実装する。</li><li>release signing、provenance、advisory dry-runをCIに入れる。</li></ul>
+      </article>
+    </section>
+
+    <section>
+      <h2>関連シナリオ</h2>
+      <div class="links"><a href="s1-portscan.html">S1 ポートスキャン</a><a href="s2-bruteforce.html">S2 APIブルートフォース</a><a href="s3-sqli.html">S3 SQLインジェクション</a><a href="s4-dos.html">S4 DoS攻撃</a></div>
+    </section>
+
+  </main>
+</body>
+</html>

@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>S28 BOLA/SSRF/Unsafe Upload/RCE - Secure Learn</title>
+  <link rel="stylesheet" href="assets/scenario.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="index.html">Secure Learn Scenario Guides</a>
+    <nav aria-label="Scenario navigation"><a href="s1-portscan.html">S1</a><a href="s2-bruteforce.html">S2</a><a href="s3-sqli.html">S3</a><a href="s4-dos.html">S4</a><a href="s5-file-tamper.html">S5</a><a href="s6-privesc.html">S6</a><a href="s7-lateral.html">S7</a><a href="s8-arp.html">S8</a><a href="s9-icmp.html">S9</a><a href="s10-tcp-state.html">S10</a><a href="s11-session-stress.html">S11</a><a href="s12-tls-boundary.html">S12</a><a href="s13-dns.html">S13</a><a href="s14-sre-incident.html">S14</a><a href="s15-capstone.html">S15</a><a href="s16-linux-internals-isolation.html">S16</a><a href="s17-ebpf-perf-forensics.html">S17</a><a href="s18-tcp-backlog-loadbalancer.html">S18</a><a href="s19-mtls-cert-rotation.html">S19</a><a href="s20-quic-bgp-cdn-edge.html">S20</a><a href="s21-kubernetes-platform.html">S21</a><a href="s22-cloud-iam-audit.html">S22</a><a href="s23-terraform-policy-drift.html">S23</a><a href="s24-burn-rate-observability.html">S24</a><a href="s25-otel-trace-log-correlation.html">S25</a><a href="s26-queue-idempotency-backpressure.html">S26</a><a href="s27-backend-migration-contract.html">S27</a><a aria-current="page" href="s28-api-business-logic-abuse.html">S28</a><a href="s29-supply-chain-release.html">S29</a><a href="s30-detection-edr-case.html">S30</a><a href="s31-endpoint-sysmon-malware.html">S31</a><a href="s32-performance-flamegraph-db.html">S32</a><a href="s33-gitops-progressive-delivery.html">S33</a></nav>
+  </header>
+  <main>
+    <section class="scenario-head">
+      <p class="eyebrow">S28 / API Security / 上級</p>
+      <h1>BOLA/SSRF/Unsafe Upload/RCE</h1>
+      <p class="lead">IDOR/BOLA、SSRF、unsafe upload、RCE、business logic abuseを安全なred test設計として扱う。</p>
+      <div class="meta-row">
+        <span class="score score-4">4/5 実務上級</span>
+        <span class="pill">Whitehat</span><span class="pill">Backend</span>
+      </div>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>抽象的に何を学ぶか</h2>
+        <p>API securityの上位リスクは、単純な文字列payloadではなく、認可境界、外部通信、ファイル処理、状態遷移の設計ミスとして現れます。</p>
+      </article>
+      <article>
+        <h2>具体例</h2>
+        <ul><li>BOLA: guestが他人のresource idを指定して読めないことを確認する。</li><li>SSRF: metadata IPやinternal hostへserver-side fetchできないようallowlistを使う。</li><li>unsafe upload/RCE: extension、MIME、content、保存先、実行権限を分けて防ぐ。</li></ul>
+      </article>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>目的</h2>
+        <p>危険な攻撃を外部へ向けず、閉域ラボ内でred test、修正方針、検知方針へ落とす。</p>
+      </article>
+      <article>
+        <h2>世界レベル評価</h2>
+        <p>実務上級に近い構成です。証跡、修正、運用判断まで扱えます。</p>
+      </article>
+    </section>
+
+    <section>
+      <h2>Hands-on Flow</h2>
+      <ol class="flow"><li><span>Model</span><p>resource owner、actor、action、state transitionを表にする。</p></li><li><span>Red test</span><p>BOLA/SSRF/upload/RCEの失敗すべきケースを書く。</p></li><li><span>Control</span><p>authorization、egress allowlist、file validation、sandboxを設計する。</p></li><li><span>Detect</span><p>異常なresource access、egress、upload、process spawnの検知を考える。</p></li><li><span>Report</span><p>CWE/CVSSと再発防止テストをPR化する。</p></li></ol>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>実行コマンド</h2>
+        <pre><code>scripts/learning_phase.sh start p18
+scripts/backend_hands_on_tests.sh
+scripts/world_class_hands_on_check.sh api-security
+sed -n &quot;1,220p&quot; docs/curriculum/owasp-api-security-track.md</code></pre>
+      </article>
+      <article>
+        <h2>合格証跡</h2>
+        <ul><li>BOLA/SSRF/upload/RCE red test設計</li><li>認可/egress/file/sandbox制御案</li><li>CWE/CVSSと影響評価</li><li>再発防止テストと検知案</li></ul>
+      </article>
+    </section>
+
+    <section>
+      <h2>ツール活用</h2>
+      <table><thead><tr><th>Tool</th><th>使い方</th></tr></thead><tbody><tr><td><strong>OWASP API Top 10</strong></td><td>BOLA、auth、resource consumption、SSRFをcoverage mapにする。</td></tr><tr><td><strong>OpenAPI</strong></td><td>undocumented endpointとbreaking changeを見つける。</td></tr><tr><td><strong>Backend tests</strong></td><td>認可と入力検証の回帰を固定する。</td></tr><tr><td><strong>SIEM</strong></td><td>異常なresource/egress/upload/process eventを検知する。</td></tr></tbody></table>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>Whitehat / SRE / Backend 観点</h2>
+        <ul><li>Whitehat: 攻撃を許可範囲に限定し、再現性と検知証跡を残す。</li><li>SRE: 影響がある場合だけSLO差分を確認する。</li><li>Backend: 入力検証、契約、テスト、エラー安全性を確認する。</li></ul>
+      </article>
+      <article>
+        <h2>世界レベルへ足す課題</h2>
+        <ul><li>実endpointを追加し、red-green-refactorで修正する。</li><li>DASTを安全profileでCI実行する。</li><li>business logic abuseをstate machine testにする。</li></ul>
+      </article>
+    </section>
+
+    <section>
+      <h2>関連シナリオ</h2>
+      <div class="links"><a href="s1-portscan.html">S1 ポートスキャン</a><a href="s2-bruteforce.html">S2 APIブルートフォース</a><a href="s3-sqli.html">S3 SQLインジェクション</a><a href="s4-dos.html">S4 DoS攻撃</a></div>
+    </section>
+
+  </main>
+</body>
+</html>

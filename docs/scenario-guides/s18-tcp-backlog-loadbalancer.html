@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>S18 TCP再送・SYN backlog・Load Balancer - Secure Learn</title>
+  <link rel="stylesheet" href="assets/scenario.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="index.html">Secure Learn Scenario Guides</a>
+    <nav aria-label="Scenario navigation"><a href="s1-portscan.html">S1</a><a href="s2-bruteforce.html">S2</a><a href="s3-sqli.html">S3</a><a href="s4-dos.html">S4</a><a href="s5-file-tamper.html">S5</a><a href="s6-privesc.html">S6</a><a href="s7-lateral.html">S7</a><a href="s8-arp.html">S8</a><a href="s9-icmp.html">S9</a><a href="s10-tcp-state.html">S10</a><a href="s11-session-stress.html">S11</a><a href="s12-tls-boundary.html">S12</a><a href="s13-dns.html">S13</a><a href="s14-sre-incident.html">S14</a><a href="s15-capstone.html">S15</a><a href="s16-linux-internals-isolation.html">S16</a><a href="s17-ebpf-perf-forensics.html">S17</a><a aria-current="page" href="s18-tcp-backlog-loadbalancer.html">S18</a><a href="s19-mtls-cert-rotation.html">S19</a><a href="s20-quic-bgp-cdn-edge.html">S20</a><a href="s21-kubernetes-platform.html">S21</a><a href="s22-cloud-iam-audit.html">S22</a><a href="s23-terraform-policy-drift.html">S23</a><a href="s24-burn-rate-observability.html">S24</a><a href="s25-otel-trace-log-correlation.html">S25</a><a href="s26-queue-idempotency-backpressure.html">S26</a><a href="s27-backend-migration-contract.html">S27</a><a href="s28-api-business-logic-abuse.html">S28</a><a href="s29-supply-chain-release.html">S29</a><a href="s30-detection-edr-case.html">S30</a><a href="s31-endpoint-sysmon-malware.html">S31</a><a href="s32-performance-flamegraph-db.html">S32</a><a href="s33-gitops-progressive-delivery.html">S33</a></nav>
+  </header>
+  <main>
+    <section class="scenario-head">
+      <p class="eyebrow">S18 / L4/L7 Edge / 上級</p>
+      <h1>TCP再送・SYN backlog・Load Balancer</h1>
+      <p class="lead">TCP再送、SYN backlog、conntrack、L4/L7 load balancer logを、SLO劣化の根拠として扱う。</p>
+      <div class="meta-row">
+        <span class="score score-4">4/5 実務上級</span>
+        <span class="pill">SRE</span><span class="pill">Whitehat</span>
+      </div>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>抽象的に何を学ぶか</h2>
+        <p>TCPやload balancerの障害は、アプリログに到達しないことがあります。抽象的には、requestがアプリに届く前にどこで落ちたかを観測点ごとに切り分けます。</p>
+      </article>
+      <article>
+        <h2>具体例</h2>
+        <ul><li>SYN backlogが溢れるとアプリにはrequestが来ず、clientはtimeoutや再送を見る。</li><li>L7 LBはHTTP statusを出せるが、L4 LBはconnection resetやtimeoutの証跡が中心になる。</li><li>conntrack枯渇はpodやappではなくnode/network層のcapacity問題になる。</li></ul>
+      </article>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>目的</h2>
+        <p>L4/L7の観測点を整理し、アプリ障害、LB障害、network capacityを分けてincident判断できるようにする。</p>
+      </article>
+      <article>
+        <h2>世界レベル評価</h2>
+        <p>実務上級に近い構成です。証跡、修正、運用判断まで扱えます。</p>
+      </article>
+    </section>
+
+    <section>
+      <h2>Hands-on Flow</h2>
+      <ol class="flow"><li><span>Baseline</span><p>app直通とedge proxy経由のhealth latencyを測る。</p></li><li><span>Observe</span><p>ss、tcpdump、nginx access log、app access logを比較する。</p></li><li><span>Model</span><p>SYN backlog、conntrack、timeoutのfailure modeを図にする。</p></li><li><span>Decide</span><p>scale out、rate limit、LB timeout変更、rollbackの条件を決める。</p></li><li><span>Report</span><p>どの観測点に証跡があり、どこにないかを明記する。</p></li></ol>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>実行コマンド</h2>
+        <pre><code>scripts/learning_phase.sh start p11
+curl -fsS http://localhost:8080/health
+docker exec learn-toolbox ss -tan
+scripts/load_hands_on_tests.sh
+scripts/world_class_hands_on_check.sh network</code></pre>
+      </article>
+      <article>
+        <h2>合格証跡</h2>
+        <ul><li>direct/proxyのlatency差分</li><li>connection stateとHTTP logの対応</li><li>SYN backlog/conntrack/LB timeoutの説明</li><li>capacityまたはrollback判断</li></ul>
+      </article>
+    </section>
+
+    <section>
+      <h2>ツール活用</h2>
+      <table><thead><tr><th>Tool</th><th>使い方</th></tr></thead><tbody><tr><td><strong>ss/tcpdump</strong></td><td>connection state、再送、reset、timeoutの手がかりを見る。</td></tr><tr><td><strong>Nginx edge proxy</strong></td><td>L7 proxyのaccess/error logを観測点にする。</td></tr><tr><td><strong>SRE load scripts</strong></td><td>p95/p99とfailure countを定量化する。</td></tr><tr><td><strong>Runbook</strong></td><td>LB/app/networkの切り分け順を固定する。</td></tr></tbody></table>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>Whitehat / SRE / Backend 観点</h2>
+        <ul><li>Whitehat: 攻撃を許可範囲に限定し、再現性と検知証跡を残す。</li><li>SRE: SLO、可用性、レイテンシ、復旧判断へ接続する。</li><li>Backend: サービス露出、ログ、HTTP契約との関係を確認する。</li></ul>
+      </article>
+      <article>
+        <h2>世界レベルへ足す課題</h2>
+        <ul><li>real LB/NLB/ALB/Envoy logsを取り込む。</li><li>packet lossとretransmissionをblackbox SLIへ接続する。</li><li>load balancer config変更をcanary化する。</li></ul>
+      </article>
+    </section>
+
+    <section>
+      <h2>関連シナリオ</h2>
+      <div class="links"><a href="s1-portscan.html">S1 ポートスキャン</a><a href="s2-bruteforce.html">S2 APIブルートフォース</a><a href="s3-sqli.html">S3 SQLインジェクション</a><a href="s4-dos.html">S4 DoS攻撃</a></div>
+    </section>
+
+  </main>
+</body>
+</html>

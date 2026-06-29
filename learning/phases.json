@@ -103,12 +103,12 @@
     "objectives": [
       "SQLi、path traversal、認証失敗、認可失敗を安全に再現できる",
       "攻撃結果、アプリログ、検知ログ、修正テストを一つの証跡にできる",
-      "IDOR/BOLA、SSRF、unsafe uploadなど未実装領域を課題化できる"
+      "IDOR/BOLA、SSRF、unsafe uploadなどをS28の高度API securityへ接続できる"
     ],
     "hands_on": [
       "S2、S3を実行して認証攻撃とSQLi試行を検知する",
       "失敗時にcredential materialやstack traceが漏れないことを確認する",
-      "追加課題としてBOLA/SSRF/Uploadのred test設計を書く"
+      "S28に進む前段としてBOLA/SSRF/Uploadのred test設計を書く"
     ],
     "commands": [
       "docker exec -it soc-lab-kali /scripts/s2_bruteforce.sh",
@@ -119,7 +119,7 @@
     "evidence": [
       "攻撃payload、HTTP status、ログ、修正テストが揃っている",
       "認証と認可を分けて説明している",
-      "未実装API security課題をIssue化できる"
+      "高度API security課題をS28のred testへ接続できる"
     ],
     "next_gate": "P4に進む前に、攻撃の成功/失敗理由をコードとログで説明できる"
   },
@@ -289,12 +289,12 @@
     "objectives": [
       "攻撃、検知、修正、SLO、リリース、rollback、postmortemを一つの成果物にできる",
       "CrowdStrike/Cloudflare/Palo Alto級のセキュアインフラ面接で説明できる証跡を作る",
-      "未実装領域をroadmap、Issue、PR単位へ分解できる"
+      "高度領域をS16-S33のroadmap、Issue、PR単位へ分解できる"
     ],
     "hands_on": [
       "capstone profileで観測、edge proxy、Redisを同時に起動する",
       "S15を実施し、脆弱性レポート、postmortem、release checklistを作る",
-      "Cloud/IAM、SBOM、SAST/DAST/SCA、secret rotationを次期課題として設計する"
+      "Cloud/IAM、SBOM、SAST/DAST/SCA、secret rotationをS16-S33の高度課題へ接続する"
     ],
     "commands": [
       "scripts/learning_phase.sh start p9",
@@ -307,6 +307,383 @@
       "セキュリティ、SRE、バックエンドの判断を一つのtimelineで説明している",
       "次に実装すべきcloud/IaC/supply chain課題がIssue化されている"
     ],
-    "next_gate": "修了。実務ではさらに本物のcloud account、multi-region、production trafficで訓練する"
+    "next_gate": "P10に進む前に、複数領域の証跡を一つのportfolioとして説明できる"
+  },
+  {
+    "id": "P10",
+    "slug": "p10-linux-internals-isolation",
+    "level": "Lead 3",
+    "title": "Linux Internals・Container Isolation",
+    "profile": "phase10-linux-internals",
+    "roles": ["SRE", "Whitehat"],
+    "skills": ["systemd", "cgroups", "namespaces", "seccomp", "capabilities", "eBPF", "perf", "strace", "lsof", "kernel tuning"],
+    "concept": "Linux internalsでは、アプリの障害や侵害をOSの資源管理、隔離、システムコール、権限境界として読む訓練をします。抽象的には「プロセスが何を許可され、何に詰まり、どの証跡を残すか」を説明する力です。",
+    "examples": [
+      "cgroups: containerにCPU/memory制限をかけた時、p95 latencyとOOMのどちらが先に悪化するかを観測する",
+      "namespaces/capabilities: rootに見えるprocessでもhost rootではない理由を説明し、cap_dropで攻撃面を減らす",
+      "strace/lsof/ss: API遅延時にopen file、socket、syscall待ちを切り分ける"
+    ],
+    "objectives": [
+      "process、thread、file descriptor、socket、signalを運用証跡として読める",
+      "namespace、cgroup、capability、seccompがcontainer securityにどう効くか説明できる",
+      "strace、lsof、ss、tcpdump、perf/eBPFの使い分けを判断できる"
+    ],
+    "hands_on": [
+      "learning toolboxでps、ss、lsof、straceを使い、appへのHTTP requestがsocket/syscallとして見えることを確認する",
+      "docker inspectでcapabilities、security_opt、resource制限を確認する",
+      "kernel tuning項目を変更せず、どの値を本番で見るべきかrunbookに整理する"
+    ],
+    "commands": [
+      "scripts/learning_phase.sh start p10",
+      "docker exec learn-toolbox ss -tan",
+      "docker exec learn-toolbox sh -lc 'curl -fsS http://app:3000/health && lsof -iTCP -P -n | head'",
+      "docker inspect soc-lab-app | jq '.[0].HostConfig.CapDrop, .[0].HostConfig.SecurityOpt'",
+      "sed -n '1,220p' docs/learning-phases/p10-linux-internals-isolation.html"
+    ],
+    "evidence": [
+      "process/socket/syscall/file descriptorを紐づけたメモがある",
+      "container isolationで守れることと守れないことを分けて説明している",
+      "capability/seccomp/cgroupの改善案に影響範囲とrollback条件がある"
+    ],
+    "next_gate": "P11に進む前に、OS資源不足とアプリ障害をログだけで混同しない"
+  },
+  {
+    "id": "P11",
+    "slug": "p11-network-edge-routing",
+    "level": "Lead 4",
+    "title": "Advanced Network・Edge Routing",
+    "profile": "phase11-network-edge",
+    "roles": ["SRE", "Whitehat"],
+    "skills": ["TCP retransmission", "SYN backlog", "TLS handshake", "mTLS", "DNS resolver", "BGP", "Anycast", "QUIC", "HTTP/3", "L4/L7 load balancer", "CDN edge routing"],
+    "concept": "Advanced networkでは、packet単体ではなく、clientからedge、load balancer、service、resolverまでの経路全体を障害ドメインとして扱います。",
+    "examples": [
+      "TCP: SYN backlogや再送が増えるとHTTP 5xxではなく接続遅延として現れる",
+      "TLS/mTLS: 証明書期限、SNI、cipher policy、client certificate失敗をHTTP障害と分ける",
+      "BGP/Anycast/CDN: 実BGPは触らず、edge routingの切替判断と観測点を図にする"
+    ],
+    "objectives": [
+      "TCP再送、SYN backlog、timeoutをSLO劣化として説明できる",
+      "TLS/mTLSのhandshake failureを証明書、SNI、protocol、policyに分解できる",
+      "DNS、CDN、Anycast、L4/L7 LBの責務と観測ログを説明できる"
+    ],
+    "hands_on": [
+      "edge proxy profileを起動し、app直通とproxy経由のhealthを比較する",
+      "openssl s_clientでTLS endpointがない場合の失敗と、TLS終端がある場合に必要な証跡を整理する",
+      "DNS resolver、edge、originの障害切り分け表を作る"
+    ],
+    "commands": [
+      "scripts/learning_phase.sh start p11",
+      "curl -fsS http://localhost:8080/health",
+      "docker exec learn-toolbox sh -lc 'getent hosts app learning-edge-proxy && ss -tan'",
+      "docker exec learn-toolbox openssl s_client -connect app:3000 -servername app </dev/null || true",
+      "sed -n '1,220p' docs/scenario-guides/s19-mtls-cert-rotation.html"
+    ],
+    "evidence": [
+      "direct/proxy/DNSの切り分け結果がある",
+      "TLS/mTLSで必要な証跡と監視項目を列挙している",
+      "edge routing障害時のrollbackまたはtraffic shift判断がある"
+    ],
+    "next_gate": "P12に進む前に、network障害をL3/L4/L7/edgeに分解して説明できる"
+  },
+  {
+    "id": "P12",
+    "slug": "p12-kubernetes-platform-security",
+    "level": "Lead 5",
+    "title": "Kubernetes Production・Platform Security",
+    "profile": "phase12-kubernetes-platform",
+    "roles": ["SRE", "Whitehat", "Backend"],
+    "skills": ["Helm", "Kustomize", "Operator", "CRD", "Admission Controller", "RBAC", "NetworkPolicy", "PodSecurity", "HPA", "VPA", "cluster upgrade", "multi-cluster", "service mesh"],
+    "concept": "Kubernetes productionでは、manifestを書くことではなく、clusterが不正な変更を拒否し、障害時に安全に縮退し、upgradeしてもサービス契約を壊さない状態を作ります。",
+    "examples": [
+      "Admission: privileged podやlatest imageを拒否するpolicyを設計する",
+      "RBAC/NetworkPolicy: admin以外がsecretを読めず、pod間通信も必要最小限にする",
+      "Upgrade: CRD/Operator/API deprecationを事前に検出し、rollback条件を決める"
+    ],
+    "objectives": [
+      "Helm/Kustomizeで環境差分を管理し、diff reviewできる",
+      "RBAC、PodSecurity、Admission、NetworkPolicyをplatform guardrailとして説明できる",
+      "HPA/VPA、service mesh、multi-cluster、upgradeの運用リスクを整理できる"
+    ],
+    "hands_on": [
+      "既存k8s/baseを読み、probe/resource/securityContext/NetworkPolicy/HPAを説明する",
+      "k8s_static_checkで最低限の安全条件を検査する",
+      "Admission/RBAC/Helm/Kustomize/Operatorを導入する場合のPR review checklistを作る"
+    ],
+    "commands": [
+      "scripts/learning_phase.sh start p12",
+      "scripts/k8s_static_check.sh",
+      "find k8s/base -type f -maxdepth 2 -print -exec sed -n '1,120p' {} \\;",
+      "sed -n '1,220p' docs/runbooks/kubernetes-operations.md",
+      "sed -n '1,220p' docs/scenario-guides/s21-kubernetes-platform.html"
+    ],
+    "evidence": [
+      "RBAC/NetworkPolicy/PodSecurity/Admissionの役割分担を説明している",
+      "manifest diff reviewで見るべき危険差分を列挙している",
+      "cluster upgrade、CRD変更、rollbackのrunbookがある"
+    ],
+    "next_gate": "P13に進む前に、Kubernetesを単なるデプロイ先ではなくplatform control planeとして説明できる"
+  },
+  {
+    "id": "P13",
+    "slug": "p13-cloud-security-iam",
+    "level": "Lead 6",
+    "title": "Cloud Security・IAM・Audit",
+    "profile": "phase13-cloud-security",
+    "roles": ["Whitehat", "SRE"],
+    "skills": ["AWS IAM", "GCP IAM", "Azure IAM", "KMS", "VPC", "Security Group", "CloudTrail", "Audit Logs", "Org policy", "SCP", "private networking", "secret rotation"],
+    "concept": "Cloud securityでは、個別サービス名の暗記ではなく、identity、network、key、audit、organization guardrailを横断して過剰権限と検知不能領域を減らします。",
+    "examples": [
+      "IAM: wildcard action/resourceを見つけ、least privilegeに分解する",
+      "KMS/secret rotation: key owner、rotation周期、break-glassを証跡化する",
+      "Audit logs: CloudTrail/Audit Logsで誰が何を変えたかをincident timelineに接続する"
+    ],
+    "objectives": [
+      "AWS/GCP/Azureで共通するIAM、KMS、network、audit logの設計原則を説明できる",
+      "SCP/Org policy/private networkingで事故のblast radiusを下げる設計ができる",
+      "secret rotationとbreak-glassを運用手順として書ける"
+    ],
+    "hands_on": [
+      "サンプルIAM policyを読み、危険なwildcardと不足する条件を指摘する",
+      "CloudTrail風イベントをincident timelineへ変換する",
+      "実cloudへ接続せず、必要なlog source、owner、retention、alertを設計する"
+    ],
+    "commands": [
+      "scripts/learning_phase.sh start p13",
+      "scripts/world_class_hands_on_check.sh cloud",
+      "sed -n '1,220p' docs/scenario-guides/s22-cloud-iam-audit.html",
+      "sed -n '1,220p' docs/templates/incident-report.md"
+    ],
+    "evidence": [
+      "過剰権限、missing audit、public exposureの指摘がある",
+      "IAM/KMS/VPC/Audit Logsの責務をcloud横断で説明している",
+      "secret rotationとbreak-glassの手順、owner、rollbackがある"
+    ],
+    "next_gate": "P14に進む前に、cloud変更をidentity/network/key/auditの4軸でreviewできる"
+  },
+  {
+    "id": "P14",
+    "slug": "p14-iac-policy-as-code",
+    "level": "Lead 7",
+    "title": "Infrastructure as Code・Policy as Code",
+    "profile": "phase14-iac-policy",
+    "roles": ["SRE", "Whitehat"],
+    "skills": ["Terraform module", "state management", "drift detection", "policy-as-code", "OPA", "Conftest", "CI plan review", "environment separation"],
+    "concept": "IaCでは、環境を手で直すのではなく、変更意図、plan、policy、state、driftをレビュー可能な証跡にします。",
+    "examples": [
+      "Terraform module: prod/stageで同じmoduleを使い、変える値だけを入力にする",
+      "drift detection: console手変更を検出し、緊急対応後もcodeへ戻す",
+      "OPA/Conftest: public bucketや0.0.0.0/0 ingressをCIで拒否する"
+    ],
+    "objectives": [
+      "Terraform module設計、state管理、環境分離、drift検知を説明できる",
+      "OPA/Conftest相当のpolicy-as-codeで危険なplanを拒否できる",
+      "CIでplan review、security review、rollback reviewを分けられる"
+    ],
+    "hands_on": [
+      "サンプルTerraform差分を読み、危険なpublic exposureやstate分離不足を指摘する",
+      "policy check scriptでIaC guardrailを検証する",
+      "plan review commentのテンプレートを作る"
+    ],
+    "commands": [
+      "scripts/learning_phase.sh start p14",
+      "scripts/world_class_hands_on_check.sh iac",
+      "sed -n '1,220p' docs/scenario-guides/s23-terraform-policy-drift.html",
+      "sed -n '1,220p' docs/templates/vulnerability-remediation-pr.md"
+    ],
+    "evidence": [
+      "plan reviewで拒否すべき差分と許可できる差分を分けている",
+      "state、drift、environment separationの運用リスクを説明している",
+      "policy-as-codeの例外申請と期限を定義している"
+    ],
+    "next_gate": "P15に進む前に、infra変更をpolicyとevidenceで制御できる"
+  },
+  {
+    "id": "P15",
+    "slug": "p15-observability-incident-economics",
+    "level": "Lead 8",
+    "title": "Advanced Observability・Incident Economics",
+    "profile": "phase15-advanced-observability",
+    "roles": ["SRE", "Backend"],
+    "skills": ["Prometheus", "Grafana", "OpenTelemetry", "tracing", "RED metrics", "USE metrics", "log correlation", "high cardinality", "alert fatigue", "burn-rate alert", "error budget"],
+    "concept": "Advanced observabilityでは、見えるデータを増やすのではなく、顧客影響と運用判断に必要な信号だけをSLO、trace、log、alertへ落とします。",
+    "examples": [
+      "burn-rate: 5分と1時間の両方でerror budget消費を見てpage条件を決める",
+      "trace/log correlation: request_idでslow requestをDB queryや外部依存へ繋ぐ",
+      "high cardinality: user_idをlabelに入れず、log fieldとして保持する"
+    ],
+    "objectives": [
+      "RED/USE metrics、tracing、logsを役割別に使い分けられる",
+      "multi-window burn-rate alertとalert fatigue削減を設計できる",
+      "high-cardinality labelのコストと運用影響を説明できる"
+    ],
+    "hands_on": [
+      "Prometheus/Grafana/OpenTelemetry profileを起動する",
+      "load test結果をSLO/error budget/burn-rateへ変換する",
+      "alertをpage、ticket、dashboard annotationに分類する"
+    ],
+    "commands": [
+      "scripts/learning_phase.sh start p15",
+      "curl -fsS http://localhost:9090/-/ready",
+      "REQUESTS=120 CONCURRENCY=8 scripts/load_hands_on_tests.sh",
+      "scripts/world_class_hands_on_check.sh observability",
+      "sed -n '1,220p' docs/scenario-guides/s24-burn-rate-observability.html"
+    ],
+    "evidence": [
+      "SLI/SLO/error budget/burn-rate条件が数値で書かれている",
+      "metric/log/traceをどの質問に使うか説明している",
+      "alert fatigueを減らすrouting、silence、dedup方針がある"
+    ],
+    "next_gate": "P16に進む前に、観測データをincident判断へ変換できる"
+  },
+  {
+    "id": "P16",
+    "slug": "p16-distributed-reliability",
+    "level": "Lead 9",
+    "title": "Distributed Systems・Data Reliability",
+    "profile": "phase16-distributed-reliability",
+    "roles": ["SRE", "Backend"],
+    "skills": ["queue", "Kafka", "PubSub", "Temporal", "retry", "backoff", "idempotency", "backpressure", "leader election", "consistency", "sharding", "replication"],
+    "concept": "分散システムでは、1回のHTTP成功ではなく、重複、遅延、順序入れ替わり、部分失敗が起きてもデータとSLOを守る設計を学びます。",
+    "examples": [
+      "idempotency: retryで同じ支払い/作成処理が2回実行されないようkeyを持つ",
+      "backpressure: queue backlogが増えた時に429、shed load、consumer scaleのどれを選ぶか判断する",
+      "replication/sharding: consistencyとavailabilityのどちらを犠牲にするかを明示する"
+    ],
+    "objectives": [
+      "Kafka/PubSub/Temporal/queueのfailure modeを説明できる",
+      "retry/backoff/idempotency/backpressureをAPI contractに落とせる",
+      "leader election、consistency、sharding、replicationの運用リスクを説明できる"
+    ],
+    "hands_on": [
+      "Redis profileでqueue/backlogの代替演習を行う",
+      "同じrequestを複数回送ってidempotency設計をレビューする",
+      "consumer停止、retry storm、backlog増加のrunbookを書く"
+    ],
+    "commands": [
+      "scripts/learning_phase.sh start p16",
+      "docker exec learn-toolbox redis-cli -h learning-redis PING",
+      "scripts/world_class_hands_on_check.sh distributed",
+      "sed -n '1,220p' docs/scenario-guides/s26-queue-idempotency-backpressure.html"
+    ],
+    "evidence": [
+      "retry/backoff/idempotencyのAPI設計メモがある",
+      "queue backlogとSLO影響を説明している",
+      "consistency、replication、shardingの選択理由がある"
+    ],
+    "next_gate": "P17に進む前に、部分失敗前提のbackend/SRE設計ができる"
+  },
+  {
+    "id": "P17",
+    "slug": "p17-backend-production-engineering",
+    "level": "Lead 10",
+    "title": "Backend Production Engineering",
+    "profile": "base",
+    "roles": ["Backend", "SRE", "Whitehat"],
+    "skills": ["schema migration", "rollback", "transaction", "race condition", "pagination", "API versioning", "OpenAPI compatibility", "contract testing", "rate limit design", "DB index", "query plan"],
+    "concept": "Backend productionでは、ローカルで動くAPIではなく、schema変更、互換性、同時実行、負荷、障害時にも顧客契約を壊さないAPIを作ります。",
+    "examples": [
+      "migration: expand/contractで旧versionと新versionを同時に動かせる",
+      "race condition: 同時更新で二重処理やlost updateが起きないようtransaction境界を決める",
+      "pagination/API versioning: 大量データと互換性をcontract testで守る"
+    ],
+    "objectives": [
+      "schema migration/rollbackとAPI compatibilityを設計できる",
+      "transaction、race condition、pagination、rate limitをテスト観点に落とせる",
+      "DB index/query plan、N+1、connection poolを性能問題として説明できる"
+    ],
+    "hands_on": [
+      "app testとOpenAPI contract testを実行する",
+      "migration rollback、pagination、API versioningのred/green test案を書く",
+      "load test結果からDB/APIのbottleneck仮説を立てる"
+    ],
+    "commands": [
+      "npm --prefix app test",
+      "npm --prefix app run test:integration",
+      "scripts/backend_hands_on_tests.sh",
+      "REQUESTS=120 CONCURRENCY=8 scripts/load_hands_on_tests.sh",
+      "sed -n '1,220p' docs/scenario-guides/s27-backend-migration-contract.html"
+    ],
+    "evidence": [
+      "migration/rollback/API compatibilityのテスト設計がある",
+      "race conditionとtransaction境界の説明がある",
+      "p95/p99、query plan、index、connection poolの改善仮説がある"
+    ],
+    "next_gate": "P18に進む前に、backend変更を運用・セキュリティ・互換性の3軸でreviewできる"
+  },
+  {
+    "id": "P18",
+    "slug": "p18-security-supply-chain-release",
+    "level": "Lead 11",
+    "title": "Security Engineering・Supply Chain・Release",
+    "profile": "phase18-security-supply-chain",
+    "roles": ["Whitehat", "Backend", "SRE"],
+    "skills": ["threat modeling", "OWASP API Top 10", "SSRF", "IDOR", "BOLA", "unsafe upload", "RCE", "SBOM", "SAST", "DAST", "SCA", "secret scanning", "artifact signing", "GitOps", "feature flag", "blue-green", "canary", "rollback safety"],
+    "concept": "Security supply chainでは、コード脆弱性だけでなく、依存、build、artifact、secret、release経路まで攻撃面として扱います。",
+    "examples": [
+      "SSRF/BOLA/upload: business logicとauthorizationの抜けをred testで固定する",
+      "SBOM/SAST/DAST/SCA: 依存とコードと実行中APIを別々の観点で検査する",
+      "artifact signing/release: どのcommitからどのimageが出たかを検証可能にする"
+    ],
+    "objectives": [
+      "OWASP API Top 10の上位リスクをhands-on testへ変換できる",
+      "SBOM、SAST、DAST、SCA、secret scanning、artifact signingの役割を説明できる",
+      "GitOps、feature flag、blue-green/canary、rollback safetyをrelease gateにできる"
+    ],
+    "hands_on": [
+      "npm audit、OpenAPI contract、backend hands-onをまとめてsecurity gateとして実行する",
+      "SSRF/BOLA/upload/RCEの安全なred test設計をHTMLに沿って作る",
+      "release checklistで署名、SBOM、rollback、migration互換性を確認する"
+    ],
+    "commands": [
+      "scripts/learning_phase.sh start p18",
+      "npm --prefix app audit --omit=dev --audit-level=high",
+      "scripts/backend_hands_on_tests.sh",
+      "scripts/world_class_hands_on_check.sh supply-chain",
+      "sed -n '1,220p' docs/scenario-guides/s29-supply-chain-release.html"
+    ],
+    "evidence": [
+      "OWASP API、SBOM/SAST/DAST/SCA、secret scanningのcoverage mapがある",
+      "release gateとrollback条件が書かれている",
+      "CVE/CVSS、security advisory、responsible disclosureの判断がある"
+    ],
+    "next_gate": "P19に進む前に、コードからartifact/release/開示まで一気通貫で説明できる"
+  },
+  {
+    "id": "P19",
+    "slug": "p19-detection-edr-oss-governance",
+    "level": "Principal",
+    "title": "Detection/EDR・Secure SDLC・OSS Governance",
+    "profile": "capstone",
+    "roles": ["Whitehat", "SRE", "Backend"],
+    "skills": ["Sigma", "YARA", "Suricata", "MITRE ATT&CK", "false positive tuning", "event normalization", "SIEM query", "case management", "process tree", "Windows telemetry", "Linux telemetry", "auditd", "Sysmon", "malware behavior", "sandboxing", "CVE", "CVSS", "responsible disclosure", "branch protection", "license compliance"],
+    "concept": "最終フェーズでは、技術的に検知・修正できるだけでなく、OSSとして安全に公開し、CVE/開示/ライセンス/レビュー規律まで運用します。",
+    "examples": [
+      "Detection: Sigma/YARA/SuricataをMITRE techniqueへ対応させ、false positiveを調整する",
+      "EDR: process tree、auditd、Sysmon相当telemetryからcase timelineを作る",
+      "OSS governance: advisory、CVE/CVSS、branch protection、license compliance、release noteを揃える"
+    ],
+    "objectives": [
+      "Sigma/YARA/SuricataとMITRE ATT&CK mappingを検知運用へ落とせる",
+      "Windows/Linux telemetry、auditd、Sysmon、process tree、sandboxingをEDR観点で説明できる",
+      "OSSとしてsecurity advisory、responsible disclosure、license/compliance、review disciplineを運用できる"
+    ],
+    "hands_on": [
+      "S7/S15をcapstoneとして実行し、case management形式でtimelineを作る",
+      "detection ruleの誤検知、正規化、SIEM queryをレビューする",
+      "OSS release checklistを作り、branch protectionとsecurity advisory手順を確認する"
+    ],
+    "commands": [
+      "scripts/learning_phase.sh start p19",
+      "scripts/lab_quality_gate.sh",
+      "scripts/world_class_hands_on_check.sh governance",
+      "sed -n '1,220p' docs/scenario-guides/s30-detection-edr-case.html",
+      "sed -n '1,220p' SECURITY.md"
+    ],
+    "evidence": [
+      "MITRE mapping、SIEM query、case timeline、false positive判断がある",
+      "auditd/Sysmon/process tree/sandboxingの限界を説明している",
+      "security advisory、CVE/CVSS、license、release note、branch protectionの運用証跡がある"
+    ],
+    "next_gate": "修了。実務では本物のcloud account、production-like telemetry、cross-team incidentで継続訓練する"
   }
 ]

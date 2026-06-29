@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>S22 Cloud IAM/KMS/VPC/Audit Logs - Secure Learn</title>
+  <link rel="stylesheet" href="assets/scenario.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="index.html">Secure Learn Scenario Guides</a>
+    <nav aria-label="Scenario navigation"><a href="s1-portscan.html">S1</a><a href="s2-bruteforce.html">S2</a><a href="s3-sqli.html">S3</a><a href="s4-dos.html">S4</a><a href="s5-file-tamper.html">S5</a><a href="s6-privesc.html">S6</a><a href="s7-lateral.html">S7</a><a href="s8-arp.html">S8</a><a href="s9-icmp.html">S9</a><a href="s10-tcp-state.html">S10</a><a href="s11-session-stress.html">S11</a><a href="s12-tls-boundary.html">S12</a><a href="s13-dns.html">S13</a><a href="s14-sre-incident.html">S14</a><a href="s15-capstone.html">S15</a><a href="s16-linux-internals-isolation.html">S16</a><a href="s17-ebpf-perf-forensics.html">S17</a><a href="s18-tcp-backlog-loadbalancer.html">S18</a><a href="s19-mtls-cert-rotation.html">S19</a><a href="s20-quic-bgp-cdn-edge.html">S20</a><a href="s21-kubernetes-platform.html">S21</a><a aria-current="page" href="s22-cloud-iam-audit.html">S22</a><a href="s23-terraform-policy-drift.html">S23</a><a href="s24-burn-rate-observability.html">S24</a><a href="s25-otel-trace-log-correlation.html">S25</a><a href="s26-queue-idempotency-backpressure.html">S26</a><a href="s27-backend-migration-contract.html">S27</a><a href="s28-api-business-logic-abuse.html">S28</a><a href="s29-supply-chain-release.html">S29</a><a href="s30-detection-edr-case.html">S30</a><a href="s31-endpoint-sysmon-malware.html">S31</a><a href="s32-performance-flamegraph-db.html">S32</a><a href="s33-gitops-progressive-delivery.html">S33</a></nav>
+  </header>
+  <main>
+    <section class="scenario-head">
+      <p class="eyebrow">S22 / Cloud Security / 上級</p>
+      <h1>Cloud IAM/KMS/VPC/Audit Logs</h1>
+      <p class="lead">AWS/GCP/Azure共通のIAM、KMS、VPC、Security Group、Audit Logs、Org policyを設計レビューする。</p>
+      <div class="meta-row">
+        <span class="score score-4">4/5 実務上級</span>
+        <span class="pill">Whitehat</span><span class="pill">SRE</span>
+      </div>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>抽象的に何を学ぶか</h2>
+        <p>Cloud securityはサービス名の暗記ではなく、誰が、どのnetworkから、どのkeyで、何を変更し、その証跡が残るかを制御することです。</p>
+      </article>
+      <article>
+        <h2>具体例</h2>
+        <ul><li>IAM wildcardを見つけ、action/resource/conditionに分解する。</li><li>KMS keyのrotation、owner、break-glass、deletion protectionを定義する。</li><li>CloudTrail/Audit Logsから変更者、source IP、対象resourceをtimeline化する。</li></ul>
+      </article>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>目的</h2>
+        <p>cloud accountを実際に触らず、設計レビューとincident evidenceの観点を安全に身につける。</p>
+      </article>
+      <article>
+        <h2>世界レベル評価</h2>
+        <p>実務上級に近い構成です。証跡、修正、運用判断まで扱えます。</p>
+      </article>
+    </section>
+
+    <section>
+      <h2>Hands-on Flow</h2>
+      <ol class="flow"><li><span>Review</span><p>サンプルIAM/Audit logを見て危険な権限と不足ログを指摘する。</p></li><li><span>Network</span><p>public/private subnet、security group、private endpointを図にする。</p></li><li><span>Key</span><p>KMS/secret rotationとbreak-glassの手順を書く。</p></li><li><span>Govern</span><p>Org policy/SCPで禁止すべき操作を定義する。</p></li><li><span>Report</span><p>cloud incident timelineをincident reportへ転記する。</p></li></ol>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>実行コマンド</h2>
+        <pre><code>scripts/learning_phase.sh start p13
+scripts/world_class_hands_on_check.sh cloud
+sed -n &quot;1,220p&quot; docs/scenario-guides/s22-cloud-iam-audit.html
+sed -n &quot;1,220p&quot; docs/templates/incident-report.md</code></pre>
+      </article>
+      <article>
+        <h2>合格証跡</h2>
+        <ul><li>IAM/KMS/VPC/Auditの設計レビュー</li><li>過剰権限とpublic exposureの指摘</li><li>Org policy/SCP案</li><li>secret rotationとbreak-glass手順</li></ul>
+      </article>
+    </section>
+
+    <section>
+      <h2>ツール活用</h2>
+      <table><thead><tr><th>Tool</th><th>使い方</th></tr></thead><tbody><tr><td><strong>IAM policy review</strong></td><td>wildcard、condition不足、cross-account trustを見る。</td></tr><tr><td><strong>KMS/Secrets Manager</strong></td><td>key owner、rotation、auditを設計する。</td></tr><tr><td><strong>CloudTrail/Audit Logs</strong></td><td>変更証跡をincident timelineへ変換する。</td></tr><tr><td><strong>VPC/Security Group</strong></td><td>private networkingとegress制御を設計する。</td></tr></tbody></table>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>Whitehat / SRE / Backend 観点</h2>
+        <ul><li>Whitehat: 攻撃を許可範囲に限定し、再現性と検知証跡を残す。</li><li>SRE: SLO、可用性、レイテンシ、復旧判断へ接続する。</li><li>Backend: サービス露出、ログ、HTTP契約との関係を確認する。</li></ul>
+      </article>
+      <article>
+        <h2>世界レベルへ足す課題</h2>
+        <ul><li>実sandbox cloud accountでread-only auditを行う。</li><li>CloudTrail/Audit LogsをSIEMへ取り込む。</li><li>multi-account landing zoneのguardrailを実装する。</li></ul>
+      </article>
+    </section>
+
+    <section>
+      <h2>関連シナリオ</h2>
+      <div class="links"><a href="s1-portscan.html">S1 ポートスキャン</a><a href="s2-bruteforce.html">S2 APIブルートフォース</a><a href="s3-sqli.html">S3 SQLインジェクション</a><a href="s4-dos.html">S4 DoS攻撃</a></div>
+    </section>
+
+  </main>
+</body>
+</html>

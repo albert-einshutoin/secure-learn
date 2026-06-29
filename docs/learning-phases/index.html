@@ -9,7 +9,7 @@
 <body>
   <header class="topbar">
     <a class="brand" href="index.html">Secure Learn Learning Phases</a>
-    <nav aria-label="Learning phase navigation"><a href="p0-ethics-setup.html">P0</a><a href="p1-linux-docker-networking.html">P1</a><a href="p2-backend-tdd-api.html">P2</a><a href="p3-owasp-api-security.html">P3</a><a href="p4-detection-soc-engineering.html">P4</a><a href="p5-observability-sre.html">P5</a><a href="p6-secure-release-kubernetes-iac.html">P6</a><a href="p7-endpoint-edr-detection.html">P7</a><a href="p8-distributed-performance.html">P8</a><a href="p9-secure-infra-capstone.html">P9</a></nav>
+    <nav aria-label="Learning phase navigation"><a href="p0-ethics-setup.html">P0</a><a href="p1-linux-docker-networking.html">P1</a><a href="p2-backend-tdd-api.html">P2</a><a href="p3-owasp-api-security.html">P3</a><a href="p4-detection-soc-engineering.html">P4</a><a href="p5-observability-sre.html">P5</a><a href="p6-secure-release-kubernetes-iac.html">P6</a><a href="p7-endpoint-edr-detection.html">P7</a><a href="p8-distributed-performance.html">P8</a><a href="p9-secure-infra-capstone.html">P9</a><a href="p10-linux-internals-isolation.html">P10</a><a href="p11-network-edge-routing.html">P11</a><a href="p12-kubernetes-platform-security.html">P12</a><a href="p13-cloud-security-iam.html">P13</a><a href="p14-iac-policy-as-code.html">P14</a><a href="p15-observability-incident-economics.html">P15</a><a href="p16-distributed-reliability.html">P16</a><a href="p17-backend-production-engineering.html">P17</a><a href="p18-security-supply-chain-release.html">P18</a><a href="p19-detection-edr-oss-governance.html">P19</a></nav>
   </header>
   <main>
     <section class="scenario-head">
@@ -19,7 +19,7 @@
     </section>
 
     <section class="grid three">
-      <article><h2>Phases</h2><p class="big">10</p><p>Junior 0 から Lead 2 まで。</p></article>
+      <article><h2>Phases</h2><p class="big">20</p><p>Junior 0 から Lead 2 まで。</p></article>
       <article><h2>Docker</h2><p class="big">Profiles</p><p>base、observability、release、distributed、capstone。</p></article>
       <article><h2>Gate</h2><p class="big">Evidence</p><p>各フェーズで合格証跡を要求。</p></article>
     </section>
@@ -106,6 +106,76 @@ scripts/learning_phase.sh stop p5</code></pre>
         <td>capstone</td>
         <td>Whitehat, SRE, Backend</td>
         <td>cloud security, supply chain, release engineering, incident leadership, executive reporting</td>
+      </tr><tr>
+        <td><a href="p10-linux-internals-isolation.html">P10</a></td>
+        <td>Lead 3</td>
+        <td>Linux Internals・Container Isolation</td>
+        <td>phase10-linux-internals</td>
+        <td>SRE, Whitehat</td>
+        <td>systemd, cgroups, namespaces, seccomp, capabilities, eBPF, perf, strace, lsof, kernel tuning</td>
+      </tr><tr>
+        <td><a href="p11-network-edge-routing.html">P11</a></td>
+        <td>Lead 4</td>
+        <td>Advanced Network・Edge Routing</td>
+        <td>phase11-network-edge</td>
+        <td>SRE, Whitehat</td>
+        <td>TCP retransmission, SYN backlog, TLS handshake, mTLS, DNS resolver, BGP, Anycast, QUIC, HTTP/3, L4/L7 load balancer, CDN edge routing</td>
+      </tr><tr>
+        <td><a href="p12-kubernetes-platform-security.html">P12</a></td>
+        <td>Lead 5</td>
+        <td>Kubernetes Production・Platform Security</td>
+        <td>phase12-kubernetes-platform</td>
+        <td>SRE, Whitehat, Backend</td>
+        <td>Helm, Kustomize, Operator, CRD, Admission Controller, RBAC, NetworkPolicy, PodSecurity, HPA, VPA, cluster upgrade, multi-cluster, service mesh</td>
+      </tr><tr>
+        <td><a href="p13-cloud-security-iam.html">P13</a></td>
+        <td>Lead 6</td>
+        <td>Cloud Security・IAM・Audit</td>
+        <td>phase13-cloud-security</td>
+        <td>Whitehat, SRE</td>
+        <td>AWS IAM, GCP IAM, Azure IAM, KMS, VPC, Security Group, CloudTrail, Audit Logs, Org policy, SCP, private networking, secret rotation</td>
+      </tr><tr>
+        <td><a href="p14-iac-policy-as-code.html">P14</a></td>
+        <td>Lead 7</td>
+        <td>Infrastructure as Code・Policy as Code</td>
+        <td>phase14-iac-policy</td>
+        <td>SRE, Whitehat</td>
+        <td>Terraform module, state management, drift detection, policy-as-code, OPA, Conftest, CI plan review, environment separation</td>
+      </tr><tr>
+        <td><a href="p15-observability-incident-economics.html">P15</a></td>
+        <td>Lead 8</td>
+        <td>Advanced Observability・Incident Economics</td>
+        <td>phase15-advanced-observability</td>
+        <td>SRE, Backend</td>
+        <td>Prometheus, Grafana, OpenTelemetry, tracing, RED metrics, USE metrics, log correlation, high cardinality, alert fatigue, burn-rate alert, error budget</td>
+      </tr><tr>
+        <td><a href="p16-distributed-reliability.html">P16</a></td>
+        <td>Lead 9</td>
+        <td>Distributed Systems・Data Reliability</td>
+        <td>phase16-distributed-reliability</td>
+        <td>SRE, Backend</td>
+        <td>queue, Kafka, PubSub, Temporal, retry, backoff, idempotency, backpressure, leader election, consistency, sharding, replication</td>
+      </tr><tr>
+        <td><a href="p17-backend-production-engineering.html">P17</a></td>
+        <td>Lead 10</td>
+        <td>Backend Production Engineering</td>
+        <td>base</td>
+        <td>Backend, SRE, Whitehat</td>
+        <td>schema migration, rollback, transaction, race condition, pagination, API versioning, OpenAPI compatibility, contract testing, rate limit design, DB index, query plan</td>
+      </tr><tr>
+        <td><a href="p18-security-supply-chain-release.html">P18</a></td>
+        <td>Lead 11</td>
+        <td>Security Engineering・Supply Chain・Release</td>
+        <td>phase18-security-supply-chain</td>
+        <td>Whitehat, Backend, SRE</td>
+        <td>threat modeling, OWASP API Top 10, SSRF, IDOR, BOLA, unsafe upload, RCE, SBOM, SAST, DAST, SCA, secret scanning, artifact signing, GitOps, feature flag, blue-green, canary, rollback safety</td>
+      </tr><tr>
+        <td><a href="p19-detection-edr-oss-governance.html">P19</a></td>
+        <td>Principal</td>
+        <td>Detection/EDR・Secure SDLC・OSS Governance</td>
+        <td>capstone</td>
+        <td>Whitehat, SRE, Backend</td>
+        <td>Sigma, YARA, Suricata, MITRE ATT&amp;CK, false positive tuning, event normalization, SIEM query, case management, process tree, Windows telemetry, Linux telemetry, auditd, Sysmon, malware behavior, sandboxing, CVE, CVSS, responsible disclosure, branch protection, license compliance</td>
       </tr></tbody>
       </table>
     </section>
@@ -117,10 +187,10 @@ scripts/learning_phase.sh stop p5</code></pre>
         <tbody>
           <tr><td>App</td><td>http://localhost:3000</td><td>P1+</td></tr>
           <tr><td>Kibana</td><td>http://localhost:5601</td><td>P4+</td></tr>
-          <tr><td>Prometheus</td><td>http://localhost:9090</td><td>P5/P9</td></tr>
-          <tr><td>Grafana</td><td>http://localhost:3001</td><td>P5/P9</td></tr>
-          <tr><td>Edge proxy</td><td>http://localhost:8080</td><td>P6/P9</td></tr>
-          <tr><td>Redis</td><td>127.0.0.1:6380</td><td>P8/P9</td></tr>
+          <tr><td>Prometheus</td><td>http://localhost:9090</td><td>P5/P15/P19</td></tr>
+          <tr><td>Grafana</td><td>http://localhost:3001</td><td>P5/P15/P19</td></tr>
+          <tr><td>Edge proxy</td><td>http://localhost:8080</td><td>P6/P11/P12/P19</td></tr>
+          <tr><td>Redis</td><td>127.0.0.1:6380</td><td>P8/P16/P19</td></tr>
         </tbody>
       </table>
     </section>

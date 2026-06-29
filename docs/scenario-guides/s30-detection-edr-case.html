@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>S30 Detection Engineering・EDR Case Management - Secure Learn</title>
+  <link rel="stylesheet" href="assets/scenario.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="index.html">Secure Learn Scenario Guides</a>
+    <nav aria-label="Scenario navigation"><a href="s1-portscan.html">S1</a><a href="s2-bruteforce.html">S2</a><a href="s3-sqli.html">S3</a><a href="s4-dos.html">S4</a><a href="s5-file-tamper.html">S5</a><a href="s6-privesc.html">S6</a><a href="s7-lateral.html">S7</a><a href="s8-arp.html">S8</a><a href="s9-icmp.html">S9</a><a href="s10-tcp-state.html">S10</a><a href="s11-session-stress.html">S11</a><a href="s12-tls-boundary.html">S12</a><a href="s13-dns.html">S13</a><a href="s14-sre-incident.html">S14</a><a href="s15-capstone.html">S15</a><a href="s16-linux-internals-isolation.html">S16</a><a href="s17-ebpf-perf-forensics.html">S17</a><a href="s18-tcp-backlog-loadbalancer.html">S18</a><a href="s19-mtls-cert-rotation.html">S19</a><a href="s20-quic-bgp-cdn-edge.html">S20</a><a href="s21-kubernetes-platform.html">S21</a><a href="s22-cloud-iam-audit.html">S22</a><a href="s23-terraform-policy-drift.html">S23</a><a href="s24-burn-rate-observability.html">S24</a><a href="s25-otel-trace-log-correlation.html">S25</a><a href="s26-queue-idempotency-backpressure.html">S26</a><a href="s27-backend-migration-contract.html">S27</a><a href="s28-api-business-logic-abuse.html">S28</a><a href="s29-supply-chain-release.html">S29</a><a aria-current="page" href="s30-detection-edr-case.html">S30</a><a href="s31-endpoint-sysmon-malware.html">S31</a><a href="s32-performance-flamegraph-db.html">S32</a><a href="s33-gitops-progressive-delivery.html">S33</a></nav>
+  </header>
+  <main>
+    <section class="scenario-head">
+      <p class="eyebrow">S30 / Detection/EDR / 上級</p>
+      <h1>Detection Engineering・EDR Case Management</h1>
+      <p class="lead">Sigma、YARA、Suricata、MITRE ATT&amp;CK、false positive tuning、event normalization、SIEM query、case managementを扱う。</p>
+      <div class="meta-row">
+        <span class="score score-4">4/5 実務上級</span>
+        <span class="pill">Whitehat</span><span class="pill">SRE</span>
+      </div>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>抽象的に何を学ぶか</h2>
+        <p>Detection engineeringはalertを増やすことではなく、攻撃仮説、telemetry、正規化、誤検知調整、case判断を一つの運用にすることです。</p>
+      </article>
+      <article>
+        <h2>具体例</h2>
+        <ul><li>Suricata ruleをMITRE techniqueへ対応させ、何を検知できて何を検知できないかを書く。</li><li>Sigma/YARAはvendor非依存の検知意図として保存し、SIEM queryへ変換する。</li><li>false positiveが多いruleはthreshold、allowlist、context enrichmentで調整する。</li></ul>
+      </article>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>目的</h2>
+        <p>検知ルールを作るだけでなく、case triage、owner、severity、closure reasonまで運用できるようにする。</p>
+      </article>
+      <article>
+        <h2>世界レベル評価</h2>
+        <p>実務上級に近い構成です。証跡、修正、運用判断まで扱えます。</p>
+      </article>
+    </section>
+
+    <section>
+      <h2>Hands-on Flow</h2>
+      <ol class="flow"><li><span>Hypothesis</span><p>攻撃仮説と必要telemetryを定義する。</p></li><li><span>Normalize</span><p>source.ip、user.name、process.name、event.actionなどのfieldを揃える。</p></li><li><span>Map</span><p>MITRE ATT&amp;CK techniqueとruleを対応させる。</p></li><li><span>Tune</span><p>false positive/false negativeを評価する。</p></li><li><span>Case</span><p>case management形式でtimeline、severity、closureを書く。</p></li></ol>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>実行コマンド</h2>
+        <pre><code>scripts/learning_phase.sh start p19
+docker exec soc-lab-suricata tail -50 /var/log/suricata/fast.log
+scripts/world_class_hands_on_check.sh detection
+sed -n &quot;1,220p&quot; docs/soc-playbook.md
+sed -n &quot;1,220p&quot; docs/templates/incident-report.md</code></pre>
+      </article>
+      <article>
+        <h2>合格証跡</h2>
+        <ul><li>attack hypothesisとtelemetry要件</li><li>MITRE mapping</li><li>false positive tuning結果</li><li>case timelineとclosure reason</li></ul>
+      </article>
+    </section>
+
+    <section>
+      <h2>ツール活用</h2>
+      <table><thead><tr><th>Tool</th><th>使い方</th></tr></thead><tbody><tr><td><strong>Sigma/YARA</strong></td><td>vendor非依存の検知意図を書く。</td></tr><tr><td><strong>Suricata</strong></td><td>network detectionの実ルールを検証する。</td></tr><tr><td><strong>MITRE ATT&amp;CK</strong></td><td>検知coverageとgapを説明する。</td></tr><tr><td><strong>SIEM/Case management</strong></td><td>alertをincident判断へ変換する。</td></tr></tbody></table>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>Whitehat / SRE / Backend 観点</h2>
+        <ul><li>Whitehat: 攻撃を許可範囲に限定し、再現性と検知証跡を残す。</li><li>SRE: SLO、可用性、レイテンシ、復旧判断へ接続する。</li><li>Backend: サービス露出、ログ、HTTP契約との関係を確認する。</li></ul>
+      </article>
+      <article>
+        <h2>世界レベルへ足す課題</h2>
+        <ul><li>SigmaをElastic/KQLへ変換して実検索する。</li><li>case management systemへticketを作る。</li><li>detection-as-codeのunit testを追加する。</li></ul>
+      </article>
+    </section>
+
+    <section>
+      <h2>関連シナリオ</h2>
+      <div class="links"><a href="s1-portscan.html">S1 ポートスキャン</a><a href="s2-bruteforce.html">S2 APIブルートフォース</a><a href="s3-sqli.html">S3 SQLインジェクション</a><a href="s4-dos.html">S4 DoS攻撃</a></div>
+    </section>
+
+  </main>
+</body>
+</html>

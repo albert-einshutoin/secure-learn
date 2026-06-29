@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>P15 Advanced Observability・Incident Economics - Secure Learn</title>
+  <link rel="stylesheet" href="../scenario-guides/assets/scenario.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="index.html">Secure Learn Learning Phases</a>
+    <nav aria-label="Learning phase navigation"><a href="p0-ethics-setup.html">P0</a><a href="p1-linux-docker-networking.html">P1</a><a href="p2-backend-tdd-api.html">P2</a><a href="p3-owasp-api-security.html">P3</a><a href="p4-detection-soc-engineering.html">P4</a><a href="p5-observability-sre.html">P5</a><a href="p6-secure-release-kubernetes-iac.html">P6</a><a href="p7-endpoint-edr-detection.html">P7</a><a href="p8-distributed-performance.html">P8</a><a href="p9-secure-infra-capstone.html">P9</a><a href="p10-linux-internals-isolation.html">P10</a><a href="p11-network-edge-routing.html">P11</a><a href="p12-kubernetes-platform-security.html">P12</a><a href="p13-cloud-security-iam.html">P13</a><a href="p14-iac-policy-as-code.html">P14</a><a aria-current="page" href="p15-observability-incident-economics.html">P15</a><a href="p16-distributed-reliability.html">P16</a><a href="p17-backend-production-engineering.html">P17</a><a href="p18-security-supply-chain-release.html">P18</a><a href="p19-detection-edr-oss-governance.html">P19</a></nav>
+  </header>
+  <main>
+    <section class="scenario-head">
+      <p class="eyebrow">P15 / Lead 8 / phase15-advanced-observability</p>
+      <h1>Advanced Observability・Incident Economics</h1>
+      <p class="lead">P16に進む前に、観測データをincident判断へ変換できる</p>
+      <div class="meta-row">
+        <span class="pill">SRE</span><span class="pill">Backend</span>
+      </div>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>抽象的に何を学ぶか</h2>
+        <p>Advanced observabilityでは、見えるデータを増やすのではなく、顧客影響と運用判断に必要な信号だけをSLO、trace、log、alertへ落とします。</p>
+      </article>
+      <article>
+        <h2>具体例</h2>
+        <ul><li>burn-rate: 5分と1時間の両方でerror budget消費を見てpage条件を決める</li><li>trace/log correlation: request_idでslow requestをDB queryや外部依存へ繋ぐ</li><li>high cardinality: user_idをlabelに入れず、log fieldとして保持する</li></ul>
+      </article>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>到達目標</h2>
+        <ul><li>RED/USE metrics、tracing、logsを役割別に使い分けられる</li><li>multi-window burn-rate alertとalert fatigue削減を設計できる</li><li>high-cardinality labelのコストと運用影響を説明できる</li></ul>
+      </article>
+      <article>
+        <h2>カバー領域</h2>
+        <ul><li>Prometheus</li><li>Grafana</li><li>OpenTelemetry</li><li>tracing</li><li>RED metrics</li><li>USE metrics</li><li>log correlation</li><li>high cardinality</li><li>alert fatigue</li><li>burn-rate alert</li><li>error budget</li></ul>
+      </article>
+    </section>
+
+    <section>
+      <h2>Hands-on Flow</h2>
+      <ul><li>Prometheus/Grafana/OpenTelemetry profileを起動する</li><li>load test結果をSLO/error budget/burn-rateへ変換する</li><li>alertをpage、ticket、dashboard annotationに分類する</li></ul>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>Docker実行</h2>
+        <pre><code>scripts/learning_phase.sh config p15
+scripts/learning_phase.sh start p15
+scripts/learning_phase.sh status p15</code></pre>
+      </article>
+      <article>
+        <h2>実行コマンド</h2>
+        <pre><code>scripts/learning_phase.sh start p15
+curl -fsS http://localhost:9090/-/ready
+REQUESTS=120 CONCURRENCY=8 scripts/load_hands_on_tests.sh
+scripts/world_class_hands_on_check.sh observability
+sed -n &#39;1,220p&#39; docs/scenario-guides/s24-burn-rate-observability.html</code></pre>
+      </article>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>合格証跡</h2>
+        <ul><li>SLI/SLO/error budget/burn-rate条件が数値で書かれている</li><li>metric/log/traceをどの質問に使うか説明している</li><li>alert fatigueを減らすrouting、silence、dedup方針がある</li></ul>
+      </article>
+      <article>
+        <h2>次フェーズ判定</h2>
+        <p>P16に進む前に、観測データをincident判断へ変換できる</p>
+      </article>
+    </section>
+
+  </main>
+</body>
+</html>
