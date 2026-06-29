@@ -64,6 +64,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
       - name: Validate base compose
         run: docker compose config -q
 
@@ -75,6 +80,9 @@ jobs:
 
       - name: Validate exercise compose
         run: docker compose -f docker-compose.exercise.yml config -q
+
+      - name: Validate learning Docker phases
+        run: scripts/learning_phase_check.sh
 
       - name: Check shell script syntax
         run: find attack/scripts scripts -type f -name '*.sh' -print0 | xargs -0 bash -n
@@ -112,6 +120,15 @@ jobs:
 
       - name: Check generated scenario guides
         run: scripts/scenario_html_check.sh
+
+      - name: Check learning phase generator syntax
+        run: node --check scripts/generate_learning_phase_html.js
+
+      - name: Regenerate learning phase guides
+        run: node scripts/generate_learning_phase_html.js
+
+      - name: Ensure generated learning guides are committed
+        run: git diff --exit-code -- docs/learning-phases
 
       - name: Ensure generated guides are committed
         run: git diff --exit-code -- docs/scenario-guides

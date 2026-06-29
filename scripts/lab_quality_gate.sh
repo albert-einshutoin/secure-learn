@@ -11,7 +11,7 @@ echo "============================================"
 echo "Root: $ROOT_DIR"
 echo
 
-echo "[1/9] App install/build/unit tests/audit"
+echo "[1/10] App install/build/unit tests/audit"
 (
   cd "$ROOT_DIR/app"
   npm ci
@@ -21,43 +21,50 @@ echo "[1/9] App install/build/unit tests/audit"
 
 echo
 echo
-echo "[2/9] App Docker image build"
+echo "[2/10] App Docker image build"
 docker build -t secure-learn-app-quality "$ROOT_DIR/app"
 
 echo
-echo "[3/9] Compose validation"
+echo "[3/10] Compose validation"
 docker compose -f "$ROOT_DIR/docker-compose.yml" config -q
 docker compose -f "$ROOT_DIR/docker-compose.yml" -f "$ROOT_DIR/docker-compose.alerting.yml" config -q
 docker compose -f "$ROOT_DIR/docker-compose.yml" -f "$ROOT_DIR/docker-compose.ips.yml" config -q
 docker compose -f "$ROOT_DIR/docker-compose.exercise.yml" config -q
 
 echo
-echo "[4/9] Bash syntax"
+echo "[4/10] Learning Docker phases"
+node --check "$ROOT_DIR/scripts/generate_learning_phase_html.js"
+node "$ROOT_DIR/scripts/generate_learning_phase_html.js"
+"$ROOT_DIR/scripts/learning_phase_check.sh"
+git -C "$ROOT_DIR" diff --exit-code -- docs/learning-phases
+
+echo
+echo "[5/10] Bash syntax"
 find "$ROOT_DIR/attack/scripts" "$ROOT_DIR/scripts" -type f -name '*.sh' -print0 | xargs -0 bash -n
 
 echo
-echo "[5/9] Suricata rule parser"
+echo "[6/10] Suricata rule parser"
 docker build -t secure-learn-suricata-quality "$ROOT_DIR/suricata"
 docker run --rm secure-learn-suricata-quality -T -c /opt/soc-lab/suricata.yaml
 docker run --rm secure-learn-suricata-quality -T -c /opt/soc-lab/suricata-ips.yaml
 
 echo
-echo "[6/9] Kubernetes static check"
+echo "[7/10] Kubernetes static check"
 "$ROOT_DIR/scripts/k8s_static_check.sh"
 
 echo
-echo "[7/9] Scenario HTML guides"
+echo "[8/10] Scenario HTML guides"
 node --check "$ROOT_DIR/scripts/generate_scenario_html.js"
 node "$ROOT_DIR/scripts/generate_scenario_html.js"
 "$ROOT_DIR/scripts/scenario_html_check.sh"
 git -C "$ROOT_DIR" diff --exit-code -- docs/scenario-guides
 
 echo
-echo "[8/9] Git whitespace check"
+echo "[9/10] Git whitespace check"
 git -C "$ROOT_DIR" diff --check
 
 echo
-echo "[9/9] Optional runtime smoke"
+echo "[10/10] Optional runtime smoke"
 APP_BASE_URL="${APP_BASE_URL:-http://localhost:3000}"
 APP_HEALTH_URL="${APP_HEALTH_URL:-${APP_BASE_URL%/}/health}"
 if curl -fsS "$APP_HEALTH_URL" >/dev/null 2>&1; then
