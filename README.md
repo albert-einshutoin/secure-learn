@@ -229,6 +229,7 @@ docker compose -f docker-compose.yml -f docker-compose.alerting.yml up -d --buil
 - [OWASP API Security Track](docs/curriculum/owasp-api-security-track.md)
 - [SRE Production Track](docs/curriculum/sre-production-track.md)
 - [Supply Chain Security Track](docs/curriculum/supply-chain-security-track.md)
+- [Hands-on HTML Self Review](docs/curriculum/hands-on-self-review-2026-06-29.md)
 - [ブランチ分割方針](docs/curriculum/branch-plan.md)
 - [インシデントレポートテンプレート](docs/templates/incident-report.md)
 - [評価チェックリスト](docs/templates/evaluation-checklist.md)

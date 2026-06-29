@@ -14,10 +14,14 @@ FROM node:26-alpine AS runner
 
 WORKDIR /app
 
-RUN addgroup -g 10001 -S appgroup \
+RUN apk add --no-cache su-exec \
+  && addgroup -g 10001 -S appgroup \
   && adduser -S appuser -u 10001 -G appgroup \
   && mkdir -p /var/log/app \
   && chown -R appuser:appgroup /app /var/log/app
+
+COPY --chown=root:root docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod 755 /usr/local/bin/docker-entrypoint.sh
 
 COPY --from=build --chown=appuser:appgroup /app/package.json ./package.json
 COPY --from=build --chown=appuser:appgroup /app/node_modules ./node_modules
@@ -29,6 +33,5 @@ ENV PUBLIC_DIR=/app/public
 
 EXPOSE 3000
 
-USER appuser
-
+ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["node", "dist/main.js"]

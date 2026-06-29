@@ -26,8 +26,13 @@ for file in "${scenario_pages[@]}"; do
   grep -q '<h1>' "$file" || fail "$(basename "$file") is missing h1"
   grep -q '抽象的に何を学ぶか' "$file" || fail "$(basename "$file") is missing abstract concept"
   grep -q '具体例' "$file" || fail "$(basename "$file") is missing concrete examples"
+  grep -q '事前準備' "$file" || fail "$(basename "$file") is missing prerequisites"
+  grep -q '安全境界' "$file" || fail "$(basename "$file") is missing safety boundary"
   grep -q 'Hands-on Flow' "$file" || fail "$(basename "$file") is missing hands-on flow"
   grep -q 'ツール活用' "$file" || fail "$(basename "$file") is missing tool guidance"
+  grep -q '観測ポイント' "$file" || fail "$(basename "$file") is missing observation points"
+  grep -q 'よくある失敗' "$file" || fail "$(basename "$file") is missing common mistakes"
+  grep -q 'セルフレビュー' "$file" || fail "$(basename "$file") is missing self-review prompts"
   grep -q '合格証跡' "$file" || fail "$(basename "$file") is missing evidence criteria"
   grep -q '世界レベルへ足す課題' "$file" || fail "$(basename "$file") is missing world-class extension tasks"
 done

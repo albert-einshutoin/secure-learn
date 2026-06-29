@@ -6,38 +6,59 @@ import {
   Optional,
   ServiceUnavailableException,
 } from '@nestjs/common';
-import { Client } from 'pg';
+import { Client, ClientConfig } from 'pg';
 
 interface QueryableClient {
   connect?: () => Promise<unknown>;
   end?: () => Promise<void>;
+  on?: (event: 'error', listener: (error: Error) => void) => unknown;
   query: (query: string, values?: unknown[]) => Promise<{ rows: any[] }>;
 }
 
 @Injectable()
 export class UsersService {
-  private readonly client: QueryableClient;
+  private client: QueryableClient;
   private readonly ownsConnection: boolean;
+  private readonly clientConfig: ClientConfig;
   private connected = false;
   private connectPromise: Promise<void> = Promise.resolve();
+  private reconnectTimer?: ReturnType<typeof setTimeout>;
 
   constructor(@Optional() @Inject('USERS_DB_CLIENT') client?: QueryableClient) {
     this.ownsConnection = !client;
-    const clientConfig = {
+    this.clientConfig = {
       host: process.env.DB_HOST || 'db',
       port: parseInt(process.env.DB_PORT || '5432', 10),
       user: process.env.DB_USER || 'soclab',
       database: process.env.DB_NAME || 'soclab',
     };
     if (process.env.DB_PASS) {
-      clientConfig['pass' + 'word'] = process.env.DB_PASS;
+      this.clientConfig['pass' + 'word'] = process.env.DB_PASS;
     }
-    this.client = client || new Client(clientConfig);
+    this.client = client || this.createClient();
+    this.attachClientErrorHandler();
 
     if (this.ownsConnection) {
       this.connectPromise = this.connect();
     } else {
       this.connected = true;
+    }
+  }
+
+  private createClient(): QueryableClient {
+    return new Client(this.clientConfig);
+  }
+
+  private attachClientErrorHandler(): void {
+    this.client.on?.('error', (error) => this.handleClientError(error));
+  }
+
+  private handleClientError(error: Error): void {
+    this.connected = false;
+    console.error('Database client connection lost:', error);
+
+    if (this.ownsConnection) {
+      this.scheduleReconnect();
     }
   }
 
@@ -49,12 +70,34 @@ export class UsersService {
     } catch (error) {
       this.connected = false;
       console.error('Failed to connect to database:', error);
-      // Keep retrying because Compose/Kubernetes can start the app before the DB is ready.
-      setTimeout(() => this.connect(), 5000);
+      this.scheduleReconnect();
     }
   }
 
+  private scheduleReconnect(): void {
+    if (this.reconnectTimer) {
+      return;
+    }
+
+    // Compose/Kubernetes can restart PostgreSQL independently of the app. A new
+    // pg Client is required after a fatal connection error; reusing it is not
+    // reliable once the socket has been closed by the server.
+    this.connectPromise = new Promise((resolve) => {
+      this.reconnectTimer = setTimeout(async () => {
+        this.reconnectTimer = undefined;
+        this.client = this.createClient();
+        this.attachClientErrorHandler();
+        await this.connect();
+        resolve();
+      }, 5000);
+    });
+  }
+
   async close(): Promise<void> {
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = undefined;
+    }
     if (this.ownsConnection && this.client.end) {
       await this.client.end();
     }

@@ -1,4 +1,5 @@
 const assert = require('node:assert/strict');
+const { EventEmitter } = require('node:events');
 const test = require('node:test');
 
 const { UsersService } = require('../dist/users/users.service');
@@ -12,6 +13,16 @@ function createClient(rows = []) {
       return { rows };
     },
   };
+}
+
+function createEventedClient(rows = []) {
+  const client = new EventEmitter();
+  client.calls = [];
+  client.query = async (sql, values) => {
+    client.calls.push({ sql, values });
+    return { rows };
+  };
+  return client;
 }
 
 test('findById uses a parameterized integer query', async () => {
@@ -44,4 +55,22 @@ test('searchByName parameterizes and escapes LIKE wildcards', async () => {
 
   assert.equal(client.calls[0].sql.includes('$1'), true);
   assert.deepEqual(client.calls[0].values, ['%adm\\_\\%%']);
+});
+
+test('database client errors mark the service unavailable instead of crashing', async () => {
+  const client = createEventedClient([{ id: 1, username: 'admin', email: 'admin@example.test', role: 'admin' }]);
+  const service = new UsersService(client);
+  const originalError = console.error;
+  console.error = () => {};
+
+  try {
+    client.emit('error', new Error('connection lost'));
+
+    await assert.rejects(
+      () => service.findById('1'),
+      (error) => error.status === 503 && /database unavailable/i.test(error.message),
+    );
+  } finally {
+    console.error = originalError;
+  }
 });

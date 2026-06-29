@@ -106,6 +106,10 @@ services:
       - POSTGRES_USER=soclab
       - POSTGRES_PASSWORD=soclab_password
       - POSTGRES_DB=soclab
+    ports:
+      # Host-only publish keeps DB integration tests runnable without exposing
+      # the lab database beyond the local machine.
+      - "127.0.0.1:15432:5432"
     volumes:
       - db_data:/var/lib/postgresql/data
       - ./app/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
