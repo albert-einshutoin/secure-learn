@@ -95,6 +95,71 @@ function phaseSelfReview(phase) {
   ];
 }
 
+function learningTrack(title, items, className = '') {
+  const classAttr = className ? ` ${className}` : '';
+  return `<article class="track-card${classAttr}"><h3>${escapeHtml(title)}</h3>${list(items)}</article>`;
+}
+
+function phaseBeginnerTrack(phase) {
+  return phase.beginnerTrack || [
+    '最初に到達目標とカバー領域を読み、知らない用語を一つずつ潰す。',
+    'Docker実行のconfig、start、statusを順に実行し、どのprofileが動くか確認する。',
+    `合格証跡の先頭項目「${phase.evidence[0]}」を残してから次フェーズへ進む。`,
+  ];
+}
+
+function phaseExperiencedTrack(phase) {
+  return phase.experiencedTrack || [
+    '自分の既存業務と照らし、欠けている運用、セキュリティ、テストの観点を洗い出す。',
+    '実行コマンドを単に通すだけでなく、失敗時のログ、metric、rollback条件を確認する。',
+    `次フェーズ判定「${phase.next_gate}」をレビュー可能な証跡として説明する。`,
+  ];
+}
+
+function phaseReviewTrack(phase) {
+  if (phase.id === 'P0') {
+    return phase.reviewTrack || [
+      '許可範囲、秘密情報の扱い、GitHub Flowの前提を説明できる。',
+      'Whitehat/SRE/Backendのどの役割で何を学ぶ予定かを一文で説明する。',
+      '本番へ持ち込む場合の追加権限、owner、承認、監視、rollbackを定義する。',
+    ];
+  }
+
+  return phase.reviewTrack || [
+    '前フェーズの未完了を放置せず、証跡、判断理由、残リスクを揃える。',
+    'Whitehat/SRE/Backendのどの役割で何を学んだかを一文で説明する。',
+    '本番へ持ち込む場合の追加権限、owner、承認、監視、rollbackを定義する。',
+  ];
+}
+
+function learningDiagram(nodes) {
+  return `<div class="learning-diagram" role="list">${nodes
+    .map(
+      ([label, title, text]) => `<div class="diagram-node" role="listitem">
+        <span class="node-label">${escapeHtml(label)}</span>
+        <strong>${escapeHtml(title)}</strong>
+        <p>${escapeHtml(text)}</p>
+      </div>`,
+    )
+    .join('')}</div>`;
+}
+
+function phaseDiagram(phase) {
+  const preparationText =
+    phase.id === 'P0'
+      ? 'README、SECURITY、CONTRIBUTING、安全境界、Docker profileを確認する。'
+      : '前フェーズ証跡、安全境界、Docker profileを確認する。';
+
+  return learningDiagram([
+    ['1', '理解', '到達目標、カバー領域、具体例で学習対象を把握する。'],
+    ['2', '準備', preparationText],
+    ['3', '起動', `learning_phase.sh start ${phase.id.toLowerCase()}で環境を起動する。`],
+    ['4', '実行', '実行コマンドとHands-on Flowを順番に進める。'],
+    ['5', '観測', 'service health、ログ、メトリクス、テスト結果を対応付ける。'],
+    ['6', '判定', '合格証跡と次フェーズ判定を満たした根拠を残す。'],
+  ]);
+}
+
 function nav(currentId) {
   return phases
     .map((phase) => {
@@ -147,6 +212,20 @@ function phasePage(phase) {
         <h2>具体例</h2>
         ${list(phaseExamples(phase))}
       </article>
+    </section>
+
+    <section>
+      <h2>読み方</h2>
+      <div class="track-grid">
+        ${learningTrack('初学者の見方', phaseBeginnerTrack(phase), 'beginner')}
+        ${learningTrack('経験者の深掘り', phaseExperiencedTrack(phase), 'experienced')}
+        ${learningTrack('レビューで見ること', phaseReviewTrack(phase), 'review')}
+      </div>
+    </section>
+
+    <section>
+      <h2>学習フロー図</h2>
+      ${phaseDiagram(phase)}
     </section>
 
     <section class="grid two">
@@ -241,6 +320,38 @@ function indexPage() {
       <p class="eyebrow">Junior to secure infrastructure lead</p>
       <h1>フェーズ別 Learning Docker</h1>
       <p class="lead">初学者がDocker、Linux、Backend、Whitehat、SRE、Kubernetes、Observability、分散システム、Supply Chainまで段階的に進むための実行可能な学習導線です。</p>
+    </section>
+
+    <section>
+      <h2>全体の読み方</h2>
+      <div class="track-grid">
+        ${learningTrack('初学者の見方', [
+          'P0から順に進み、到達目標、事前準備、安全境界、Docker実行、合格証跡を確認する。',
+          'profileを起動する前に、何のserviceを使うフェーズかを言葉にする。',
+          '合格証跡が揃うまで次フェーズへ進まない。',
+        ], 'beginner')}
+        ${learningTrack('経験者の深掘り', [
+          '自分の経験が薄いprofileを選び、失敗時のログ、metric、rollback条件を重点的に見る。',
+          '既存のCI、runbook、incident process、PR reviewへ移すなら何が足りないかを考える。',
+          'Principalフェーズでは、技術だけでなくOSS governanceと開示運用まで確認する。',
+        ], 'experienced')}
+        ${learningTrack('完成判定', [
+          '実行コマンド、観測結果、合格証跡、次フェーズ判定が揃っている。',
+          'Whitehat/SRE/Backendそれぞれの観点で何を学んだか説明できる。',
+          '実cloudや本番環境へ持ち込む場合の追加承認、安全境界、ownerを定義できる。',
+        ], 'review')}
+      </div>
+    </section>
+
+    <section>
+      <h2>全体学習図</h2>
+      ${learningDiagram([
+        ['P0-P2', '基礎', '倫理、Docker、Linux、Backend TDD、DB/API境界を固める。'],
+        ['P3-P7', '運用入口', 'OWASP API、Detection、SLO、Kubernetes、Endpoint監査へ進む。'],
+        ['P8-P12', 'Platform', '分散、capstone、Linux internals、network edge、Kubernetes platformを扱う。'],
+        ['P13-P18', '実務上級', 'Cloud、IaC、observability、分散信頼性、backend production、secure releaseへ広げる。'],
+        ['P19', 'Principal', '検知、EDR、OSS governance、開示運用を統合する。'],
+      ])}
     </section>
 
     <section class="grid three">

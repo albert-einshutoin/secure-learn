@@ -18,6 +18,40 @@
       <p class="lead">33シナリオを、抽象説明、具体例、実行フロー、確認項目、ツール活用、証跡、世界レベルへの追加課題まで追える形に整理しています。</p>
     </section>
 
+    <section>
+      <h2>全体の読み方</h2>
+      <div class="track-grid">
+        <article class="track-card beginner"><h3>初学者の見方</h3><ul><li>S1から順に進み、抽象説明、事前準備、安全境界、実行コマンド、合格証跡の順で読む。</li><li>知らない用語が出たら、その場で全部理解しようとせず、具体例と観測ポイントへ戻る。</li><li>1シナリオごとに「何を守ったか」「何を証跡にしたか」を一文で残す。</li></ul></article>
+        <article class="track-card experienced"><h3>経験者の深掘り</h3><ul><li>自分の得意領域から入り、世界レベル課題、検知漏れ、誤検知、本番移行条件をレビューする。</li><li>Whitehat、SRE、Backendのうち弱い役割の観点を重点的に読む。</li><li>既存業務ならどのrunbook、CI、SLO、PR reviewへ移すかを考える。</li></ul></article>
+        <article class="track-card review"><h3>完成判定</h3><ul><li>攻撃や障害の再現だけでなく、検知、修正、回帰テスト、運用判断まで説明できる。</li><li>第三者が同じ手順で再現できる証跡を残している。</li><li>安全境界を守り、外部環境へpayload、scan、負荷を向けていない。</li></ul></article>
+      </div>
+    </section>
+
+    <section>
+      <h2>全体学習図</h2>
+      <div class="learning-diagram" role="list"><div class="diagram-node" role="listitem">
+        <span class="node-label">S1-S7</span>
+        <strong>攻撃と検知</strong>
+        <p>偵察、認証攻撃、SQLi、DoS、OS監査を安全に再現する。</p>
+      </div><div class="diagram-node" role="listitem">
+        <span class="node-label">S8-S13</span>
+        <strong>OSI理解</strong>
+        <p>L2-L7の観測点と通信障害の切り分けを学ぶ。</p>
+      </div><div class="diagram-node" role="listitem">
+        <span class="node-label">S14-S21</span>
+        <strong>SRE/Platform</strong>
+        <p>incident、Linux internals、network edge、Kubernetesへ広げる。</p>
+      </div><div class="diagram-node" role="listitem">
+        <span class="node-label">S22-S29</span>
+        <strong>Cloud/Backend/SDLC</strong>
+        <p>IAM、IaC、observability、分散、API、supply chainを扱う。</p>
+      </div><div class="diagram-node" role="listitem">
+        <span class="node-label">S30-S33</span>
+        <strong>実務運用</strong>
+        <p>Detection、EDR、performance、GitOps/OSS governanceで仕上げる。</p>
+      </div></div>
+    </section>
+
     <section class="grid three">
       <article><h2>Whitehat</h2><p class="big">27/33</p><p>この観点を主対象または副対象として扱うシナリオ数です。</p></article><article><h2>SRE</h2><p class="big">31/33</p><p>この観点を主対象または副対象として扱うシナリオ数です。</p></article><article><h2>Backend</h2><p class="big">18/33</p><p>この観点を主対象または副対象として扱うシナリオ数です。</p></article>
     </section>

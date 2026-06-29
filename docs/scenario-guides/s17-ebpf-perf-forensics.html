@@ -33,6 +33,44 @@
       </article>
     </section>
 
+    <section>
+      <h2>読み方</h2>
+      <div class="track-grid">
+        <article class="track-card beginner"><h3>初学者の見方</h3><ul><li>最初に「抽象的に何を学ぶか」と「目的」を読み、何を守る演習かを言葉にする。</li><li>事前準備と安全境界を確認してから、実行コマンドを上から順に一つずつ実行する。</li><li>合格証跡の先頭項目「観測したい質問と選んだtoolの理由」を残し、ログまたはHTTP結果と対応付ける。</li></ul></article>
+        <article class="track-card experienced"><h3>経験者の深掘り</h3><ul><li>攻撃/障害の再現だけで止めず、検知漏れ、誤検知、本番移行時の追加統制を洗い出す。</li><li>ツール活用と観測ポイントを読み、どの信号が意思決定に使えるかを評価する。</li><li>世界レベル課題の先頭項目「BCC/bpftrace/Cilium Tetragonなどで実イベントを取得する。」をPRレビュー観点へ落とす。</li></ul></article>
+        <article class="track-card review"><h3>レビューで見ること</h3><ul><li>第三者が再現できるように、対象、時刻、payload、検索条件、判断理由を揃える。</li><li>Whitehat/SRE/Backendの観点で、誰がownerになり、どこでrollbackするかを決める。</li><li>セルフレビューの回答をincident reportまたはremediation PRの本文へ転記する。</li></ul></article>
+      </div>
+    </section>
+
+    <section>
+      <h2>学習フロー図</h2>
+      <div class="learning-diagram" role="list"><div class="diagram-node" role="listitem">
+        <span class="node-label">1</span>
+        <strong>理解</strong>
+        <p>抽象説明、目的、具体例で守る資産と失敗条件を把握する。</p>
+      </div><div class="diagram-node" role="listitem">
+        <span class="node-label">2</span>
+        <strong>準備</strong>
+        <p>Docker、対象範囲、安全境界を確認して外部環境へ出さない。</p>
+      </div><div class="diagram-node" role="listitem">
+        <span class="node-label">3</span>
+        <strong>実行</strong>
+        <p>Hands-on Flowと実行コマンドを小さく進める。</p>
+      </div><div class="diagram-node" role="listitem">
+        <span class="node-label">4</span>
+        <strong>観測</strong>
+        <p>HTTP、ログ、検知イベント、メトリクスを対応付ける。</p>
+      </div><div class="diagram-node" role="listitem">
+        <span class="node-label">5</span>
+        <strong>証跡化</strong>
+        <p>合格証跡として観測したい質問と選んだtoolの理由を残す。</p>
+      </div><div class="diagram-node" role="listitem">
+        <span class="node-label">6</span>
+        <strong>深掘り</strong>
+        <p>世界レベル課題を本番運用、PR、runbookへ変換する。</p>
+      </div></div>
+    </section>
+
     <section class="grid two">
       <article>
         <h2>目的</h2>
@@ -97,7 +135,7 @@ sed -n &quot;1,220p&quot; docs/templates/incident-report.md</code></pre>
     <section class="grid two">
       <article>
         <h2>Whitehat / SRE / Backend 観点</h2>
-        <ul><li>Whitehat: 攻撃を許可範囲に限定し、再現性と検知証跡を残す。</li><li>SRE: SLO、可用性、レイテンシ、復旧判断へ接続する。</li><li>Backend: サービス露出、ログ、HTTP契約との関係を確認する。</li></ul>
+        <div class="role-lanes"><div class="role-lane"><span>Whitehat</span><p>攻撃を許可範囲に限定し、再現性、検知証跡、影響範囲を明確にする。</p></div><div class="role-lane"><span>SRE</span><p>SLO、可用性、レイテンシ、復旧判断、incident severityへ接続する。</p></div><div class="role-lane"><span>Backend</span><p>サービス露出、ログ、HTTP contract、依存関係への影響を確認する。</p></div></div>
       </article>
       <article>
         <h2>世界レベルへ足す課題</h2>

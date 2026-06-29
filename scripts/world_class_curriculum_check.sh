@@ -64,6 +64,9 @@ done
 for file in "$ROOT_DIR"/docs/scenario-guides/s*.html "$ROOT_DIR"/docs/learning-phases/p*.html; do
   grep -q '抽象的に何を学ぶか' "$file" || fail "$(basename "$file") missing abstract explanation"
   grep -q '具体例' "$file" || fail "$(basename "$file") missing concrete examples"
+  grep -q '初学者の見方' "$file" || fail "$(basename "$file") missing beginner guidance"
+  grep -q '経験者の深掘り' "$file" || fail "$(basename "$file") missing experienced guidance"
+  grep -q '学習フロー図' "$file" || fail "$(basename "$file") missing learning diagram"
   grep -q '事前準備' "$file" || fail "$(basename "$file") missing prerequisites"
   grep -q '安全境界' "$file" || fail "$(basename "$file") missing safety boundary"
   grep -q 'Hands-on Flow' "$file" || fail "$(basename "$file") missing hands-on flow"
