@@ -31,6 +31,7 @@
 * Dockerで完結する **実戦型SOC訓練環境** を提供
 * **攻撃 → 検知 → 対応 → 報告 → 改善** の一連を体験
 * **OSIレイヤーごとに何が起きているかを可視化** し、立体的に理解する
+* ホワイトハットとSREに必要な、倫理・可観測性・SLO・再発防止までを成果物で評価する
 
 ---
 
@@ -93,14 +94,14 @@
 | OSI層 | レイヤー名     | 学習対象         | 使用パッケージ                     |
 | ---- | --------- | ------------ | --------------------------- |
 | L1   | 物理層       | （対象外）        | -                           |
-| L2   | データリンク    | ARP等（任意）     | Suricata                    |
-| L3   | ネットワーク    | IP / ICMP    | Suricata                    |
-| L4   | トランスポート   | TCP/UDP, SYN | Suricata                    |
-| L5   | セッション     | セッション異常      | Suricata                    |
-| L6   | プレゼンテーション | （暗号化理解）      | Suricata                    |
-| L7   | アプリ       | HTTP/API/認証  | NestJS / Fail2ban           |
+| L2   | データリンク    | ARP / neighbor cache | Linux tools / Suricata flow補助 |
+| L3   | ネットワーク    | IP / ICMP / route | Suricata / nmap / traceroute |
+| L4   | トランスポート   | TCP/UDP, flags, ports | Suricata / nmap / nc |
+| L5   | セッション     | 接続保持/タイムアウト/枯渇 | Suricata / App health |
+| L6   | プレゼンテーション | TLS終端/暗号化可視性 | openssl / curl / Suricata |
+| L7   | アプリ       | HTTP/API/認証/DNS  | NestJS / Fail2ban / Docker DNS |
 | OS   | OS監査      | ファイル/権限      | Auditd                      |
-| 横断   | ログ相関      | SIEM         | Filebeat / Elastic / Kibana |
+| 横断   | ログ相関/SRE  | SIEM/SLO/MTTD/MTTR | Filebeat / Elastic / Kibana |
 
 ---
 
@@ -115,6 +116,7 @@
 | hydra                  | ブルートフォース |
 | sqlmap                 | SQLi     |
 | curl                   | 手動攻撃     |
+| arping / traceroute / tcpdump / openssl | OSI補完演習 |
 
 ### 被攻撃アプリ
 
@@ -155,6 +157,14 @@
 | S5 | 重要ファイル改変    | OS    |
 | S6 | 権限昇格        | OS    |
 | S7 | 横断インシデント    | 全体    |
+| S8 | ARP観測        | L2    |
+| S9 | ICMP到達性・偵察 | L3    |
+| S10 | TCP状態・フラグ異常 | L4 |
+| S11 | セッション圧迫 | L5 |
+| S12 | TLS可視性境界 | L6 |
+| S13 | DNS観測 | L7 |
+| S14 | SREインシデント対応 | 横断/SRE |
+| S15 | ホワイトハット/SRE修了課題 | 全体 |
 
 ---
 
@@ -223,6 +233,21 @@
 | ダッシュボード   | Kibana       |
 | SOCレポート雛形 | Markdown/PDF |
 | 改善チェックリスト | 運用用          |
+| カリキュラム | OSI/SRE/ホワイトハット到達基準 |
+| SLOスモークゲート | health/latency確認 |
+
+---
+
+## 10.1. 修了基準
+
+| 領域 | 合格条件 |
+| ---- | -------- |
+| 安全性 | 許可されたDockerラボ以外を攻撃していない |
+| 再現性 | 第三者が同じ手順で攻撃・検知・対応を再現できる |
+| 検知 | Suricata / Fail2ban / Auditd / SIEM のうち複数ログを相関できる |
+| 改善 | ルール、閾値、アプリ修正、運用改善のいずれかをテスト付きで提案できる |
+| SRE | health、レイテンシ、SLO、MTTD/MTTR をインシデント判断に使える |
+| 報告 | 影響範囲、根拠、残リスク、再発防止をレポート化できる |
 
 ---
 
@@ -252,3 +277,9 @@
 
 * Red Team vs Blue Team演習
 * KPI自動算出
+
+### Phase 4
+
+* OSI L2-L7 補完演習
+* SRE SLO/Incident Response 演習
+* ホワイトハット/SRE 修了課題
