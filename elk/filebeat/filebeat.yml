@@ -1,0 +1,240 @@
+# SOC-Lab Filebeat Configuration
+# Collects logs from all components and normalizes to ECS
+
+# ============================================
+# Input: Suricata EVE JSON
+# ============================================
+filebeat.inputs:
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/suricata/eve.json
+    json.keys_under_root: true
+    json.add_error_key: true
+    json.overwrite_keys: true
+    fields:
+      event.module: suricata
+      event.dataset: suricata.eve
+    fields_under_root: true
+    tags: ["suricata", "ids"]
+
+  # ============================================
+  # Input: NestJS Application Logs
+  # ============================================
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/app/auth.log
+    json.keys_under_root: true
+    json.add_error_key: true
+    json.overwrite_keys: true
+    fields:
+      event.dataset: nestjs.auth
+    fields_under_root: true
+    tags: ["nestjs", "auth"]
+
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/app/access.log
+    json.keys_under_root: true
+    json.add_error_key: true
+    json.overwrite_keys: true
+    fields:
+      event.dataset: nestjs.access
+    fields_under_root: true
+    tags: ["nestjs", "access"]
+
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/app/error.log
+    json.keys_under_root: true
+    json.add_error_key: true
+    json.overwrite_keys: true
+    fields:
+      event.dataset: nestjs.error
+    fields_under_root: true
+    tags: ["nestjs", "error"]
+
+  # ============================================
+  # Input: Fail2ban Logs
+  # ============================================
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/fail2ban/fail2ban.log
+    fields:
+      event.module: fail2ban
+      event.dataset: fail2ban.log
+    fields_under_root: true
+    tags: ["fail2ban"]
+
+  # ============================================
+  # Input: Auditd Logs (Host-based)
+  # ============================================
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/audit/audit.log
+    fields:
+      event.module: auditd
+      event.dataset: auditd.log
+    fields_under_root: true
+    tags: ["auditd", "os"]
+
+# ============================================
+# Processors: ECS Normalization
+# ============================================
+processors:
+  # Add ECS version
+  - add_fields:
+      target: ecs
+      fields:
+        version: "8.0.0"
+
+  # Add host information
+  - add_host_metadata:
+      when.not.contains.tags: forwarded
+
+  # Process Suricata logs
+  - if:
+      contains:
+        tags: "suricata"
+    then:
+      - rename:
+          fields:
+            - from: "src_ip"
+              to: "source.ip"
+            - from: "src_port"
+              to: "source.port"
+            - from: "dest_ip"
+              to: "destination.ip"
+            - from: "dest_port"
+              to: "destination.port"
+            - from: "proto"
+              to: "network.transport"
+          ignore_missing: true
+          fail_on_error: false
+      - if:
+          has_fields: ["alert"]
+        then:
+          - add_fields:
+              target: ""
+              fields:
+                event.category: "intrusion_detection"
+                event.type: "alert"
+          - rename:
+              fields:
+                - from: "alert.signature"
+                  to: "rule.name"
+                - from: "alert.signature_id"
+                  to: "rule.id"
+                - from: "alert.category"
+                  to: "rule.category"
+                - from: "alert.severity"
+                  to: "event.severity"
+              ignore_missing: true
+              fail_on_error: false
+
+  # Process Fail2ban logs
+  - if:
+      contains:
+        tags: "fail2ban"
+    then:
+      - dissect:
+          tokenizer: "%{timestamp} %{+timestamp} fail2ban.%{component}%{?space}[%{pid}]: %{level} [%{jail}] %{action} %{source.ip}"
+          field: "message"
+          target_prefix: ""
+          ignore_failure: true
+      - add_fields:
+          target: ""
+          fields:
+            event.category: "intrusion_detection"
+      - script:
+          lang: javascript
+          source: |
+            function process(event) {
+              var action = event.Get("action");
+              if (action) {
+                action = action.toLowerCase().trim();
+                if (action === "ban") {
+                  event.Put("event.action", "ban");
+                  event.Put("event.type", "denied");
+                } else if (action === "unban") {
+                  event.Put("event.action", "unban");
+                  event.Put("event.type", "allowed");
+                }
+              }
+              var jail = event.Get("jail");
+              if (jail) {
+                event.Put("rule.name", jail);
+              }
+              return event;
+            }
+
+  # Drop incomplete events
+  - drop_fields:
+      fields: ["agent.ephemeral_id", "agent.hostname", "log.offset"]
+      ignore_missing: true
+
+# ============================================
+# Output: Elasticsearch
+# ============================================
+output.elasticsearch:
+  hosts: ["elasticsearch:9200"]
+  indices:
+    - index: "soc-lab-suricata-%{+yyyy.MM.dd}"
+      when.contains:
+        tags: "suricata"
+    - index: "soc-lab-nestjs-%{+yyyy.MM.dd}"
+      when.contains:
+        tags: "nestjs"
+    - index: "soc-lab-fail2ban-%{+yyyy.MM.dd}"
+      when.contains:
+        tags: "fail2ban"
+    - index: "soc-lab-auditd-%{+yyyy.MM.dd}"
+      when.contains:
+        tags: "auditd"
+
+# ============================================
+# ILM (Index Lifecycle Management)
+# ============================================
+setup.ilm.enabled: true
+setup.ilm.rollover_alias: "soc-lab"
+setup.ilm.pattern: "{now/d}-000001"
+setup.ilm.policy_name: "soc-lab-policy"
+setup.ilm.overwrite: true
+
+# Custom ILM policy
+setup.ilm.policy_file: ""
+
+# ============================================
+# Template settings
+# ============================================
+setup.template.name: "soc-lab"
+setup.template.pattern: "soc-lab-*"
+setup.template.enabled: true
+setup.template.overwrite: true
+setup.template.settings:
+  index.number_of_shards: 1
+  index.number_of_replicas: 0
+  index.lifecycle.name: "soc-lab-policy"
+
+# ============================================
+# Kibana setup
+# ============================================
+setup.kibana:
+  host: "kibana:5601"
+
+# ============================================
+# Logging
+# ============================================
+logging.level: info
+logging.to_files: true
+logging.files:
+  path: /var/log/filebeat
+  name: filebeat
+  keepfiles: 7
+  permissions: 0640
+

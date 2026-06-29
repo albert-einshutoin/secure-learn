@@ -1,0 +1,73 @@
+# SOC-Lab ElastAlert Rule: Privilege Escalation Detection
+# Triggers on privilege escalation events from Auditd
+
+name: "SOC-Lab: Privilege Escalation Detected"
+type: any
+
+# Elasticsearch index
+index: soc-lab-auditd-*
+
+# Query filter
+filter:
+  - query:
+      query_string:
+        query: "tags:privilege_escalation OR (user.effective.id:0 AND NOT user.id:0)"
+
+# Alert settings
+alert:
+  - slack
+
+# Slack configuration
+slack_webhook_url: "${SLACK_WEBHOOK_URL}"
+slack_channel_override: "#soc-alerts"
+slack_username_override: "SOC-Lab Alert"
+slack_emoji_override: ":skull:"
+slack_msg_color: "danger"
+
+slack_title: "Privilege Escalation Detected"
+slack_text_string: |
+  *SOC-Lab Security Alert*
+  
+  :skull: *Privilege Escalation Detected*
+  
+  • *Attack Type:* Privilege Escalation
+  • *User:* {0}
+  • *Effective UID:* {1}
+  • *Command:* {2}
+  • *Time:* {3}
+  • *Scenario:* S6 - Privilege Escalation
+  
+  *Severity:* CRITICAL
+  
+  *Recommended Actions:*
+  1. Identify the user and verify authorization
+  2. Check what commands were executed with root privileges
+  3. Review sudoers configuration
+  4. If unauthorized, terminate session immediately
+  
+  *Quick Commands:*
+  ```
+  ausearch -k privilege_escalation
+  ausearch -ua {0}
+  who
+  ```
+
+slack_alert_fields:
+  - user.name
+  - user.effective.id
+  - process.executable
+  - "@timestamp"
+
+# Realert settings
+realert:
+  minutes: 1
+
+# Include in alert
+include:
+  - user.name
+  - user.id
+  - user.effective.id
+  - process.executable
+  - process.name
+  - "@timestamp"
+

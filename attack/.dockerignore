@@ -1,0 +1,5 @@
+.DS_Store
+results
+*.log
+*.pcap
+*.pcapng

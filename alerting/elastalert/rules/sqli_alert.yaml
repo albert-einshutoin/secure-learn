@@ -1,0 +1,73 @@
+# SOC-Lab ElastAlert Rule: SQL Injection Detection
+# Triggers on any SQLi attempt detected by Suricata
+
+name: "SOC-Lab: SQL Injection Attempt"
+type: any
+
+# Elasticsearch index
+index: soc-lab-suricata-*
+
+# Query filter
+filter:
+  - query:
+      query_string:
+        query: "rule.name:*SQLI*"
+
+# Alert settings
+alert:
+  - slack
+
+# Slack configuration
+slack_webhook_url: "${SLACK_WEBHOOK_URL}"
+slack_channel_override: "#soc-alerts"
+slack_username_override: "SOC-Lab Alert"
+slack_emoji_override: ":warning:"
+slack_msg_color: "danger"
+
+slack_title: "SQL Injection Attempt Detected"
+slack_text_string: |
+  *SOC-Lab Security Alert*
+  
+  :warning: *SQL Injection Attempt Detected*
+  
+  • *Attack Type:* SQL Injection
+  • *Source IP:* {0}
+  • *Target:* {1}:{2}
+  • *Signature:* {3}
+  • *Time:* {4}
+  • *Scenario:* S3 - SQL Injection
+  
+  *Severity:* CRITICAL
+  
+  *Recommended Actions:*
+  1. Block attacking IP immediately
+  2. Review application logs for successful exploitation
+  3. Check database integrity
+  4. Patch vulnerable endpoint
+  
+  *Quick Commands:*
+  ```
+  grep "{0}" /var/log/suricata/eve.json | jq 'select(.alert)'
+  grep "sqli_attempt" /var/log/app/error.log
+  ```
+
+slack_alert_fields:
+  - source.ip
+  - destination.ip
+  - destination.port
+  - rule.name
+  - "@timestamp"
+
+# Realert settings
+realert:
+  minutes: 5
+
+# Include in alert
+include:
+  - source.ip
+  - destination.ip
+  - destination.port
+  - rule.name
+  - rule.id
+  - "@timestamp"
+

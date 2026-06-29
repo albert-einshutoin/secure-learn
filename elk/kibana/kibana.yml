@@ -1,0 +1,28 @@
+# SOC-Lab Kibana Configuration
+
+# Server settings
+server.name: soc-lab-kibana
+server.host: "0.0.0.0"
+server.port: 5601
+
+# Elasticsearch connection
+elasticsearch.hosts: ["http://elasticsearch:9200"]
+
+# Security settings (disabled for learning environment)
+xpack.security.enabled: false
+xpack.encryptedSavedObjects.encryptionKey: "soclab-encryption-key-32chars!!"
+
+# Monitoring
+monitoring.ui.enabled: true
+monitoring.ui.container.elasticsearch.enabled: true
+
+# Telemetry (disabled)
+telemetry.enabled: false
+telemetry.optIn: false
+
+# Logging
+logging.root.level: info
+
+# i18n settings
+i18n.locale: "ja-JP"
+

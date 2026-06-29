@@ -1,0 +1,28 @@
+# SOC-Lab Elasticsearch Configuration
+
+cluster.name: soc-lab
+node.name: soc-lab-node1
+
+# Network settings
+network.host: 0.0.0.0
+http.port: 9200
+
+# Discovery settings (single node)
+discovery.type: single-node
+
+# Security settings (disabled for learning environment)
+xpack.security.enabled: false
+xpack.security.enrollment.enabled: false
+
+# Memory settings
+bootstrap.memory_lock: true
+
+# Index settings
+action.auto_create_index: true
+
+# Cluster settings
+cluster.routing.allocation.disk.threshold_enabled: true
+cluster.routing.allocation.disk.watermark.low: 85%
+cluster.routing.allocation.disk.watermark.high: 90%
+cluster.routing.allocation.disk.watermark.flood_stage: 95%
+

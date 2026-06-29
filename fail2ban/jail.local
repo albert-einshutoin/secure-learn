@@ -1,0 +1,81 @@
+# SOC-Lab Fail2ban Configuration
+# Phase 1: Log-based automatic IP banning
+
+[DEFAULT]
+# Ban duration: 1 hour
+bantime = 3600
+
+# Time window for counting failures
+findtime = 300
+
+# Number of failures before ban
+maxretry = 5
+
+# Backend for log monitoring
+backend = auto
+
+# Ignore localhost
+ignoreip = 127.0.0.1/8 ::1
+
+# Ban action
+banaction = iptables-multiport
+
+# Log level
+loglevel = INFO
+
+# ============================================
+# S2: Authentication Brute Force Protection
+# ============================================
+[nestjs-auth]
+enabled = true
+filter = nestjs-auth
+logpath = /var/log/app/auth.log
+port = 3000
+protocol = tcp
+maxretry = 5
+findtime = 300
+bantime = 3600
+action = iptables-multiport[name=nestjs-auth, port="3000", protocol=tcp]
+
+# ============================================
+# S3: SQL Injection Protection
+# ============================================
+[nestjs-sqli]
+enabled = true
+filter = nestjs-sqli
+logpath = /var/log/app/error.log
+port = 3000
+protocol = tcp
+maxretry = 3
+findtime = 600
+bantime = 7200
+action = iptables-multiport[name=nestjs-sqli, port="3000", protocol=tcp]
+
+# ============================================
+# S4: DoS Protection (High Request Rate)
+# ============================================
+[nestjs-dos]
+enabled = true
+filter = nestjs-dos
+logpath = /var/log/app/access.log
+port = 3000
+protocol = tcp
+maxretry = 100
+findtime = 60
+bantime = 1800
+action = iptables-multiport[name=nestjs-dos, port="3000", protocol=tcp]
+
+# ============================================
+# Path Traversal Protection
+# ============================================
+[nestjs-traversal]
+enabled = true
+filter = nestjs-traversal
+logpath = /var/log/app/error.log
+port = 3000
+protocol = tcp
+maxretry = 3
+findtime = 300
+bantime = 7200
+action = iptables-multiport[name=nestjs-traversal, port="3000", protocol=tcp]
+

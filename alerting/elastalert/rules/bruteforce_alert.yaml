@@ -1,0 +1,73 @@
+# SOC-Lab ElastAlert Rule: Brute Force Detection
+# Triggers when 10+ failed logins occur in 5 minutes from same IP
+
+name: "SOC-Lab: Brute Force Attack Detected"
+type: frequency
+
+# Elasticsearch index
+index: soc-lab-nestjs-*
+
+# Alert frequency
+num_events: 10
+timeframe:
+  minutes: 5
+
+# Query filter
+filter:
+  - query:
+      query_string:
+        query: "event.action:login_failed"
+
+# Group by source IP
+query_key: source.ip
+
+# Alert settings
+alert:
+  - slack
+
+# Slack configuration
+slack_webhook_url: "${SLACK_WEBHOOK_URL}"
+slack_channel_override: "#soc-alerts"
+slack_username_override: "SOC-Lab Alert"
+slack_emoji_override: ":rotating_light:"
+slack_msg_color: "danger"
+
+slack_title: "Brute Force Attack Detected"
+slack_text_string: |
+  *SOC-Lab Security Alert*
+  
+  :rotating_light: *Brute Force Attack Detected*
+  
+  • *Attack Type:* Authentication Brute Force
+  • *Source IP:* {0}
+  • *Failed Attempts:* {1} in 5 minutes
+  • *First Seen:* {2}
+  • *Scenario:* S2 - API Brute Force
+  
+  *Recommended Actions:*
+  1. Verify if IP is already banned by Fail2ban
+  2. Check auth.log for attack details
+  3. Consider permanent ban if attack persists
+  
+  *Quick Commands:*
+  ```
+  fail2ban-client status nestjs-auth
+  grep "{0}" /var/log/app/auth.log | tail -20
+  ```
+
+slack_alert_fields:
+  - source.ip
+  - num_matches
+  - "@timestamp"
+
+# Realert settings (don't alert again for same IP within 30 min)
+realert:
+  minutes: 30
+
+# Include in alert
+include:
+  - source.ip
+  - user.name
+  - "@timestamp"
+  - event.action
+

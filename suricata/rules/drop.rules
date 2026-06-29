@@ -1,0 +1,52 @@
+# SOC-Lab Suricata DROP Rules
+# Phase 2: IPS Mode - Active blocking
+
+# ============================================
+# SQLi DROP Rules (High Confidence)
+# ============================================
+
+# Drop SQL UNION Injection
+drop http any any -> $HOME_NET $HTTP_PORTS (msg:"IPS DROP SQLI UNION Injection"; flow:to_server,established; http.uri; content:"union"; nocase; content:"select"; nocase; distance:0; within:20; classtype:web-application-attack; sid:2000001; rev:1;)
+
+# Drop SQL DROP TABLE
+drop http any any -> $HOME_NET $HTTP_PORTS (msg:"IPS DROP SQLI DROP TABLE Attempt"; flow:to_server,established; http.uri; content:"drop"; nocase; content:"table"; nocase; distance:0; within:15; classtype:web-application-attack; sid:2000002; rev:1;)
+
+# Drop sqlmap Tool
+drop http any any -> $HOME_NET $HTTP_PORTS (msg:"IPS DROP sqlmap Tool Detected"; flow:to_server,established; http.user_agent; content:"sqlmap"; nocase; classtype:web-application-attack; sid:2000003; rev:1;)
+
+# ============================================
+# Brute Force DROP Rules (High Rate)
+# ============================================
+
+# Drop Hydra Tool
+drop http any any -> $HOME_NET $HTTP_PORTS (msg:"IPS DROP Hydra Brute Force Tool"; flow:to_server,established; http.user_agent; content:"Hydra"; nocase; classtype:attempted-admin; sid:2000010; rev:1;)
+
+# Drop Extreme Brute Force (50+ in 1 minute)
+drop http any any -> $HOME_NET $HTTP_PORTS (msg:"IPS DROP Extreme Brute Force"; flow:to_server,established; http.method; content:"POST"; http.uri; content:"/auth/login"; threshold:type both,track by_src,count 50,seconds 60; classtype:attempted-admin; sid:2000011; rev:1;)
+
+# ============================================
+# DoS DROP Rules
+# ============================================
+
+# Drop Extreme Request Rate
+drop http any any -> $HOME_NET $HTTP_PORTS (msg:"IPS DROP HTTP Flood Attack"; flow:to_server,established; threshold:type both,track by_src,count 300,seconds 10; classtype:attempted-dos; sid:2000020; rev:1;)
+
+# Drop SYN Flood
+drop tcp any any -> $HOME_NET any (msg:"IPS DROP SYN Flood"; flags:S; threshold:type both,track by_src,count 500,seconds 5; classtype:attempted-dos; sid:2000021; rev:1;)
+
+# ============================================
+# Path Traversal DROP Rules
+# ============================================
+
+# Drop /etc/passwd Access
+drop http any any -> $HOME_NET $HTTP_PORTS (msg:"IPS DROP Path Traversal /etc/passwd"; flow:to_server,established; http.uri; content:"/etc/passwd"; nocase; classtype:web-application-attack; sid:2000030; rev:1;)
+
+# Drop encoded path traversal
+drop http any any -> $HOME_NET $HTTP_PORTS (msg:"IPS DROP Encoded Path Traversal"; flow:to_server,established; http.uri; content:"%2e%2e"; nocase; classtype:web-application-attack; sid:2000031; rev:1;)
+
+# ============================================
+# Command Injection DROP Rules
+# ============================================
+
+# Drop obvious command separator payloads.
+drop http any any -> $HOME_NET $HTTP_PORTS (msg:"IPS DROP Command Separator in URI"; flow:to_server,established; http.uri; content:"|3b|"; classtype:web-application-attack; sid:2000040; rev:3;)

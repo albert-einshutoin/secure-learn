@@ -1,0 +1,52 @@
+# SOC-Lab ElastAlert2 Configuration
+# Phase 2: Automated alerting with Slack notifications
+
+# Elasticsearch connection
+es_host: elasticsearch
+es_port: 9200
+use_ssl: false
+verify_certs: false
+
+# ElastAlert index settings
+writeback_index: elastalert_status
+writeback_alias: elastalert_alerts
+
+# Alert timing
+run_every:
+  minutes: 1
+
+# Buffer time (how far back to look)
+buffer_time:
+  minutes: 15
+
+# Rule directory
+rules_folder: /opt/elastalert/rules
+
+# Alerter settings
+alert_time_limit:
+  days: 2
+
+# Logging
+logging:
+  version: 1
+  disable_existing_loggers: false
+  formatters:
+    simple:
+      format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+  handlers:
+    console:
+      class: logging.StreamHandler
+      level: DEBUG
+      formatter: simple
+      stream: ext://sys.stderr
+    file:
+      class: logging.FileHandler
+      level: INFO
+      formatter: simple
+      filename: /var/log/elastalert/elastalert.log
+  root:
+    level: INFO
+    handlers:
+      - console
+      - file
+

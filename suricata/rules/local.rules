@@ -1,0 +1,105 @@
+# SOC-Lab Custom Suricata Rules
+# These rules are designed for learning and training purposes
+
+# ============================================
+# S1: Port Scan Detection Rules
+# ============================================
+
+# Nmap SYN Scan Detection
+alert tcp any any -> $HOME_NET any (msg:"SCAN Nmap SYN Scan Detected"; flags:S; threshold:type both,track by_src,count 20,seconds 5; classtype:attempted-recon; sid:1000001; rev:1;)
+
+# Nmap FIN Scan Detection
+alert tcp any any -> $HOME_NET any (msg:"SCAN Nmap FIN Scan Detected"; flags:F; threshold:type both,track by_src,count 10,seconds 5; classtype:attempted-recon; sid:1000002; rev:1;)
+
+# Nmap XMAS Scan Detection
+alert tcp any any -> $HOME_NET any (msg:"SCAN Nmap XMAS Scan Detected"; flags:FPU; threshold:type both,track by_src,count 5,seconds 5; classtype:attempted-recon; sid:1000003; rev:1;)
+
+# Nmap NULL Scan Detection
+alert tcp any any -> $HOME_NET any (msg:"SCAN Nmap NULL Scan Detected"; flags:0; threshold:type both,track by_src,count 10,seconds 5; classtype:attempted-recon; sid:1000004; rev:1;)
+
+# Generic Port Scan (Many ports in short time)
+alert tcp any any -> $HOME_NET any (msg:"SCAN Generic Port Scan Detected"; flags:S; threshold:type both,track by_src,count 50,seconds 10; classtype:attempted-recon; sid:1000005; rev:1;)
+
+# UDP Scan Detection
+alert udp any any -> $HOME_NET any (msg:"SCAN UDP Scan Detected"; threshold:type both,track by_src,count 30,seconds 5; classtype:attempted-recon; sid:1000006; rev:1;)
+
+# ============================================
+# S2: Brute Force Detection Rules
+# ============================================
+
+# HTTP POST to Login Endpoint (Brute Force Indicator)
+alert http any any -> $HOME_NET $HTTP_PORTS (msg:"BRUTEFORCE HTTP Login Attempt"; flow:to_server,established; http.method; content:"POST"; http.uri; content:"/auth/login"; threshold:type both,track by_src,count 10,seconds 60; classtype:attempted-admin; sid:1000010; rev:1;)
+
+# Repeated Authentication Requests
+alert http any any -> $HOME_NET $HTTP_PORTS (msg:"BRUTEFORCE Repeated Authentication Requests"; flow:to_server,established; http.method; content:"POST"; http.uri; content:"/auth/login"; threshold:type both,track by_src,count 5,seconds 120; classtype:attempted-admin; sid:1000011; rev:2;)
+
+# Hydra User-Agent Detection
+alert http any any -> $HOME_NET $HTTP_PORTS (msg:"BRUTEFORCE Hydra Tool Detected"; flow:to_server,established; http.user_agent; content:"Hydra"; nocase; classtype:attempted-admin; sid:1000012; rev:1;)
+
+# ============================================
+# S3: SQL Injection Detection Rules
+# ============================================
+
+# Basic SQL Injection in URI
+alert http any any -> $HOME_NET $HTTP_PORTS (msg:"SQLI SQL Injection Attempt in URI"; flow:to_server,established; http.uri; pcre:"/(\%27)|(\')|(\-\-)|(\%23)|(#)/i"; classtype:web-application-attack; sid:1000020; rev:1;)
+
+# SQL UNION Injection
+alert http any any -> $HOME_NET $HTTP_PORTS (msg:"SQLI UNION SELECT Injection Attempt"; flow:to_server,established; http.uri; content:"union"; nocase; content:"select"; nocase; distance:0; within:20; classtype:web-application-attack; sid:1000021; rev:1;)
+
+# SQL OR 1=1 Injection
+alert http any any -> $HOME_NET $HTTP_PORTS (msg:"SQLI OR 1=1 Injection Attempt"; flow:to_server,established; http.uri; pcre:"/(\%27|\')(\s|%20)*(or|OR)(\s|%20)*(\%27|\')?1(\%27|\')?\s*=\s*(\%27|\')?1/i"; classtype:web-application-attack; sid:1000022; rev:1;)
+
+# SQL Comment Injection
+alert http any any -> $HOME_NET $HTTP_PORTS (msg:"SQLI Comment Injection Attempt"; flow:to_server,established; http.uri; content:"--"; classtype:web-application-attack; sid:1000023; rev:1;)
+
+# SQL DROP TABLE Attempt
+alert http any any -> $HOME_NET $HTTP_PORTS (msg:"SQLI DROP TABLE Attempt"; flow:to_server,established; http.uri; content:"drop"; nocase; content:"table"; nocase; distance:0; within:15; classtype:web-application-attack; sid:1000024; rev:1;)
+
+# sqlmap User-Agent Detection
+alert http any any -> $HOME_NET $HTTP_PORTS (msg:"SQLI sqlmap Tool Detected"; flow:to_server,established; http.user_agent; content:"sqlmap"; nocase; classtype:web-application-attack; sid:1000025; rev:1;)
+
+# SQL Injection in Request Body
+alert http any any -> $HOME_NET $HTTP_PORTS (msg:"SQLI SQL Injection in Request Body"; flow:to_server,established; http.request_body; pcre:"/(\%27)|(\')|(\-\-)|(\bunion\b)|(\bselect\b)|(\bdrop\b)/i"; classtype:web-application-attack; sid:1000026; rev:1;)
+
+# ============================================
+# S4: DoS Detection Rules
+# ============================================
+
+# High Request Rate (Potential DoS)
+alert http any any -> $HOME_NET $HTTP_PORTS (msg:"DOS High HTTP Request Rate"; flow:to_server,established; threshold:type both,track by_src,count 100,seconds 10; classtype:attempted-dos; sid:1000030; rev:1;)
+
+# SYN Flood Detection
+alert tcp any any -> $HOME_NET any (msg:"DOS SYN Flood Detected"; flags:S; threshold:type both,track by_src,count 200,seconds 5; classtype:attempted-dos; sid:1000031; rev:1;)
+
+# HTTP Flood Detection
+alert http any any -> $HOME_NET $HTTP_PORTS (msg:"DOS HTTP Flood Detected"; flow:to_server,established; threshold:type both,track by_src,count 500,seconds 30; classtype:attempted-dos; sid:1000032; rev:1;)
+
+# Slowloris Detection (Incomplete HTTP Requests)
+alert tcp any any -> $HOME_NET $HTTP_PORTS (msg:"DOS Slowloris Attack Suspected"; flow:to_server,established; dsize:<50; threshold:type both,track by_src,count 50,seconds 60; classtype:attempted-dos; sid:1000033; rev:1;)
+
+# ============================================
+# Path Traversal Detection Rules (S5 Related)
+# ============================================
+
+# Path Traversal Attempt
+alert http any any -> $HOME_NET $HTTP_PORTS (msg:"WEB-ATTACK Path Traversal Attempt"; flow:to_server,established; http.uri; content:".."; classtype:web-application-attack; sid:1000040; rev:1;)
+
+# Encoded Path Traversal
+alert http any any -> $HOME_NET $HTTP_PORTS (msg:"WEB-ATTACK Encoded Path Traversal"; flow:to_server,established; http.uri; content:"%2e%2e"; nocase; classtype:web-application-attack; sid:1000041; rev:1;)
+
+# /etc/passwd Access Attempt
+alert http any any -> $HOME_NET $HTTP_PORTS (msg:"WEB-ATTACK /etc/passwd Access Attempt"; flow:to_server,established; http.uri; content:"/etc/passwd"; nocase; classtype:web-application-attack; sid:1000042; rev:1;)
+
+# ============================================
+# General Web Attack Detection
+# ============================================
+
+# Command separator in URI. Kept as a simple content rule because lab stability is
+# more important than a broad PCRE that may fail on Suricata parser changes.
+alert http any any -> $HOME_NET $HTTP_PORTS (msg:"WEB-ATTACK Command Separator in URI"; flow:to_server,established; http.uri; content:"|3b|"; classtype:web-application-attack; sid:1000050; rev:3;)
+
+# XSS Attempt
+alert http any any -> $HOME_NET $HTTP_PORTS (msg:"WEB-ATTACK XSS Attempt"; flow:to_server,established; http.uri; content:"<script"; nocase; classtype:web-application-attack; sid:1000051; rev:1;)
+
+# Encoded XSS Attempt
+alert http any any -> $HOME_NET $HTTP_PORTS (msg:"WEB-ATTACK Encoded XSS Attempt"; flow:to_server,established; http.uri; content:"%3cscript"; nocase; classtype:web-application-attack; sid:1000052; rev:1;)

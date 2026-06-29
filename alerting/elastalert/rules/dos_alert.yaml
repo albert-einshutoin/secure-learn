@@ -1,0 +1,76 @@
+# SOC-Lab ElastAlert Rule: DoS Detection
+# Triggers on DoS alerts from Suricata
+
+name: "SOC-Lab: DoS Attack Detected"
+type: frequency
+
+# Elasticsearch index
+index: soc-lab-suricata-*
+
+# Alert frequency
+num_events: 5
+timeframe:
+  minutes: 1
+
+# Query filter
+filter:
+  - query:
+      query_string:
+        query: "rule.name:*DOS*"
+
+# Group by source IP
+query_key: source.ip
+
+# Alert settings
+alert:
+  - slack
+
+# Slack configuration
+slack_webhook_url: "${SLACK_WEBHOOK_URL}"
+slack_channel_override: "#soc-alerts"
+slack_username_override: "SOC-Lab Alert"
+slack_emoji_override: ":zap:"
+slack_msg_color: "warning"
+
+slack_title: "DoS Attack Detected"
+slack_text_string: |
+  *SOC-Lab Security Alert*
+  
+  :zap: *Denial of Service Attack Detected*
+  
+  • *Attack Type:* DoS/DDoS
+  • *Source IP:* {0}
+  • *Alert Count:* {1} in 1 minute
+  • *First Seen:* {2}
+  • *Scenario:* S4 - DoS Attack
+  
+  *Severity:* HIGH
+  
+  *Recommended Actions:*
+  1. Check if rate limiting is active
+  2. Verify service availability
+  3. Consider IP blocking
+  4. Monitor for distributed attack (DDoS)
+  
+  *Quick Commands:*
+  ```
+  fail2ban-client status nestjs-dos
+  curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/
+  ```
+
+slack_alert_fields:
+  - source.ip
+  - num_matches
+  - "@timestamp"
+
+# Realert settings
+realert:
+  minutes: 5
+
+# Include in alert
+include:
+  - source.ip
+  - destination.ip
+  - rule.name
+  - "@timestamp"
+
