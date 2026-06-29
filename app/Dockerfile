@@ -1,26 +1,34 @@
-FROM node:20-alpine
+FROM node:20-alpine AS deps
 
 WORKDIR /app
-
-# Install dependencies from the lockfile for reproducible hands-on builds.
 COPY package*.json ./
 RUN npm ci
 
-# Copy application code
+FROM deps AS build
+
 COPY . .
-
-# Build the application
 RUN npm run build
+RUN npm prune --omit=dev
 
-# Remove devDependencies after build
-RUN npm prune --production
+FROM node:20-alpine AS runner
 
-# Create log directory
-RUN mkdir -p /var/log/app
+WORKDIR /app
 
-# Expose port
+RUN addgroup -g 10001 -S appgroup \
+  && adduser -S appuser -u 10001 -G appgroup \
+  && mkdir -p /var/log/app \
+  && chown -R appuser:appgroup /app /var/log/app
+
+COPY --from=build --chown=appuser:appgroup /app/package.json ./package.json
+COPY --from=build --chown=appuser:appgroup /app/node_modules ./node_modules
+COPY --from=build --chown=appuser:appgroup /app/dist ./dist
+COPY --from=build --chown=appuser:appgroup /app/public ./public
+
+ENV NODE_ENV=production
+ENV PUBLIC_DIR=/app/public
+
 EXPOSE 3000
 
-# Start the application
-CMD ["node", "dist/main.js"]
+USER appuser
 
+CMD ["node", "dist/main.js"]

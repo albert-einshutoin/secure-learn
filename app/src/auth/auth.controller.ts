@@ -18,25 +18,34 @@ export class AuthController {
   @Post('login')
   async login(
     @Body('username') username: string,
-    @Body('password') password: string,
+    @Body('password') submittedCredential: string,
     @Req() req: Request,
   ) {
     const sourceIp = getClientIp(req);
 
-    if (!username || !password) {
+    if (!username || !submittedCredential) {
       this.logger.logAuth('login_failed', sourceIp, username);
       throw new HttpException('Invalid credentials', HttpStatus.BAD_REQUEST);
     }
 
-    const result = await this.authService.validateUser(username, password);
+    const result = await this.authService.authenticate(username, submittedCredential, sourceIp);
 
-    if (result) {
+    if (result.ok) {
       this.logger.logAuth('login_success', sourceIp, username);
-      return { message: 'Login successful', user: result };
-    } else {
-      this.logger.logAuth('login_failed', sourceIp, username);
-      throw new HttpException('Invalid credentials', HttpStatus.UNAUTHORIZED);
+      return {
+        message: 'Login successful',
+        user: result.user,
+        accessToken: result.token,
+        tokenType: 'Bearer',
+      };
     }
+
+    this.logger.logAuth('login_failed', sourceIp, username);
+    if (result.reason === 'locked') {
+      throw new HttpException('Account temporarily locked', HttpStatus.TOO_MANY_REQUESTS);
+    }
+
+    throw new HttpException('Invalid credentials', HttpStatus.UNAUTHORIZED);
   }
 }
 

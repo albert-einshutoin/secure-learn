@@ -1,8 +1,20 @@
-import { Controller, Get, Query, Req, HttpException, HttpStatus } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Query,
+  Req,
+  HttpException,
+  HttpStatus,
+  InternalServerErrorException,
+  UseGuards,
+} from '@nestjs/common';
 import { Request } from 'express';
 import { UsersService } from './users.service';
 import { EcsLoggerService } from '../common/logging/ecs-logger.service';
 import { getClientIp } from '../common/network/client-ip';
+import { BearerAuthGuard, AuthenticatedRequest } from '../common/auth/bearer-auth.guard';
+import { Roles } from '../common/auth/roles.decorator';
+import { RolesGuard } from '../common/auth/roles.guard';
 
 @Controller('users')
 export class UsersController {
@@ -11,10 +23,6 @@ export class UsersController {
     private readonly logger: EcsLoggerService,
   ) {}
 
-  /**
-   * Get user by ID - Vulnerable to SQL Injection (S3)
-   * The 'id' parameter is directly concatenated into SQL query
-   */
   @Get()
   async getUser(@Query('id') id: string, @Req() req: Request) {
     const sourceIp = getClientIp(req);
@@ -36,17 +44,14 @@ export class UsersController {
       }
       return user;
     } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
       this.logger.logError(sourceIp, '/users', error.message);
-      throw new HttpException(
-        'Database error: ' + error.message,
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      throw new InternalServerErrorException('Database query failed');
     }
   }
 
-  /**
-   * Search users - Also vulnerable to SQLi
-   */
   @Get('search')
   async searchUsers(@Query('name') name: string, @Req() req: Request) {
     const sourceIp = getClientIp(req);
@@ -64,12 +69,23 @@ export class UsersController {
     try {
       return await this.usersService.searchByName(name);
     } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
       this.logger.logError(sourceIp, '/users/search', error.message);
-      throw new HttpException(
-        'Database error: ' + error.message,
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      throw new InternalServerErrorException('Database query failed');
     }
+  }
+
+  @Get('admin/audit')
+  @UseGuards(BearerAuthGuard, RolesGuard)
+  @Roles('admin')
+  async adminAudit(@Req() req: AuthenticatedRequest) {
+    return {
+      status: 'ok',
+      viewer: req.user.username,
+      checks: ['parameterized-users-query', 'path-boundary-files', 'role-guard'],
+    };
   }
 }
 

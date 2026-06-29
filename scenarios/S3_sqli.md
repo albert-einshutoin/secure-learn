@@ -15,6 +15,8 @@
 
 ## 攻撃手順
 
+現在の `main` ではSQLiは修正済みです。このシナリオでは、攻撃ペイロードを送って Suricata/App log が検知し、アプリが HTTP 400 で拒否することを確認します。
+
 ### 1. 環境の起動
 
 ```bash
@@ -44,12 +46,12 @@ sqlmap -u "http://app:3000/users?id=1" --batch --level=3
 | エラーベース | `'` | エラーメッセージからDB情報取得 |
 | 時間ベース | `1; WAITFOR DELAY '0:0:5'--` | ブラインドSQLi |
 
-### 4. 脆弱なエンドポイント
+### 4. 防御済みエンドポイント
 
-| エンドポイント | パラメータ | 脆弱性 |
+| エンドポイント | パラメータ | 防御 |
 |---------------|----------|--------|
-| GET /users | id | 直接SQLクエリ連結 |
-| GET /users/search | name | LIKE句への直接挿入 |
+| GET /users | id | 正整数検証 + parameterized query |
+| GET /users/search | name | 長さ検証 + parameterized `ILIKE` |
 
 ---
 
@@ -106,22 +108,21 @@ docker exec soc-lab-app cat /var/log/app/error.log | grep sqli_attempt | jq '.["
 ### 3. 影響評価
 
 ```bash
-# 攻撃が成功したか確認（DBエラー有無）
-docker exec soc-lab-app cat /var/log/app/error.log | grep "Database error"
+# 攻撃が拒否されたか確認（HTTP 400 / DBエラーなし）
+scripts/backend_hands_on_tests.sh
 ```
 
 ### 4. 対応
 
 ```bash
-# 一時的にエンドポイント無効化（アプリ側で対応）
-# または攻撃元IPをBAN
+# 攻撃元IPをBAN
 docker exec soc-lab-fail2ban fail2ban-client set nestjs-sqli banip <攻撃IP>
 ```
 
 ### 5. 根本対策
 
-- パラメータ化クエリへの修正
-- 入力検証の追加
+- パラメータ化クエリが維持されているか回帰テストで確認
+- 入力検証がHTTP 400契約を維持しているか確認
 - WAFルールの追加
 
 ---

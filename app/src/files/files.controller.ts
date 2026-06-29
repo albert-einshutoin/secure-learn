@@ -1,4 +1,12 @@
-import { Controller, Get, Param, Req, HttpException, HttpStatus } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Param,
+  Req,
+  HttpException,
+  HttpStatus,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { Request } from 'express';
 import { FilesService } from './files.service';
 import { EcsLoggerService } from '../common/logging/ecs-logger.service';
@@ -11,11 +19,6 @@ export class FilesController {
     private readonly logger: EcsLoggerService,
   ) {}
 
-  /**
-   * Get file contents - Vulnerable to Path Traversal (S5)
-   * The path parameter is not properly sanitized
-   * Example attack: /files/..%2F..%2Fetc%2Fpasswd
-   */
   @Get('*path')
   async getFile(@Param('path') pathParam: string | string[], @Req() req: Request) {
     const filePath = Array.isArray(pathParam) ? pathParam.join('/') : pathParam;
@@ -39,7 +42,10 @@ export class FilesController {
       return { path: filePath, content };
     } catch (error) {
       this.logger.logError(sourceIp, `/files/${filePath}`, error.message);
-      throw new HttpException(error.message, HttpStatus.NOT_FOUND);
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException('File access failed');
     }
   }
 }
