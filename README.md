@@ -3,6 +3,7 @@
 **Dockerベース統合セキュリティ学習・SOC訓練環境**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![CI](https://github.com/albert-einshutoin/secure-learn/actions/workflows/ci.yml/badge.svg)](https://github.com/albert-einshutoin/secure-learn/actions/workflows/ci.yml)
 
 ## 概要
 
