@@ -30,6 +30,9 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Unit tests
+        run: npm test
+
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high
 
@@ -52,9 +55,28 @@ jobs:
       - name: Validate exercise compose
         run: docker compose -f docker-compose.exercise.yml config -q
 
+      - name: Check shell script syntax
+        run: find attack/scripts scripts -type f -name '*.sh' -print0 | xargs -0 bash -n
+
       - name: Check for local environment files
         run: |
           if git ls-files | grep -E '(^|/)\.env$|\.DS_Store$'; then
             echo "Local environment or OS metadata files must not be tracked."
             exit 1
           fi
+
+  suricata:
+    name: Suricata rule validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build Suricata image
+        run: docker build -t secure-learn-suricata-ci ./suricata
+
+      - name: Validate IDS rules
+        run: docker run --rm secure-learn-suricata-ci -T -c /opt/soc-lab/suricata.yaml
+
+      - name: Validate IPS rules
+        run: docker run --rm secure-learn-suricata-ci -T -c /opt/soc-lab/suricata-ips.yaml
