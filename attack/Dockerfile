@@ -12,6 +12,12 @@ RUN apt-get update && apt-get install -y \
     netcat-openbsd \
     dnsutils \
     iputils-ping \
+    arping \
+    hping3 \
+    traceroute \
+    tcpdump \
+    openssl \
+    iproute2 \
     jq \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
