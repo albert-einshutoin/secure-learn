@@ -1,0 +1,37 @@
+# Local environment
+.env
+.env.*
+!.env.example
+
+# OS/editor metadata
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Node/NestJS
+node_modules/
+app/node_modules/
+app/dist/
+app/*.tsbuildinfo
+npm-debug.log*
+
+# Lab runtime output
+reports/
+results/
+*.log
+*.pcap
+*.pcapng
+
+# Secrets and certificates
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+
+# Docker/Elastic generated data
+.data/
+data/
+volumes/

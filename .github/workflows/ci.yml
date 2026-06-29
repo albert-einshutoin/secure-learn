@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  app:
+    name: NestJS app build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
+  compose:
+    name: Docker Compose validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate base compose
+        run: docker compose config -q
+
+      - name: Validate alerting compose
+        run: docker compose -f docker-compose.yml -f docker-compose.alerting.yml config -q
+
+      - name: Validate IPS compose
+        run: docker compose -f docker-compose.yml -f docker-compose.ips.yml config -q
+
+      - name: Validate exercise compose
+        run: docker compose -f docker-compose.exercise.yml config -q
+
+      - name: Check for local environment files
+        run: |
+          if git ls-files | grep -E '(^|/)\.env$|\.DS_Store$'; then
+            echo "Local environment or OS metadata files must not be tracked."
+            exit 1
+          fi
