@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>S1 ポートスキャン - Secure Learn</title>
+  <link rel="stylesheet" href="assets/scenario.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="index.html">Secure Learn Scenario Guides</a>
+    <nav aria-label="Scenario navigation"><a aria-current="page" href="s1-portscan.html">S1</a><a href="s2-bruteforce.html">S2</a><a href="s3-sqli.html">S3</a><a href="s4-dos.html">S4</a><a href="s5-file-tamper.html">S5</a><a href="s6-privesc.html">S6</a><a href="s7-lateral.html">S7</a><a href="s8-arp.html">S8</a><a href="s9-icmp.html">S9</a><a href="s10-tcp-state.html">S10</a><a href="s11-session-stress.html">S11</a><a href="s12-tls-boundary.html">S12</a><a href="s13-dns.html">S13</a><a href="s14-sre-incident.html">S14</a><a href="s15-capstone.html">S15</a></nav>
+  </header>
+  <main>
+    <section class="scenario-head">
+      <p class="eyebrow">S1 / L3/L4 / 初級</p>
+      <h1>ポートスキャン</h1>
+      <p class="lead">nmapで露出ポートを列挙し、Suricata/Kibanaで偵察を検知する基礎シナリオ。</p>
+      <div class="meta-row">
+        <span class="score score-3">3/5 実務中級</span>
+        <span class="pill">Whitehat</span><span class="pill">SRE</span>
+      </div>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>目的</h2>
+        <p>許可されたDockerネットワーク内でactive scanningを実行し、検知、攻撃元特定、誤検知判断、遮断判断までを説明できるようにする。</p>
+      </article>
+      <article>
+        <h2>世界レベル評価</h2>
+        <p>基礎から実務中級までは有効です。世界レベルには追加課題の実測化が必要です。</p>
+      </article>
+    </section>
+
+    <section>
+      <h2>Hands-on Flow</h2>
+      <ol class="flow"><li><span>Prepare</span><p>docker compose up -dで環境を起動し、Kaliコンテナへ入る。</p></li><li><span>Execute</span><p>/scripts/s1_portscan.sh または nmapのSYN/FIN/XMAS/NULL scanを実行する。</p></li><li><span>Observe</span><p>Suricata fast.log/eve.jsonとKibana DiscoverでSCANアラートを確認する。</p></li><li><span>Decide</span><p>社内スキャン、監視、攻撃のどれかをsource.ipと時刻で分類する。</p></li><li><span>Improve</span><p>thresholdや許可済みscannerの扱いを変更し、検知漏れと誤検知の両方を説明する。</p></li></ol>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>実行コマンド</h2>
+        <pre><code>docker compose up -d
+docker exec -it soc-lab-kali /bin/bash
+/scripts/s1_portscan.sh
+docker exec soc-lab-suricata grep SCAN /var/log/suricata/fast.log | tail -20
+docker exec soc-lab-suricata jq &#39;select(.alert)&#39; /var/log/suricata/eve.json | head</code></pre>
+      </article>
+      <article>
+        <h2>合格証跡</h2>
+        <ul><li>scan開始時刻、終了時刻、対象IP、実行コマンド</li><li>Suricata fast.log/eve.jsonの該当行</li><li>Kibana検索条件とスクリーンショット</li><li>遮断する/しない判断と理由</li></ul>
+      </article>
+    </section>
+
+    <section>
+      <h2>ツール活用</h2>
+      <table><thead><tr><th>Tool</th><th>使い方</th></tr></thead><tbody><tr><td><strong>nmap</strong></td><td>SYN/connect/FIN/XMAS/NULL scanを比較し、L3/L4の見え方を学ぶ。</td></tr><tr><td><strong>Suricata</strong></td><td>SCAN signature、source.ip、destination portを確認する。</td></tr><tr><td><strong>Kibana</strong></td><td>event.module:suricata AND rule.name:*SCAN* で時系列化する。</td></tr><tr><td><strong>Fail2ban</strong></td><td>必要時だけ遮断。scan検知とauth BANを混同しない。</td></tr></tbody></table>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>Whitehat / SRE / Backend 観点</h2>
+        <ul><li>Whitehat: 攻撃を許可範囲に限定し、再現性と検知証跡を残す。</li><li>SRE: SLO、可用性、レイテンシ、復旧判断へ接続する。</li><li>Backend: サービス露出、ログ、HTTP契約との関係を確認する。</li></ul>
+      </article>
+      <article>
+        <h2>世界レベルへ足す課題</h2>
+        <ul><li>承認済みscannerと攻撃者scanを区別するallowlist/threshold設計を追加する。</li><li>検知ルール変更をPR化し、before/afterの検知率と誤検知率を比較する。</li><li>資産台帳や変更管理と照合する運用判断を課題に加える。</li></ul>
+      </article>
+    </section>
+
+    <section>
+      <h2>関連シナリオ</h2>
+      <div class="links"><a href="s2-bruteforce.html">S2 APIブルートフォース</a><a href="s3-sqli.html">S3 SQLインジェクション</a><a href="s4-dos.html">S4 DoS攻撃</a><a href="s5-file-tamper.html">S5 重要ファイル改変</a></div>
+    </section>
+
+  </main>
+</body>
+</html>
