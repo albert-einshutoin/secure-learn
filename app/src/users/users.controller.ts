@@ -12,6 +12,7 @@ import { Request } from 'express';
 import { UsersService } from './users.service';
 import { EcsLoggerService } from '../common/logging/ecs-logger.service';
 import { getClientIp } from '../common/network/client-ip';
+import { toErrorMessage } from '../common/errors/error-message';
 import { BearerAuthGuard, AuthenticatedRequest } from '../common/auth/bearer-auth.guard';
 import { Roles } from '../common/auth/roles.decorator';
 import { RolesGuard } from '../common/auth/roles.guard';
@@ -47,7 +48,7 @@ export class UsersController {
       if (error instanceof HttpException) {
         throw error;
       }
-      this.logger.logError(sourceIp, '/users', error.message);
+      this.logger.logError(sourceIp, '/users', toErrorMessage(error));
       throw new InternalServerErrorException('Database query failed');
     }
   }
@@ -72,7 +73,7 @@ export class UsersController {
       if (error instanceof HttpException) {
         throw error;
       }
-      this.logger.logError(sourceIp, '/users/search', error.message);
+      this.logger.logError(sourceIp, '/users/search', toErrorMessage(error));
       throw new InternalServerErrorException('Database query failed');
     }
   }

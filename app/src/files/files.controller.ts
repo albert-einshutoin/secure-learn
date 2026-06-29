@@ -11,6 +11,7 @@ import { Request } from 'express';
 import { FilesService } from './files.service';
 import { EcsLoggerService } from '../common/logging/ecs-logger.service';
 import { getClientIp } from '../common/network/client-ip';
+import { toErrorMessage } from '../common/errors/error-message';
 
 @Controller('files')
 export class FilesController {
@@ -41,7 +42,7 @@ export class FilesController {
       const content = await this.filesService.readFile(filePath);
       return { path: filePath, content };
     } catch (error) {
-      this.logger.logError(sourceIp, `/files/${filePath}`, error.message);
+      this.logger.logError(sourceIp, `/files/${filePath}`, toErrorMessage(error));
       if (error instanceof HttpException) {
         throw error;
       }
