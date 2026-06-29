@@ -1,0 +1,312 @@
+[
+  {
+    "id": "P0",
+    "slug": "p0-ethics-setup",
+    "level": "Junior 0",
+    "title": "倫理・安全範囲・作業環境",
+    "profile": "base",
+    "roles": ["Whitehat", "SRE", "Backend"],
+    "skills": ["許可範囲", "GitHub Flow", "Docker基礎", "証跡管理"],
+    "objectives": [
+      "第三者環境を攻撃しない制約を説明できる",
+      "clone、branch、test、PR、CI確認までを一人で実行できる",
+      "レポートやログから秘密情報を除外できる"
+    ],
+    "hands_on": [
+      "README、SECURITY、CONTRIBUTINGを読み、許可された閉域ラボだけを対象にする",
+      "feature branchを作り、ローカル品質ゲートの軽量チェックを実行する",
+      "incident reportとvulnerability remediation PRのテンプレートを埋める"
+    ],
+    "commands": [
+      "git checkout -b training/p0-ethics-setup",
+      "docker compose config -q",
+      "scripts/scenario_html_check.sh",
+      "scripts/learning_phase.sh guide p0"
+    ],
+    "evidence": [
+      "対象、日時、実行コマンド、影響範囲を記録している",
+      "秘密情報や外部ターゲットを含まない学習ログになっている",
+      "GitHub FlowでPR化できる"
+    ],
+    "next_gate": "P1に進む前に、Docker Compose構成を壊さずに説明できる"
+  },
+  {
+    "id": "P1",
+    "slug": "p1-linux-docker-networking",
+    "level": "Junior 1",
+    "title": "Linux・Docker・ネットワーク基礎",
+    "profile": "base",
+    "roles": ["Whitehat", "SRE"],
+    "skills": ["Linux process", "namespace", "container network", "tcpdump", "ss"],
+    "objectives": [
+      "container、network namespace、port publish、volumeの違いを説明できる",
+      "疎通障害をDNS、TCP、HTTPの順に切り分けられる",
+      "S1、S8、S9、S10でL2-L4の観測境界を理解する"
+    ],
+    "hands_on": [
+      "base stackを起動し、app、db、suricata、kaliのnetworkを確認する",
+      "ping、traceroute、ss、tcpdumpで疎通を確認する",
+      "nmapとSuricataログを対応付ける"
+    ],
+    "commands": [
+      "docker compose up -d --build",
+      "docker compose ps",
+      "docker exec -it soc-lab-kali /scripts/s1_portscan.sh",
+      "docker exec soc-lab-suricata grep SCAN /var/log/suricata/fast.log | tail -20"
+    ],
+    "evidence": [
+      "container IP、published port、service name resolutionを説明している",
+      "tcpdumpまたはSuricata fast.logで通信を確認している",
+      "ネットワーク障害とアプリ障害を分けて記録している"
+    ],
+    "next_gate": "P2に進む前に、L3/L4の到達性を自分で再現・観測できる"
+  },
+  {
+    "id": "P2",
+    "slug": "p2-backend-tdd-api",
+    "level": "Junior 2",
+    "title": "Backend TDD・API契約・DB境界",
+    "profile": "base",
+    "roles": ["Backend", "SRE"],
+    "skills": ["unit test", "integration test", "OpenAPI", "PostgreSQL", "error contract"],
+    "objectives": [
+      "API contract、unit test、DB integration testの役割を分けられる",
+      "入力検証、エラー形状、DB境界をテストで固定できる",
+      "SREのreadinessとbackendの依存関係を接続できる"
+    ],
+    "hands_on": [
+      "unit testでservice境界の入力検証を確認する",
+      "PostgreSQLありのintegration testでSQLiが成立しないことを確認する",
+      "backend_hands_on_testsでHTTP契約とsecurity regressionを確認する"
+    ],
+    "commands": [
+      "npm --prefix app test",
+      "npm --prefix app run test:integration",
+      "scripts/backend_hands_on_tests.sh",
+      "curl -s http://localhost:3000/health/ready | jq ."
+    ],
+    "evidence": [
+      "unit/API/integrationのどこで何を守っているか説明している",
+      "SQLiとpath traversalの再発防止テストが通っている",
+      "readiness failure時のHTTP契約を記録している"
+    ],
+    "next_gate": "P3に進む前に、攻撃再現だけでなく修正TDDを説明できる"
+  },
+  {
+    "id": "P3",
+    "slug": "p3-owasp-api-security",
+    "level": "Operator 1",
+    "title": "OWASP API Security・認証認可・安全な失敗",
+    "profile": "base",
+    "roles": ["Whitehat", "Backend"],
+    "skills": ["BOLA", "auth hardening", "SQLi", "path traversal", "rate limit"],
+    "objectives": [
+      "SQLi、path traversal、認証失敗、認可失敗を安全に再現できる",
+      "攻撃結果、アプリログ、検知ログ、修正テストを一つの証跡にできる",
+      "IDOR/BOLA、SSRF、unsafe uploadなど未実装領域を課題化できる"
+    ],
+    "hands_on": [
+      "S2、S3を実行して認証攻撃とSQLi試行を検知する",
+      "失敗時にcredential materialやstack traceが漏れないことを確認する",
+      "追加課題としてBOLA/SSRF/Uploadのred test設計を書く"
+    ],
+    "commands": [
+      "docker exec -it soc-lab-kali /scripts/s2_bruteforce.sh",
+      "docker exec -it soc-lab-kali /scripts/s3_sqli.sh",
+      "scripts/backend_hands_on_tests.sh",
+      "sed -n '1,220p' docs/curriculum/owasp-api-security-track.md"
+    ],
+    "evidence": [
+      "攻撃payload、HTTP status、ログ、修正テストが揃っている",
+      "認証と認可を分けて説明している",
+      "未実装API security課題をIssue化できる"
+    ],
+    "next_gate": "P4に進む前に、攻撃の成功/失敗理由をコードとログで説明できる"
+  },
+  {
+    "id": "P4",
+    "slug": "p4-detection-soc-engineering",
+    "level": "Operator 2",
+    "title": "Detection Engineering・SOC相関・誤検知調整",
+    "profile": "base",
+    "roles": ["Whitehat", "SRE"],
+    "skills": ["Suricata", "Fail2ban", "Auditd", "Kibana", "MITRE ATT&CK"],
+    "objectives": [
+      "Suricata、Fail2ban、Auditd、Kibanaの証跡を相関できる",
+      "誤検知、検知漏れ、閾値変更のリスクを説明できる",
+      "S5、S6、S7でOS/ネットワーク/APIを横断したtimelineを作れる"
+    ],
+    "hands_on": [
+      "ファイル改変、権限昇格、横断インシデントを実行する",
+      "source.ip、event.action、rule.name、timestampを軸に相関する",
+      "検知ルール変更案とrollback案を作る"
+    ],
+    "commands": [
+      "docker exec -it soc-lab-kali /scripts/s7_lateral.sh",
+      "docker exec soc-lab-suricata tail -50 /var/log/suricata/fast.log",
+      "sed -n '1,220p' docs/soc-playbook.md",
+      "sed -n '1,220p' docs/templates/incident-report.md"
+    ],
+    "evidence": [
+      "attack chainのtimelineがある",
+      "検知漏れと誤検知の両方を評価している",
+      "SOC analystが再現できる検索条件を残している"
+    ],
+    "next_gate": "P5に進む前に、検知結果をSLO/顧客影響へ接続できる"
+  },
+  {
+    "id": "P5",
+    "slug": "p5-observability-sre",
+    "level": "Independent 1",
+    "title": "Observability・SLO・Incident Command",
+    "profile": "phase5-observability",
+    "roles": ["SRE", "Backend"],
+    "skills": ["Prometheus", "Grafana", "OpenTelemetry", "blackbox probe", "burn-rate"],
+    "objectives": [
+      "health、readiness、blackbox probe、latencyをSLO証跡へ変換できる",
+      "incident commander、scribe、operatorの役割でS14を実施できる",
+      "メトリクス、ログ、トレースの使い分けを説明できる"
+    ],
+    "hands_on": [
+      "observability profileを起動し、PrometheusとGrafanaを確認する",
+      "blackbox probeでapp healthを監視する",
+      "load_hands_on_testsとincident_drillの結果をpostmortemへ入れる"
+    ],
+    "commands": [
+      "scripts/learning_phase.sh start p5",
+      "curl -s http://localhost:9090/-/ready",
+      "scripts/load_hands_on_tests.sh",
+      "RUN_CHAOS=1 scripts/incident_drill.sh"
+    ],
+    "evidence": [
+      "SLO、SLI、error budget、burn-rate条件を文章化している",
+      "PrometheusまたはGrafanaで可用性/レイテンシを確認している",
+      "MTTD/MTTRと暫定対応/恒久対応をpostmortemに残している"
+    ],
+    "next_gate": "P6に進む前に、障害対応を再現手順と運用判断で説明できる"
+  },
+  {
+    "id": "P6",
+    "slug": "p6-secure-release-kubernetes-iac",
+    "level": "Independent 2",
+    "title": "Kubernetes・IaC・安全なリリース",
+    "profile": "phase6-release",
+    "roles": ["SRE", "Backend"],
+    "skills": ["Kubernetes", "NetworkPolicy", "rollback", "canary", "Terraform design"],
+    "objectives": [
+      "ComposeからKubernetes manifestへ運用境界を翻訳できる",
+      "readiness/liveness/startup probe、HPA、NetworkPolicyを説明できる",
+      "edge proxy経由でrelease/rollback観点を練習できる"
+    ],
+    "hands_on": [
+      "release profileを起動し、edge proxyからapp healthを確認する",
+      "k8s_static_checkでKubernetes manifestの安全条件を確認する",
+      "canary/rollbackの判断基準をrunbookへ落とす"
+    ],
+    "commands": [
+      "scripts/learning_phase.sh start p6",
+      "curl -s http://localhost:8080/health",
+      "scripts/k8s_static_check.sh",
+      "sed -n '1,220p' docs/runbooks/kubernetes-operations.md"
+    ],
+    "evidence": [
+      "probe、resource、securityContext、NetworkPolicyを説明している",
+      "rollback条件とmigration互換性の確認項目がある",
+      "IaC plan reviewで見るべき差分を列挙している"
+    ],
+    "next_gate": "P7に進む前に、releaseとsecurity boundaryを同じPRで説明できる"
+  },
+  {
+    "id": "P7",
+    "slug": "p7-endpoint-edr-detection",
+    "level": "Independent 3",
+    "title": "Endpoint/EDR観点・OS監査・検知改善",
+    "profile": "base",
+    "roles": ["Whitehat", "SRE"],
+    "skills": ["auditd", "process tree", "privilege escalation", "case management", "YARA/Sigma design"],
+    "objectives": [
+      "プロセス、ファイル、権限、ネットワークをendpoint telemetryとして説明できる",
+      "S5/S6のAuditdイベントをSOC caseへ変換できる",
+      "EDR製品に依存しない検知仮説を作れる"
+    ],
+    "hands_on": [
+      "S5、S6を実行し、ファイル改変と権限昇格の監査イベントを確認する",
+      "process treeとevent timelineをincident reportへ入れる",
+      "Sigma/YARA相当の検知条件を疑似ルールとして設計する"
+    ],
+    "commands": [
+      "docker exec -it soc-lab-kali /scripts/s5_file_tamper.sh",
+      "docker exec -it soc-lab-kali /scripts/s6_privesc.sh",
+      "sed -n '1,220p' auditd/README.md",
+      "sed -n '1,220p' docs/templates/incident-report.md"
+    ],
+    "evidence": [
+      "誰が、いつ、何を、どの権限で変更したかを説明している",
+      "endpoint eventをnetwork/API eventと相関している",
+      "検知改善案にテストとrollbackがある"
+    ],
+    "next_gate": "P8に進む前に、ホスト起点の異常を運用改善へ接続できる"
+  },
+  {
+    "id": "P8",
+    "slug": "p8-distributed-performance",
+    "level": "Lead 1",
+    "title": "分散システム・性能・容量計画",
+    "profile": "phase8-distributed",
+    "roles": ["SRE", "Backend"],
+    "skills": ["Redis", "queue", "backpressure", "idempotency", "capacity planning"],
+    "objectives": [
+      "queue/cacheの障害がAPIとSLOへ与える影響を説明できる",
+      "retry、timeout、backpressure、idempotencyを設計できる",
+      "p95/p99、connection pool、resource limitを容量計画に変換できる"
+    ],
+    "hands_on": [
+      "distributed profileを起動し、Redis疎通とapp healthを確認する",
+      "load_hands_on_testsでp95を測定する",
+      "queue/cache依存を追加する場合のfailure modeを設計する"
+    ],
+    "commands": [
+      "scripts/learning_phase.sh start p8",
+      "docker exec learn-toolbox redis-cli -h learning-redis PING",
+      "REQUESTS=100 CONCURRENCY=5 scripts/load_hands_on_tests.sh",
+      "sed -n '1,220p' docs/curriculum/sre-production-track.md"
+    ],
+    "evidence": [
+      "latency、throughput、error rate、resource limitを記録している",
+      "retry stormやqueue backlogの対策を説明している",
+      "capacity planningとrollback条件がある"
+    ],
+    "next_gate": "P9に進む前に、性能劣化を設計・測定・運用判断へ接続できる"
+  },
+  {
+    "id": "P9",
+    "slug": "p9-secure-infra-capstone",
+    "level": "Lead 2",
+    "title": "大手セキュアインフラ相当Capstone",
+    "profile": "capstone",
+    "roles": ["Whitehat", "SRE", "Backend"],
+    "skills": ["cloud security", "supply chain", "release engineering", "incident leadership", "executive reporting"],
+    "objectives": [
+      "攻撃、検知、修正、SLO、リリース、rollback、postmortemを一つの成果物にできる",
+      "CrowdStrike/Cloudflare/Palo Alto級のセキュアインフラ面接で説明できる証跡を作る",
+      "未実装領域をroadmap、Issue、PR単位へ分解できる"
+    ],
+    "hands_on": [
+      "capstone profileで観測、edge proxy、Redisを同時に起動する",
+      "S15を実施し、脆弱性レポート、postmortem、release checklistを作る",
+      "Cloud/IAM、SBOM、SAST/DAST/SCA、secret rotationを次期課題として設計する"
+    ],
+    "commands": [
+      "scripts/learning_phase.sh start p9",
+      "docker compose -f docker-compose.yml -f docker-compose.learning.yml --profile capstone ps",
+      "scripts/lab_quality_gate.sh",
+      "sed -n '1,220p' docs/curriculum/world-class-scenario-evaluation.md"
+    ],
+    "evidence": [
+      "executive summary、technical report、PR、CI結果、postmortemが揃っている",
+      "セキュリティ、SRE、バックエンドの判断を一つのtimelineで説明している",
+      "次に実装すべきcloud/IaC/supply chain課題がIssue化されている"
+    ],
+    "next_gate": "修了。実務ではさらに本物のcloud account、multi-region、production trafficで訓練する"
+  }
+]

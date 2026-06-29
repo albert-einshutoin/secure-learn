@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>P5 Observability・SLO・Incident Command - Secure Learn</title>
+  <link rel="stylesheet" href="../scenario-guides/assets/scenario.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="index.html">Secure Learn Learning Phases</a>
+    <nav aria-label="Learning phase navigation"><a href="p0-ethics-setup.html">P0</a><a href="p1-linux-docker-networking.html">P1</a><a href="p2-backend-tdd-api.html">P2</a><a href="p3-owasp-api-security.html">P3</a><a href="p4-detection-soc-engineering.html">P4</a><a aria-current="page" href="p5-observability-sre.html">P5</a><a href="p6-secure-release-kubernetes-iac.html">P6</a><a href="p7-endpoint-edr-detection.html">P7</a><a href="p8-distributed-performance.html">P8</a><a href="p9-secure-infra-capstone.html">P9</a></nav>
+  </header>
+  <main>
+    <section class="scenario-head">
+      <p class="eyebrow">P5 / Independent 1 / phase5-observability</p>
+      <h1>Observability・SLO・Incident Command</h1>
+      <p class="lead">P6に進む前に、障害対応を再現手順と運用判断で説明できる</p>
+      <div class="meta-row">
+        <span class="pill">SRE</span><span class="pill">Backend</span>
+      </div>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>到達目標</h2>
+        <ul><li>health、readiness、blackbox probe、latencyをSLO証跡へ変換できる</li><li>incident commander、scribe、operatorの役割でS14を実施できる</li><li>メトリクス、ログ、トレースの使い分けを説明できる</li></ul>
+      </article>
+      <article>
+        <h2>カバー領域</h2>
+        <ul><li>Prometheus</li><li>Grafana</li><li>OpenTelemetry</li><li>blackbox probe</li><li>burn-rate</li></ul>
+      </article>
+    </section>
+
+    <section>
+      <h2>Hands-on Flow</h2>
+      <ul><li>observability profileを起動し、PrometheusとGrafanaを確認する</li><li>blackbox probeでapp healthを監視する</li><li>load_hands_on_testsとincident_drillの結果をpostmortemへ入れる</li></ul>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>Docker実行</h2>
+        <pre><code>scripts/learning_phase.sh config p5
+scripts/learning_phase.sh start p5
+scripts/learning_phase.sh status p5</code></pre>
+      </article>
+      <article>
+        <h2>実行コマンド</h2>
+        <pre><code>scripts/learning_phase.sh start p5
+curl -s http://localhost:9090/-/ready
+scripts/load_hands_on_tests.sh
+RUN_CHAOS=1 scripts/incident_drill.sh</code></pre>
+      </article>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>合格証跡</h2>
+        <ul><li>SLO、SLI、error budget、burn-rate条件を文章化している</li><li>PrometheusまたはGrafanaで可用性/レイテンシを確認している</li><li>MTTD/MTTRと暫定対応/恒久対応をpostmortemに残している</li></ul>
+      </article>
+      <article>
+        <h2>次フェーズ判定</h2>
+        <p>P6に進む前に、障害対応を再現手順と運用判断で説明できる</p>
+      </article>
+    </section>
+
+  </main>
+</body>
+</html>

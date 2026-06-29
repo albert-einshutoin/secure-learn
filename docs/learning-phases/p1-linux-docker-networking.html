@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>P1 Linux・Docker・ネットワーク基礎 - Secure Learn</title>
+  <link rel="stylesheet" href="../scenario-guides/assets/scenario.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="index.html">Secure Learn Learning Phases</a>
+    <nav aria-label="Learning phase navigation"><a href="p0-ethics-setup.html">P0</a><a aria-current="page" href="p1-linux-docker-networking.html">P1</a><a href="p2-backend-tdd-api.html">P2</a><a href="p3-owasp-api-security.html">P3</a><a href="p4-detection-soc-engineering.html">P4</a><a href="p5-observability-sre.html">P5</a><a href="p6-secure-release-kubernetes-iac.html">P6</a><a href="p7-endpoint-edr-detection.html">P7</a><a href="p8-distributed-performance.html">P8</a><a href="p9-secure-infra-capstone.html">P9</a></nav>
+  </header>
+  <main>
+    <section class="scenario-head">
+      <p class="eyebrow">P1 / Junior 1 / base</p>
+      <h1>Linux・Docker・ネットワーク基礎</h1>
+      <p class="lead">P2に進む前に、L3/L4の到達性を自分で再現・観測できる</p>
+      <div class="meta-row">
+        <span class="pill">Whitehat</span><span class="pill">SRE</span>
+      </div>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>到達目標</h2>
+        <ul><li>container、network namespace、port publish、volumeの違いを説明できる</li><li>疎通障害をDNS、TCP、HTTPの順に切り分けられる</li><li>S1、S8、S9、S10でL2-L4の観測境界を理解する</li></ul>
+      </article>
+      <article>
+        <h2>カバー領域</h2>
+        <ul><li>Linux process</li><li>namespace</li><li>container network</li><li>tcpdump</li><li>ss</li></ul>
+      </article>
+    </section>
+
+    <section>
+      <h2>Hands-on Flow</h2>
+      <ul><li>base stackを起動し、app、db、suricata、kaliのnetworkを確認する</li><li>ping、traceroute、ss、tcpdumpで疎通を確認する</li><li>nmapとSuricataログを対応付ける</li></ul>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>Docker実行</h2>
+        <pre><code>scripts/learning_phase.sh config p1
+scripts/learning_phase.sh start p1
+scripts/learning_phase.sh status p1</code></pre>
+      </article>
+      <article>
+        <h2>実行コマンド</h2>
+        <pre><code>docker compose up -d --build
+docker compose ps
+docker exec -it soc-lab-kali /scripts/s1_portscan.sh
+docker exec soc-lab-suricata grep SCAN /var/log/suricata/fast.log | tail -20</code></pre>
+      </article>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>合格証跡</h2>
+        <ul><li>container IP、published port、service name resolutionを説明している</li><li>tcpdumpまたはSuricata fast.logで通信を確認している</li><li>ネットワーク障害とアプリ障害を分けて記録している</li></ul>
+      </article>
+      <article>
+        <h2>次フェーズ判定</h2>
+        <p>P2に進む前に、L3/L4の到達性を自分で再現・観測できる</p>
+      </article>
+    </section>
+
+  </main>
+</body>
+</html>
