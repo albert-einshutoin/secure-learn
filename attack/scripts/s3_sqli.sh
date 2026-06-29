@@ -48,7 +48,7 @@ sqli_payloads=(
     "1' OR '1'='1"
     "1; DROP TABLE users;--"
     "1 UNION SELECT * FROM users--"
-    "1' UNION SELECT id,username,email,password,role,created_at FROM users--"
+    "1' UNION SELECT id,username,email,credential_hash,role,created_at FROM users--"
     "-1 OR 1=1"
     "1'--"
 )
@@ -139,4 +139,3 @@ echo "  [✓] Suricata detects SQLI alerts"
 echo "  [✓] Application logs SQLi attempts"
 echo "  [✓] Fail2ban may ban the IP (if threshold reached)"
 echo "  [✓] Events visible in Kibana"
-

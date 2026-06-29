@@ -2,6 +2,19 @@
 
 このロードマップは、Secure Learn を「入門〜中級のSOCラボ」から、ホワイトハット、SRE、バックエンドエンジニアが業務で使う判断と成果物まで伸ばすための不足領域一覧です。
 
+## 実装済みゲート
+
+| 領域 | 実装済み内容 | 実行コマンド |
+|------|--------------|--------------|
+| SQLi remediation | 正整数検証 + parameterized query + DB integration | `npm --prefix app test` / `npm --prefix app run test:integration` |
+| Path traversal remediation | `path.resolve` + baseDir containment | `npm --prefix app test` |
+| Auth hardening | PBKDF2 hash、source別lockout、Bearer token | `npm --prefix app test` |
+| Authorization | role guard付きadmin audit endpoint | `scripts/backend_hands_on_tests.sh` |
+| API contract | OpenAPI contract smoke | `npm --prefix app test` |
+| Performance | p95 latency load gate | `scripts/load_hands_on_tests.sh` |
+| Resilience | DB outage readiness drill | `RUN_CHAOS=1 scripts/incident_drill.sh` |
+| Kubernetes | Deployment/Service/StatefulSet/HPA/NetworkPolicy | `scripts/k8s_static_check.sh` |
+
 ## 判定基準
 
 「一人前」と呼ぶには、攻撃を再現できるだけでは不足です。次の5つをセットで証明します。
@@ -93,4 +106,3 @@
 | Incident report | timeline, MTTD, MTTR, customer impact |
 | SLO report | p95/p99, error budget, alert threshold |
 | Architecture Decision Record | なぜその防御・運用設計にしたか |
-

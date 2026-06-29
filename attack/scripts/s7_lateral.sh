@@ -87,9 +87,8 @@ echo "" >> "$REPORT_FILE"
 # Try common credentials
 credentials=(
     "admin:admin"
-    "admin:password"
-    "admin:admin123"
-    "user:user123"
+    "user:user"
+    "guest:guest"
 )
 
 found_creds=""
@@ -292,4 +291,3 @@ echo "  [✓] Multiple detection sources triggered"
 echo "  [✓] Attack timeline visible in Kibana"
 echo "  [✓] Correlation by source.ip possible"
 echo "  [✓] MTTD/MTTR can be calculated"
-
