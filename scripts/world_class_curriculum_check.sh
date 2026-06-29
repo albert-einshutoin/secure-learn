@@ -77,4 +77,10 @@ for file in "$ROOT_DIR"/docs/scenario-guides/s*.html "$ROOT_DIR"/docs/learning-p
   grep -q '合格証跡' "$file" || fail "$(basename "$file") missing evidence gate"
 done
 
+for file in "$ROOT_DIR"/docs/scenario-guides/s*.html; do
+  grep -q 'OSI / HTTP / 到達前の図' "$file" || fail "$(basename "$file") missing protocol layer diagram"
+  grep -q 'HTTP通信の中の位置' "$file" || fail "$(basename "$file") missing HTTP request anatomy"
+  grep -q 'Server / Middleware 到達前後' "$file" || fail "$(basename "$file") missing pre-app delivery map"
+done
+
 echo "World-class curriculum check passed."

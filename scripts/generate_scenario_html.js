@@ -1733,6 +1733,423 @@ function scenarioVisualMap(scenario) {
   ]);
 }
 
+const osiStages = [
+  {
+    id: 'l7',
+    label: 'L7',
+    title: 'Application',
+    text: 'HTTP、DNS、API、認証、業務ロジック。',
+  },
+  {
+    id: 'l6',
+    label: 'L6',
+    title: 'Presentation / TLS',
+    text: 'TLS handshake、証明書、mTLS、暗号化境界。',
+  },
+  {
+    id: 'l5',
+    label: 'L5',
+    title: 'Session',
+    text: 'keepalive、timeout、接続保持、session pressure。',
+  },
+  {
+    id: 'l4',
+    label: 'L4',
+    title: 'Transport',
+    text: 'TCP/UDP port、SYN、再送、backlog、LB。',
+  },
+  {
+    id: 'l3',
+    label: 'L3',
+    title: 'Network',
+    text: 'IP、ICMP、routing、subnet、到達性。',
+  },
+  {
+    id: 'l2',
+    label: 'L2',
+    title: 'Data Link',
+    text: 'MAC、ARP、Docker bridge、隣接関係。',
+  },
+  {
+    id: 'host',
+    label: 'Host',
+    title: 'OS / Kernel',
+    text: 'process、syscall、auditd、cgroups、capability。',
+  },
+  {
+    id: 'platform',
+    label: 'Ctrl',
+    title: 'Platform / Control Plane',
+    text: 'Kubernetes、Cloud IAM、IaC、release policy。',
+  },
+];
+
+const httpStages = [
+  {
+    id: 'client',
+    label: 'Tool',
+    title: 'Client / Attack tool',
+    text: 'curl、nmap、Hydra、sqlmap、probeが通信を作る。',
+  },
+  {
+    id: 'dns',
+    label: 'DNS',
+    title: 'Name resolution',
+    text: 'service名、resolver、Docker DNS、CoreDNS。',
+  },
+  {
+    id: 'tcp',
+    label: 'TCP',
+    title: 'Connection',
+    text: 'port、SYN、keepalive、timeout、connection pool。',
+  },
+  {
+    id: 'tls',
+    label: 'TLS',
+    title: 'Encryption boundary',
+    text: 'SNI、certificate、cipher、mTLS、termination。',
+  },
+  {
+    id: 'http-line',
+    label: 'Line',
+    title: 'Method / path / query',
+    text: 'GET /users?id=1 のmethod、path、query。',
+  },
+  {
+    id: 'http-meta',
+    label: 'Head',
+    title: 'Headers / session',
+    text: 'Authorization、Cookie、Content-Type、rate limit key。',
+  },
+  {
+    id: 'http-body',
+    label: 'Body',
+    title: 'Body / payload',
+    text: 'JSON、form、upload、SQLi/SSRF payload。',
+  },
+  {
+    id: 'middleware',
+    label: 'MW',
+    title: 'App middleware',
+    text: 'logging、auth、rate limit、validationの入口。',
+  },
+  {
+    id: 'handler',
+    label: 'App',
+    title: 'Controller / service',
+    text: 'handler、business logic、error handling。',
+  },
+  {
+    id: 'state',
+    label: 'DB',
+    title: 'State / dependency',
+    text: 'DB、cache、file、queue、external API。',
+  },
+];
+
+const deliveryStages = [
+  {
+    id: 'source',
+    label: '1',
+    title: '発生源',
+    text: 'Kali、利用者、監視probe、CI runner。',
+    zone: 'Pre-app',
+  },
+  {
+    id: 'name',
+    label: '2',
+    title: '名前解決',
+    text: 'DNS、service discovery、route選択前の入口。',
+    zone: 'Pre-app',
+  },
+  {
+    id: 'l2l3',
+    label: '3',
+    title: 'L2/L3到達性',
+    text: 'ARP、IP、ICMP、routing、Docker bridge。',
+    zone: 'Pre-app',
+  },
+  {
+    id: 'policy',
+    label: '4',
+    title: 'L4/Policy制御',
+    text: 'port、firewall、Security Group、NetworkPolicy。',
+    zone: 'Pre-app',
+  },
+  {
+    id: 'proxy',
+    label: '5',
+    title: 'TLS / WAF / Proxy',
+    text: 'TLS終端、WAF、reverse proxy、IDS可視性。',
+    zone: 'Pre-app',
+  },
+  {
+    id: 'middleware',
+    label: '6',
+    title: 'Middleware入口',
+    text: 'access log、auth、rate limit、request context。',
+    zone: 'Middleware',
+  },
+  {
+    id: 'app',
+    label: '7',
+    title: 'App / State',
+    text: 'controller、service、DB、queue、file、external API。',
+    zone: 'Application',
+  },
+];
+
+function addFocus(profile, osi, http, delivery) {
+  osi.forEach((id) => profile.osi.add(id));
+  http.forEach((id) => profile.http.add(id));
+  delivery.forEach((id) => profile.delivery.add(id));
+}
+
+function scenarioProtocolProfile(scenario) {
+  const context = `${scenario.id} ${scenario.layer} ${scenario.title} ${scenario.summary} ${scenario.objective}`;
+  const profile = {
+    osi: new Set(),
+    http: new Set(['client']),
+    delivery: new Set(['source']),
+    osiLabel: 'L7 Application',
+    httpLabel: 'HTTP request processing',
+    deliveryLabel: 'MiddlewareからAppへ到達',
+    preAppText: 'App middlewareで認証、rate limit、logging、validationを確認する。',
+    observeText: 'access.log、app log、DB/API test、SIEM searchを対応付ける。',
+  };
+
+  // The profile is intentionally centralized because each page must teach the
+  // same mental model while highlighting a different layer of the path.
+  if (/全体|横断|Capstone|修了課題/.test(context)) {
+    addFocus(profile, ['l2', 'l3', 'l4', 'l7', 'host', 'platform'], ['tcp', 'http-line', 'middleware', 'handler', 'state'], ['name', 'l2l3', 'policy', 'middleware', 'app']);
+    return {
+      ...profile,
+      osiLabel: 'L2-L7 + Host + Platform',
+      httpLabel: 'request、middleware、stateを横断',
+      deliveryLabel: '発生源からApp/DBまで全体',
+      preAppText: 'Pre-app、Middleware、Applicationの境界をtimelineで分ける。',
+      observeText: 'Suricata、Fail2ban、App log、Auditd、SLOを同じ時系列に並べる。',
+    };
+  }
+
+  if (/ARP|L2/.test(context)) {
+    addFocus(profile, ['l2'], [], ['name', 'l2l3']);
+    return {
+      ...profile,
+      osiLabel: 'L2 Data Link',
+      httpLabel: 'HTTPより前。request line/bodyには未到達',
+      deliveryLabel: 'App到達前のDocker bridge / ARP',
+      preAppText: 'サーバーやmiddlewareに届く前の隣接解決とbridge上の観測を扱う。',
+      observeText: 'ip neigh、arping、tcpdump、Docker network情報を見る。',
+    };
+  }
+
+  if (/L3\/L4|ポートスキャン|portscan|port scan|scan/i.test(context)) {
+    addFocus(profile, ['l3', 'l4'], ['tcp'], ['l2l3', 'policy']);
+    return {
+      ...profile,
+      osiLabel: 'L3 Network + L4 Transport',
+      httpLabel: 'HTTP前のIP到達性、port、TCP state',
+      deliveryLabel: 'Middleware到達前のroute / port / policy',
+      preAppText: 'IPで届き、TCP portが応答するかを見る段階で、HTTP handlerにはまだ入らない。',
+      observeText: 'nmap、Suricata scan alert、route、port exposure、App access.log有無を見る。',
+    };
+  }
+
+  if (/ICMP|L3/.test(context)) {
+    addFocus(profile, ['l3'], [], ['name', 'l2l3']);
+    return {
+      ...profile,
+      osiLabel: 'L3 Network',
+      httpLabel: 'HTTPより前。IP到達性とICMPを確認',
+      deliveryLabel: 'App到達前のIP route / reachability',
+      preAppText: 'TCP portやHTTP handlerに入る前に、IPで届くかを切り分ける。',
+      observeText: 'ping、traceroute、ICMP alert、blackbox probeを比較する。',
+    };
+  }
+
+  if (/Advanced Network|Network・Edge|BGP|QUIC|CDN|Anycast|Edge Routing/i.test(context)) {
+    addFocus(profile, ['l3', 'l4', 'l7'], ['dns', 'tcp', 'tls'], ['name', 'l2l3', 'policy', 'proxy']);
+    return {
+      ...profile,
+      osiLabel: 'L3/L4/L7 Edge network',
+      httpLabel: 'DNS、transport、TLS、edge proxyの連鎖',
+      deliveryLabel: 'App到達前のedge routing / LB / CDN',
+      preAppText: 'アプリより前のedge、routing、load balancer、TLS境界で制御する。',
+      observeText: 'DNS result、edge/LB log、TLS metadata、network telemetryを比較する。',
+    };
+  }
+
+  if (/TCP|L4|SYN|backlog|loadbalancer|Load Balancer/.test(context)) {
+    addFocus(profile, ['l4'], ['tcp'], ['l2l3', 'policy']);
+    return {
+      ...profile,
+      osiLabel: 'L4 Transport',
+      httpLabel: 'HTTP前のTCP connection / port',
+      deliveryLabel: 'Middleware到達前のport、SYN、policy',
+      preAppText: 'SYNやTCP flagの段階では、HTTP headerやbodyはまだ存在しない。',
+      observeText: 'nmap、ss、Suricata TCP alert、LB/firewall logを見る。',
+    };
+  }
+
+  if (/L5|Session|session|セッション|keepalive|timeout|slowloris/i.test(context)) {
+    addFocus(profile, ['l5', 'l4'], ['tcp'], ['policy', 'proxy']);
+    return {
+      ...profile,
+      osiLabel: 'L5 Session + L4 connection',
+      httpLabel: 'TCP接続保持。HTTPが完了しない境界',
+      deliveryLabel: 'Proxy/App入口前のconnection枯渇',
+      preAppText: 'requestがmiddlewareへ完全に渡る前に、connectionやtimeoutを消費する。',
+      observeText: '接続保持数、timeout、event loop lag、proxy/app access logの差を見る。',
+    };
+  }
+
+  if (/TLS|mTLS|L6|certificate|cert/.test(context)) {
+    addFocus(profile, ['l6'], ['tls'], ['proxy']);
+    return {
+      ...profile,
+      osiLabel: 'L6 TLS / Presentation',
+      httpLabel: 'TLS handshake。HTTP bodyは暗号化内側',
+      deliveryLabel: 'Middleware到達前のTLS終端 / WAF境界',
+      preAppText: 'TLS終端前はSNIや証明書は見えるが、HTTP path/bodyは基本的に見えない。',
+      observeText: 'openssl、curl -vk、cert expiry、TLS metadata、proxy logを見る。',
+    };
+  }
+
+  if (/DNS|resolver|CoreDNS/.test(context)) {
+    addFocus(profile, ['l7'], ['dns'], ['name']);
+    return {
+      ...profile,
+      osiLabel: 'L7 DNS / Service Discovery',
+      httpLabel: 'HTTP request前の名前解決',
+      deliveryLabel: 'App到達前のresolver / service名',
+      preAppText: 'HTTPを送る前に、名前がどのIP/serviceへ解決されるかを確認する。',
+      observeText: 'dig、getent、resolv.conf、CoreDNS/DNS log、service mapを見る。',
+    };
+  }
+
+  if (/OS|Linux|Kernel|Endpoint|EDR|file|ファイル|権限|eBPF|perf|flamegraph|auditd|cgroups|seccomp|capabilities/i.test(context)) {
+    addFocus(profile, ['host'], ['handler', 'state'], ['app']);
+    return {
+      ...profile,
+      osiLabel: 'Host / Kernel boundary',
+      httpLabel: 'HTTP処理後のprocess、file、syscall、state',
+      deliveryLabel: 'App到達後のOS資源と監査境界',
+      preAppText: '通信経路より、App processがOS資源へ触る瞬間を観測する。',
+      observeText: 'auditd、strace、lsof、ss、process tree、EDR telemetryを見る。',
+    };
+  }
+
+  if (/Kubernetes|Cloud|IAM|KMS|IaC|Terraform|OPA|GitOps|Release|Supply Chain|SBOM|admission|NetworkPolicy/i.test(context)) {
+    addFocus(profile, ['platform'], ['dns', 'tcp', 'tls'], ['name', 'policy', 'proxy']);
+    return {
+      ...profile,
+      osiLabel: 'Platform / Control Plane',
+      httpLabel: 'HTTP外側のpolicy、identity、release guardrail',
+      deliveryLabel: 'App到達前のIAM、policy、network、admission',
+      preAppText: 'serviceに届く前に、誰が通してよいかをcontrol planeで制御する。',
+      observeText: 'CloudTrail/Audit Logs、Kubernetes events、OPA result、CI evidenceを見る。',
+    };
+  }
+
+  if (/SQL|Injection|SSRF|BOLA|IDOR|API|Backend|認証|ブルート|DoS|Resource|upload|RCE|business logic/i.test(context)) {
+    const bodyFocus = /SQL|Injection|SSRF|upload|RCE|body|payload/i.test(context);
+    const authFocus = /認証|ブルート|BOLA|IDOR|Authorization|Auth/i.test(context);
+    addFocus(profile, ['l7'], [
+      'http-line',
+      authFocus ? 'http-meta' : 'http-line',
+      bodyFocus ? 'http-body' : 'http-meta',
+      'middleware',
+      'handler',
+      bodyFocus ? 'state' : 'handler',
+    ], ['middleware', 'app']);
+    return {
+      ...profile,
+      osiLabel: 'L7 Application / HTTP',
+      httpLabel: bodyFocus ? 'path/query/bodyからhandler/DBへ' : 'headers/session/middlewareからhandlerへ',
+      deliveryLabel: 'Middleware到達後のApp/API境界',
+      preAppText: 'ここではAppに届いた後、middleware、handler、DB/API契約で止める。',
+      observeText: 'HTTP status、access/auth log、unit/integration test、Suricata/WAF alertを見る。',
+    };
+  }
+
+  if (/Observability|SRE|Incident|Burn|OpenTelemetry|Distributed|Queue|Kafka|Temporal|Redis|Performance|migration|contract|schema/i.test(context)) {
+    addFocus(profile, ['l7', 'host', 'platform'], ['middleware', 'handler', 'state'], ['middleware', 'app']);
+    return {
+      ...profile,
+      osiLabel: 'L7 + Host + Platform',
+      httpLabel: 'middleware、handler、dependency、telemetry',
+      deliveryLabel: 'App到達後のSLO / dependency境界',
+      preAppText: '通信そのものより、届いた後の依存関係とSLO影響を分解する。',
+      observeText: 'RED/USE metrics、trace、log correlation、DB/queue evidenceを見る。',
+    };
+  }
+
+  addFocus(profile, ['l7'], ['http-line', 'middleware', 'handler'], ['middleware', 'app']);
+  return profile;
+}
+
+function protocolStageMap(stages, activeIds, className = '') {
+  const active = activeIds instanceof Set ? activeIds : new Set(activeIds);
+  const classAttr = className ? ` ${className}` : '';
+  return `<div class="protocol-stage-map${classAttr}" role="list">${stages
+    .map((stage) => {
+      const state = active.has(stage.id) ? ' active' : '';
+      const zone = stage.zone ? `<span class="stage-zone">${escapeHtml(stage.zone)}</span>` : '';
+      return `<div class="protocol-stage${state}" role="listitem">
+        <span class="stage-label">${escapeHtml(stage.label)}</span>${zone}
+        <strong>${escapeHtml(stage.title)}</strong>
+        <p>${escapeHtml(stage.text)}</p>
+      </div>`;
+    })
+    .join('')}</div>`;
+}
+
+function scenarioProtocolDiagrams(scenario) {
+  const profile = scenarioProtocolProfile(scenario);
+  return `<div class="protocol-brief">
+    <div class="brief-item"><span>OSI</span><strong>${escapeHtml(profile.osiLabel)}</strong><p>${escapeHtml(profile.preAppText)}</p></div>
+    <div class="brief-item"><span>HTTP</span><strong>${escapeHtml(profile.httpLabel)}</strong><p>HTTPのmethod、header、body、middleware、handler、stateのどこを見るかを明示する。</p></div>
+    <div class="brief-item"><span>Before App</span><strong>${escapeHtml(profile.deliveryLabel)}</strong><p>${escapeHtml(profile.observeText)}</p></div>
+  </div>
+  <div class="protocol-layout">
+    <div class="protocol-panel">
+      <h3>OSIレイヤーで見る位置</h3>
+      ${protocolStageMap(osiStages, profile.osi, 'osi-stack')}
+    </div>
+    <div class="protocol-panel">
+      <h3>HTTP通信の中の位置</h3>
+      ${protocolStageMap(httpStages, profile.http, 'http-stack')}
+    </div>
+    <div class="protocol-panel">
+      <h3>Server / Middleware 到達前後</h3>
+      ${protocolStageMap(deliveryStages, profile.delivery, 'delivery-path')}
+    </div>
+  </div>`;
+}
+
+function protocolReferenceDiagrams() {
+  return `<div class="protocol-brief">
+    <div class="brief-item"><span>Layer</span><strong>OSI + Host + Platform</strong><p>低レイヤー、HTTP、OS、control planeを同じ順番で読む。</p></div>
+    <div class="brief-item"><span>HTTP</span><strong>Line / Header / Body / Middleware / App</strong><p>攻撃や障害がrequestのどの部位に乗っているかを分ける。</p></div>
+    <div class="brief-item"><span>Before App</span><strong>Pre-app -> Middleware -> Application</strong><p>Appに届く前に止まる事象と、App到達後に壊れる事象を分離する。</p></div>
+  </div>
+  <div class="protocol-layout">
+    <div class="protocol-panel">
+      <h3>OSI全体像</h3>
+      ${protocolStageMap(osiStages, new Set(osiStages.map((stage) => stage.id)), 'osi-stack')}
+    </div>
+    <div class="protocol-panel">
+      <h3>HTTP request分解</h3>
+      ${protocolStageMap(httpStages, new Set(httpStages.map((stage) => stage.id)), 'http-stack')}
+    </div>
+    <div class="protocol-panel">
+      <h3>App到達までの経路</h3>
+      ${protocolStageMap(deliveryStages, new Set(deliveryStages.map((stage) => stage.id)), 'delivery-path')}
+    </div>
+  </div>`;
+}
+
 function scenarioDiagram(scenario) {
   return learningDiagram([
     ['1', '理解', '抽象説明、目的、具体例で守る資産と失敗条件を把握する。'],
@@ -1857,6 +2274,11 @@ function scenarioPage(scenario) {
     <section>
       <h2>環境と証跡の図</h2>
       ${scenarioVisualMap(scenario)}
+    </section>
+
+    <section>
+      <h2>OSI / HTTP / 到達前の図</h2>
+      ${scenarioProtocolDiagrams(scenario)}
     </section>
 
     <section class="grid two">
@@ -2009,6 +2431,11 @@ function indexPage() {
       ])}
     </section>
 
+    <section>
+      <h2>通信レイヤー共通図</h2>
+      ${protocolReferenceDiagrams()}
+    </section>
+
     <section class="grid three">
       ${roleCoverage
         .map(([role, count]) => `<article><h2>${role}</h2><p class="big">${count}/${scenarios.length}</p><p>この観点を主対象または副対象として扱うシナリオ数です。</p></article>`)
@@ -2074,6 +2501,10 @@ body {
   color: var(--text);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   line-height: 1.6;
+}
+
+p, li, td, th, strong {
+  overflow-wrap: anywhere;
 }
 
 a { color: var(--accent-2); text-decoration-thickness: 1px; }
@@ -2320,6 +2751,169 @@ article {
 .visual-node.improve { border-top: 5px solid var(--violet); background: var(--surface-violet); }
 .visual-node.improve .visual-label { background: var(--violet); }
 
+.protocol-brief {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.brief-item {
+  min-height: 132px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-left: 5px solid var(--accent-2);
+  border-radius: 8px;
+  background: #fbfcfe;
+}
+
+.brief-item:nth-child(1) { border-left-color: var(--accent); background: var(--surface-green); }
+.brief-item:nth-child(2) { border-left-color: var(--cyan); background: var(--surface-cyan); }
+.brief-item:nth-child(3) { border-left-color: var(--warn); background: var(--surface-amber); }
+
+.brief-item span {
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--text);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.brief-item strong {
+  display: block;
+  margin-top: 10px;
+  font-size: 15px;
+}
+
+.brief-item p {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.protocol-layout {
+  display: grid;
+  grid-template-columns: 0.9fr 1.2fr 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+.protocol-panel {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.protocol-panel h3 {
+  margin-bottom: 12px;
+}
+
+.protocol-stage-map {
+  display: grid;
+  gap: 8px;
+}
+
+.http-stack {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.delivery-path {
+  grid-template-columns: 1fr;
+}
+
+.protocol-stage {
+  position: relative;
+  min-height: 104px;
+  padding: 11px;
+  border: 1px solid var(--line);
+  border-left: 4px solid #94a3b8;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.protocol-stage.active {
+  border-color: #93c5fd;
+  border-left-color: var(--accent-2);
+  background: var(--surface-blue);
+  box-shadow: inset 0 0 0 1px rgba(52, 81, 164, 0.14);
+}
+
+.osi-stack .protocol-stage:nth-child(1).active { border-left-color: var(--accent); background: var(--surface-green); }
+.osi-stack .protocol-stage:nth-child(2).active { border-left-color: var(--violet); background: var(--surface-violet); }
+.osi-stack .protocol-stage:nth-child(3).active { border-left-color: var(--cyan); background: var(--surface-cyan); }
+.osi-stack .protocol-stage:nth-child(4).active { border-left-color: var(--warn); background: var(--surface-amber); }
+.osi-stack .protocol-stage:nth-child(5).active { border-left-color: var(--blue); background: var(--surface-blue); }
+.osi-stack .protocol-stage:nth-child(6).active { border-left-color: var(--danger); background: var(--surface-red); }
+.osi-stack .protocol-stage:nth-child(7).active { border-left-color: var(--ok); background: #f0fdf4; }
+.osi-stack .protocol-stage:nth-child(8).active { border-left-color: var(--violet); background: var(--surface-violet); }
+
+.delivery-path .protocol-stage {
+  min-height: 96px;
+}
+
+.delivery-path .protocol-stage::after {
+  content: ">";
+  position: absolute;
+  right: 12px;
+  bottom: -18px;
+  color: #64748b;
+  font-weight: 900;
+  transform: rotate(90deg);
+}
+
+.delivery-path .protocol-stage:last-child::after {
+  content: "";
+}
+
+.stage-label {
+  display: inline-flex;
+  min-width: 34px;
+  min-height: 26px;
+  align-items: center;
+  justify-content: center;
+  margin-right: 6px;
+  border-radius: 6px;
+  background: #e2e8f0;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.protocol-stage.active .stage-label {
+  background: var(--accent-2);
+  color: #ffffff;
+}
+
+.stage-zone {
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #e5e7eb;
+  color: #374151;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.protocol-stage strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 14px;
+}
+
+.protocol-stage p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
 .role-lanes {
   display: grid;
   gap: 10px;
@@ -2419,9 +3013,11 @@ code {
 }
 
 table {
+  display: block;
   width: 100%;
+  max-width: 100%;
   border-collapse: collapse;
-  overflow: hidden;
+  overflow-x: auto;
 }
 
 th, td {
@@ -2457,7 +3053,7 @@ li + li { margin-top: 6px; }
 @media (max-width: 900px) {
   .topbar { align-items: flex-start; flex-direction: column; }
   h1 { font-size: 30px; }
-  .grid.two, .grid.three, .track-grid, .learning-diagram, .visual-map, .flow { grid-template-columns: 1fr; }
+  .grid.two, .grid.three, .track-grid, .learning-diagram, .visual-map, .protocol-brief, .protocol-layout, .http-stack, .flow { grid-template-columns: 1fr; }
   .diagram-node::after { content: ""; }
 }
 `;

@@ -16,6 +16,7 @@ fail() {
 grep -q '<!doctype html>' "$GUIDE_DIR/index.html" || fail "index.html does not look like HTML"
 grep -q '<html lang="ja">' "$GUIDE_DIR/index.html" || fail "index.html must declare Japanese language"
 grep -q '<h1>' "$GUIDE_DIR/index.html" || fail "index.html is missing h1"
+grep -q '通信レイヤー共通図' "$GUIDE_DIR/index.html" || fail "index.html is missing protocol layer overview"
 
 scenario_pages=("$GUIDE_DIR"/s*.html)
 [[ "${#scenario_pages[@]}" -ge 33 ]] || fail "expected at least 33 scenario pages, found ${#scenario_pages[@]}"
@@ -30,6 +31,9 @@ for file in "${scenario_pages[@]}"; do
   grep -q '経験者の深掘り' "$file" || fail "$(basename "$file") is missing experienced guidance"
   grep -q '学習フロー図' "$file" || fail "$(basename "$file") is missing learning diagram"
   grep -q '環境と証跡の図' "$file" || fail "$(basename "$file") is missing environment evidence diagram"
+  grep -q 'OSI / HTTP / 到達前の図' "$file" || fail "$(basename "$file") is missing protocol layer diagram"
+  grep -q 'HTTP通信の中の位置' "$file" || fail "$(basename "$file") is missing HTTP request anatomy"
+  grep -q 'Server / Middleware 到達前後' "$file" || fail "$(basename "$file") is missing pre-app delivery map"
   grep -q '事前準備' "$file" || fail "$(basename "$file") is missing prerequisites"
   grep -q '安全境界' "$file" || fail "$(basename "$file") is missing safety boundary"
   grep -q 'Hands-on Flow' "$file" || fail "$(basename "$file") is missing hands-on flow"

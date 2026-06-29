@@ -100,6 +100,129 @@
       </div></div>
     </section>
 
+    <section>
+      <h2>OSI / HTTP / 到達前の図</h2>
+      <div class="protocol-brief">
+    <div class="brief-item"><span>OSI</span><strong>Platform / Control Plane</strong><p>serviceに届く前に、誰が通してよいかをcontrol planeで制御する。</p></div>
+    <div class="brief-item"><span>HTTP</span><strong>HTTP外側のpolicy、identity、release guardrail</strong><p>HTTPのmethod、header、body、middleware、handler、stateのどこを見るかを明示する。</p></div>
+    <div class="brief-item"><span>Before App</span><strong>App到達前のIAM、policy、network、admission</strong><p>CloudTrail/Audit Logs、Kubernetes events、OPA result、CI evidenceを見る。</p></div>
+  </div>
+  <div class="protocol-layout">
+    <div class="protocol-panel">
+      <h3>OSIレイヤーで見る位置</h3>
+      <div class="protocol-stage-map osi-stack" role="list"><div class="protocol-stage" role="listitem">
+        <span class="stage-label">L7</span>
+        <strong>Application</strong>
+        <p>HTTP、DNS、API、認証、業務ロジック。</p>
+      </div><div class="protocol-stage" role="listitem">
+        <span class="stage-label">L6</span>
+        <strong>Presentation / TLS</strong>
+        <p>TLS handshake、証明書、mTLS、暗号化境界。</p>
+      </div><div class="protocol-stage" role="listitem">
+        <span class="stage-label">L5</span>
+        <strong>Session</strong>
+        <p>keepalive、timeout、接続保持、session pressure。</p>
+      </div><div class="protocol-stage" role="listitem">
+        <span class="stage-label">L4</span>
+        <strong>Transport</strong>
+        <p>TCP/UDP port、SYN、再送、backlog、LB。</p>
+      </div><div class="protocol-stage" role="listitem">
+        <span class="stage-label">L3</span>
+        <strong>Network</strong>
+        <p>IP、ICMP、routing、subnet、到達性。</p>
+      </div><div class="protocol-stage" role="listitem">
+        <span class="stage-label">L2</span>
+        <strong>Data Link</strong>
+        <p>MAC、ARP、Docker bridge、隣接関係。</p>
+      </div><div class="protocol-stage" role="listitem">
+        <span class="stage-label">Host</span>
+        <strong>OS / Kernel</strong>
+        <p>process、syscall、auditd、cgroups、capability。</p>
+      </div><div class="protocol-stage active" role="listitem">
+        <span class="stage-label">Ctrl</span>
+        <strong>Platform / Control Plane</strong>
+        <p>Kubernetes、Cloud IAM、IaC、release policy。</p>
+      </div></div>
+    </div>
+    <div class="protocol-panel">
+      <h3>HTTP通信の中の位置</h3>
+      <div class="protocol-stage-map http-stack" role="list"><div class="protocol-stage active" role="listitem">
+        <span class="stage-label">Tool</span>
+        <strong>Client / Attack tool</strong>
+        <p>curl、nmap、Hydra、sqlmap、probeが通信を作る。</p>
+      </div><div class="protocol-stage active" role="listitem">
+        <span class="stage-label">DNS</span>
+        <strong>Name resolution</strong>
+        <p>service名、resolver、Docker DNS、CoreDNS。</p>
+      </div><div class="protocol-stage active" role="listitem">
+        <span class="stage-label">TCP</span>
+        <strong>Connection</strong>
+        <p>port、SYN、keepalive、timeout、connection pool。</p>
+      </div><div class="protocol-stage active" role="listitem">
+        <span class="stage-label">TLS</span>
+        <strong>Encryption boundary</strong>
+        <p>SNI、certificate、cipher、mTLS、termination。</p>
+      </div><div class="protocol-stage" role="listitem">
+        <span class="stage-label">Line</span>
+        <strong>Method / path / query</strong>
+        <p>GET /users?id=1 のmethod、path、query。</p>
+      </div><div class="protocol-stage" role="listitem">
+        <span class="stage-label">Head</span>
+        <strong>Headers / session</strong>
+        <p>Authorization、Cookie、Content-Type、rate limit key。</p>
+      </div><div class="protocol-stage" role="listitem">
+        <span class="stage-label">Body</span>
+        <strong>Body / payload</strong>
+        <p>JSON、form、upload、SQLi/SSRF payload。</p>
+      </div><div class="protocol-stage" role="listitem">
+        <span class="stage-label">MW</span>
+        <strong>App middleware</strong>
+        <p>logging、auth、rate limit、validationの入口。</p>
+      </div><div class="protocol-stage" role="listitem">
+        <span class="stage-label">App</span>
+        <strong>Controller / service</strong>
+        <p>handler、business logic、error handling。</p>
+      </div><div class="protocol-stage" role="listitem">
+        <span class="stage-label">DB</span>
+        <strong>State / dependency</strong>
+        <p>DB、cache、file、queue、external API。</p>
+      </div></div>
+    </div>
+    <div class="protocol-panel">
+      <h3>Server / Middleware 到達前後</h3>
+      <div class="protocol-stage-map delivery-path" role="list"><div class="protocol-stage active" role="listitem">
+        <span class="stage-label">1</span><span class="stage-zone">Pre-app</span>
+        <strong>発生源</strong>
+        <p>Kali、利用者、監視probe、CI runner。</p>
+      </div><div class="protocol-stage active" role="listitem">
+        <span class="stage-label">2</span><span class="stage-zone">Pre-app</span>
+        <strong>名前解決</strong>
+        <p>DNS、service discovery、route選択前の入口。</p>
+      </div><div class="protocol-stage" role="listitem">
+        <span class="stage-label">3</span><span class="stage-zone">Pre-app</span>
+        <strong>L2/L3到達性</strong>
+        <p>ARP、IP、ICMP、routing、Docker bridge。</p>
+      </div><div class="protocol-stage active" role="listitem">
+        <span class="stage-label">4</span><span class="stage-zone">Pre-app</span>
+        <strong>L4/Policy制御</strong>
+        <p>port、firewall、Security Group、NetworkPolicy。</p>
+      </div><div class="protocol-stage active" role="listitem">
+        <span class="stage-label">5</span><span class="stage-zone">Pre-app</span>
+        <strong>TLS / WAF / Proxy</strong>
+        <p>TLS終端、WAF、reverse proxy、IDS可視性。</p>
+      </div><div class="protocol-stage" role="listitem">
+        <span class="stage-label">6</span><span class="stage-zone">Middleware</span>
+        <strong>Middleware入口</strong>
+        <p>access log、auth、rate limit、request context。</p>
+      </div><div class="protocol-stage" role="listitem">
+        <span class="stage-label">7</span><span class="stage-zone">Application</span>
+        <strong>App / State</strong>
+        <p>controller、service、DB、queue、file、external API。</p>
+      </div></div>
+    </div>
+  </div>
+    </section>
+
     <section class="grid two">
       <article>
         <h2>目的</h2>
