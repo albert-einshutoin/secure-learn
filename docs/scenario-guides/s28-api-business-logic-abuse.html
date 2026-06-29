@@ -44,6 +44,17 @@
       </article>
     </section>
 
+    <section class="grid two">
+      <article>
+        <h2>事前準備</h2>
+        <ul><li>Docker DesktopまたはDocker Engineが起動している。</li><li>docker compose config -q が通り、対象service/profileを説明できる。</li><li>対象はローカルラボとS28のHTMLに書かれた範囲だけに限定する。</li></ul>
+      </article>
+      <article>
+        <h2>安全境界</h2>
+        <ul><li>第三者環境、公共IP、許可のないcloud accountには実行しない。</li><li>payload、scan、負荷はHTMLに書かれたローカル対象へ限定する。</li><li>攻撃payloadは教材内の明示されたendpoint、file、containerだけに向ける。</li></ul>
+      </article>
+    </section>
+
     <section>
       <h2>Hands-on Flow</h2>
       <ol class="flow"><li><span>Model</span><p>resource owner、actor、action、state transitionを表にする。</p></li><li><span>Red test</span><p>BOLA/SSRF/upload/RCEの失敗すべきケースを書く。</p></li><li><span>Control</span><p>authorization、egress allowlist、file validation、sandboxを設計する。</p></li><li><span>Detect</span><p>異常なresource access、egress、upload、process spawnの検知を考える。</p></li><li><span>Report</span><p>CWE/CVSSと再発防止テストをPR化する。</p></li></ol>
@@ -66,6 +77,21 @@ sed -n &quot;1,220p&quot; docs/curriculum/owasp-api-security-track.md</code></pr
     <section>
       <h2>ツール活用</h2>
       <table><thead><tr><th>Tool</th><th>使い方</th></tr></thead><tbody><tr><td><strong>OWASP API Top 10</strong></td><td>BOLA、auth、resource consumption、SSRFをcoverage mapにする。</td></tr><tr><td><strong>OpenAPI</strong></td><td>undocumented endpointとbreaking changeを見つける。</td></tr><tr><td><strong>Backend tests</strong></td><td>認可と入力検証の回帰を固定する。</td></tr><tr><td><strong>SIEM</strong></td><td>異常なresource/egress/upload/process eventを検知する。</td></tr></tbody></table>
+    </section>
+
+    <section class="grid three">
+      <article>
+        <h2>観測ポイント</h2>
+        <ul><li>実行コマンドの開始時刻、対象、終了時刻を記録する。</li><li>HTTP status、アプリログ、検知ログ、メトリクスのどれで成功/失敗を証明するかを決める。</li><li>合格証跡として「BOLA/SSRF/upload/RCE red test設計」を第三者が追える形で残す。</li></ul>
+      </article>
+      <article>
+        <h2>よくある失敗</h2>
+        <ul><li>攻撃が成功したことと、検知や防御が成功したことを混同する。</li><li>source、timestamp、request、検索条件を残さず、後から再現できない。</li><li>ローカルで動いた事実だけで完了扱いにし、本番で必要な追加統制を説明しない。</li></ul>
+      </article>
+      <article>
+        <h2>セルフレビュー</h2>
+        <ul><li>BOLA/SSRF/Unsafe Upload/RCEで守りたい資産と失敗条件を一文で説明できるか。</li><li>どのログ、テスト、メトリクスが判断根拠かを第三者が追えるか。</li><li>本番導入時の追加統制、owner、rollback条件を言えるか。</li></ul>
+      </article>
     </section>
 
     <section class="grid two">

@@ -44,6 +44,17 @@
       </article>
     </section>
 
+    <section class="grid two">
+      <article>
+        <h2>事前準備</h2>
+        <ul><li>Docker DesktopまたはDocker Engineが起動している。</li><li>docker compose config -q が通り、対象service/profileを説明できる。</li><li>対象はローカルラボとS19のHTMLに書かれた範囲だけに限定する。</li></ul>
+      </article>
+      <article>
+        <h2>安全境界</h2>
+        <ul><li>第三者環境、公共IP、許可のないcloud accountには実行しない。</li><li>payload、scan、負荷はHTMLに書かれたローカル対象へ限定する。</li></ul>
+      </article>
+    </section>
+
     <section>
       <h2>Hands-on Flow</h2>
       <ol class="flow"><li><span>Probe</span><p>openssl s_clientでhandshake情報または失敗理由を見る。</p></li><li><span>Boundary</span><p>TLS終端前後でIDS/WAF/appが見える情報を分ける。</p></li><li><span>Design</span><p>mTLSのCA、client cert、rotation、revocationを設計する。</p></li><li><span>Alert</span><p>expiry、handshake error、protocol downgradeを監視項目にする。</p></li><li><span>Release</span><p>証明書更新のcanaryとrollbackを決める。</p></li></ol>
@@ -67,6 +78,21 @@ sed -n &quot;1,220p&quot; docs/scenario-guides/s12-tls-boundary.html</code></pre
     <section>
       <h2>ツール活用</h2>
       <table><thead><tr><th>Tool</th><th>使い方</th></tr></thead><tbody><tr><td><strong>openssl s_client</strong></td><td>handshake、SNI、証明書、protocolを確認する。</td></tr><tr><td><strong>Nginx/Envoy</strong></td><td>TLS終端、mTLS、cipher policyの実装候補にする。</td></tr><tr><td><strong>Prometheus alert</strong></td><td>cert expiryとhandshake errorを監視する。</td></tr><tr><td><strong>Release checklist</strong></td><td>rotationとrollbackを運用手順にする。</td></tr></tbody></table>
+    </section>
+
+    <section class="grid three">
+      <article>
+        <h2>観測ポイント</h2>
+        <ul><li>実行コマンドの開始時刻、対象、終了時刻を記録する。</li><li>HTTP status、アプリログ、検知ログ、メトリクスのどれで成功/失敗を証明するかを決める。</li><li>合格証跡として「TLS/mTLS trust boundary図」を第三者が追える形で残す。</li></ul>
+      </article>
+      <article>
+        <h2>よくある失敗</h2>
+        <ul><li>攻撃が成功したことと、検知や防御が成功したことを混同する。</li><li>source、timestamp、request、検索条件を残さず、後から再現できない。</li><li>ローカルで動いた事実だけで完了扱いにし、本番で必要な追加統制を説明しない。</li></ul>
+      </article>
+      <article>
+        <h2>セルフレビュー</h2>
+        <ul><li>TLS/mTLS・証明書ローテーションで守りたい資産と失敗条件を一文で説明できるか。</li><li>どのログ、テスト、メトリクスが判断根拠かを第三者が追えるか。</li><li>本番導入時の追加統制、owner、rollback条件を言えるか。</li></ul>
+      </article>
     </section>
 
     <section class="grid two">

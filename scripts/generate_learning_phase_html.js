@@ -35,6 +35,66 @@ function phaseExamples(phase) {
   return phase.examples || phase.hands_on.map((item) => `具体例: ${item}`);
 }
 
+function phasePrerequisites(phase) {
+  if (phase.id === 'P0') {
+    return phase.prerequisites || [
+      'README、SECURITY、CONTRIBUTINGを読み、許可範囲を確認する。',
+      `scripts/learning_phase.sh config ${phase.id.toLowerCase()} で起動対象profileを確認する。`,
+      'Docker DesktopまたはDocker Engineが起動し、docker compose config -q が通る。',
+    ];
+  }
+
+  return phase.prerequisites || [
+    '前フェーズの合格証跡を確認し、未完了のまま次へ進まない。',
+    `scripts/learning_phase.sh config ${phase.id.toLowerCase()} で起動対象profileを確認する。`,
+    'Docker DesktopまたはDocker Engineが起動し、docker compose config -q が通る。',
+  ];
+}
+
+function phaseSafety(phase) {
+  const context = `${phase.title} ${phase.skills.join(' ')}`;
+  const safety = [
+    '許可されたローカルDockerラボだけを対象にする。',
+    '外部IP、第三者service、実本番accountにscan、payload、負荷を向けない。',
+  ];
+
+  if (/cloud|AWS|GCP|Azure|IAM|KMS|BGP|CDN|Terraform|Org policy/i.test(context)) {
+    safety.push('実cloud、BGP、CDN、組織policyの変更は行わず、設計レビューとサンプル証跡で練習する。');
+  }
+  if (/load|burn-rate|performance|backpressure|capacity|SLO/i.test(context)) {
+    safety.push('負荷試験は小さい値から始め、SLO悪化を確認したら停止して復旧を記録する。');
+  }
+  if (/RCE|SSRF|BOLA|unsafe upload|privilege|auditd|EDR/i.test(context)) {
+    safety.push('攻撃再現は教材内の明示されたendpoint、file、containerに限定する。');
+  }
+
+  return phase.safety || safety;
+}
+
+function phaseObservationPoints(phase) {
+  return phase.observations || [
+    '開始時刻、対象profile、実行コマンド、終了時刻を記録する。',
+    'service health、ログ、メトリクス、テスト結果のどれで進捗を判断するかを決める。',
+    `次フェーズ判定「${phase.next_gate}」を満たした根拠を残す。`,
+  ];
+}
+
+function phaseCommonMistakes(phase) {
+  return phase.commonMistakes || [
+    'profileを理解しないまま起動し、どのserviceを検証しているか説明できない。',
+    'コマンドが通った事実だけを残し、何を守ったか、何を観測したかを書かない。',
+    '設計だけで完了扱いにし、実行可能な証跡または安全上の制約を明記しない。',
+  ];
+}
+
+function phaseSelfReview(phase) {
+  return phase.selfReview || [
+    `${phase.title}の到達目標を、Whitehat/SRE/Backendのどの観点で達成したか説明できるか。`,
+    '失敗した場合に最初に見るログ、テスト、メトリクスを言えるか。',
+    '本番相当へ進める時の追加権限、承認、rollback、ownerを定義できるか。',
+  ];
+}
+
 function nav(currentId) {
   return phases
     .map((phase) => {
@@ -100,6 +160,17 @@ function phasePage(phase) {
       </article>
     </section>
 
+    <section class="grid two">
+      <article>
+        <h2>事前準備</h2>
+        ${list(phasePrerequisites(phase))}
+      </article>
+      <article>
+        <h2>安全境界</h2>
+        ${list(phaseSafety(phase))}
+      </article>
+    </section>
+
     <section>
       <h2>Hands-on Flow</h2>
       ${list(phase.hands_on)}
@@ -117,6 +188,21 @@ function phasePage(phase) {
       <article>
         <h2>実行コマンド</h2>
         ${commandBlock(phase.commands)}
+      </article>
+    </section>
+
+    <section class="grid three">
+      <article>
+        <h2>観測ポイント</h2>
+        ${list(phaseObservationPoints(phase))}
+      </article>
+      <article>
+        <h2>よくある失敗</h2>
+        ${list(phaseCommonMistakes(phase))}
+      </article>
+      <article>
+        <h2>セルフレビュー</h2>
+        ${list(phaseSelfReview(phase))}
       </article>
     </section>
 
@@ -158,8 +244,8 @@ function indexPage() {
     </section>
 
     <section class="grid three">
-      <article><h2>Phases</h2><p class="big">${phases.length}</p><p>Junior 0 から Lead 2 まで。</p></article>
-      <article><h2>Docker</h2><p class="big">Profiles</p><p>base、observability、release、distributed、capstone。</p></article>
+      <article><h2>Phases</h2><p class="big">${phases.length}</p><p>Junior 0 から Principal まで。</p></article>
+      <article><h2>Docker</h2><p class="big">Profiles</p><p>baseからcloud、IaC、Kubernetes、observability、distributed、capstoneまで。</p></article>
       <article><h2>Gate</h2><p class="big">Evidence</p><p>各フェーズで合格証跡を要求。</p></article>
     </section>
 
@@ -167,9 +253,10 @@ function indexPage() {
       <h2>起動方法</h2>
       ${commandBlock([
         'scripts/learning_phase.sh list',
-        'scripts/learning_phase.sh start p5',
-        'scripts/learning_phase.sh status p5',
-        'scripts/learning_phase.sh stop p5',
+        'scripts/learning_phase.sh start p10',
+        'scripts/learning_phase.sh status p10',
+        'scripts/world_class_hands_on_check.sh all',
+        'scripts/learning_phase.sh stop p10',
       ])}
     </section>
 

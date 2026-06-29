@@ -44,6 +44,17 @@
       </article>
     </section>
 
+    <section class="grid two">
+      <article>
+        <h2>事前準備</h2>
+        <ul><li>Docker DesktopまたはDocker Engineが起動している。</li><li>docker compose config -q が通り、対象service/profileを説明できる。</li><li>対象はローカルラボとS7のHTMLに書かれた範囲だけに限定する。</li></ul>
+      </article>
+      <article>
+        <h2>安全境界</h2>
+        <ul><li>第三者環境、公共IP、許可のないcloud accountには実行しない。</li><li>payload、scan、負荷はHTMLに書かれたローカル対象へ限定する。</li><li>攻撃payloadは教材内の明示されたendpoint、file、containerだけに向ける。</li></ul>
+      </article>
+    </section>
+
     <section>
       <h2>Hands-on Flow</h2>
       <ol class="flow"><li><span>Start</span><p>/scripts/s7_lateral.shで段階的な攻撃チェーンを実行する。</p></li><li><span>Correlate</span><p>source.ip、timestamp、event.actionでSuricata/App/Fail2ban/Auditdを繋ぐ。</p></li><li><span>Contain</span><p>BANやサービス保護の判断を記録する。</p></li><li><span>Eradicate</span><p>成立した攻撃があるか、修正済みで拒否されたかを分ける。</p></li><li><span>Improve</span><p>検知ルール、backend test、runbookをPRとして提案する。</p></li></ol>
@@ -67,6 +78,21 @@ scripts/incident_drill.sh</code></pre>
     <section>
       <h2>ツール活用</h2>
       <table><thead><tr><th>Tool</th><th>使い方</th></tr></thead><tbody><tr><td><strong>Kibana Timeline</strong></td><td>複数ログソースを時系列でまとめる。</td></tr><tr><td><strong>Suricata</strong></td><td>scan、SQLI、DOSのネットワーク側証跡を見る。</td></tr><tr><td><strong>Fail2ban</strong></td><td>封じ込めアクションの発生時刻を見る。</td></tr><tr><td><strong>Postmortem template</strong></td><td>検知、対応、恒久対策を第三者に伝える。</td></tr></tbody></table>
+    </section>
+
+    <section class="grid three">
+      <article>
+        <h2>観測ポイント</h2>
+        <ul><li>実行コマンドの開始時刻、対象、終了時刻を記録する。</li><li>HTTP status、アプリログ、検知ログ、メトリクスのどれで成功/失敗を証明するかを決める。</li><li>合格証跡として「attack chainの開始/検知/対応時刻」を第三者が追える形で残す。</li></ul>
+      </article>
+      <article>
+        <h2>よくある失敗</h2>
+        <ul><li>攻撃が成功したことと、検知や防御が成功したことを混同する。</li><li>source、timestamp、request、検索条件を残さず、後から再現できない。</li><li>ローカルで動いた事実だけで完了扱いにし、本番で必要な追加統制を説明しない。</li></ul>
+      </article>
+      <article>
+        <h2>セルフレビュー</h2>
+        <ul><li>横断インシデントで守りたい資産と失敗条件を一文で説明できるか。</li><li>どのログ、テスト、メトリクスが判断根拠かを第三者が追えるか。</li><li>本番導入時の追加統制、owner、rollback条件を言えるか。</li></ul>
+      </article>
     </section>
 
     <section class="grid two">

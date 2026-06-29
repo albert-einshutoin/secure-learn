@@ -86,7 +86,12 @@ PY
   grep -q '<html lang="ja">' "$file" || fail "$slug.html must declare Japanese language"
   grep -q '抽象的に何を学ぶか' "$file" || fail "$slug.html is missing abstract concept"
   grep -q '具体例' "$file" || fail "$slug.html is missing concrete examples"
+  grep -q '事前準備' "$file" || fail "$slug.html is missing prerequisites"
+  grep -q '安全境界' "$file" || fail "$slug.html is missing safety boundary"
   grep -q 'Hands-on Flow' "$file" || fail "$slug.html is missing hands-on flow"
+  grep -q '観測ポイント' "$file" || fail "$slug.html is missing observation points"
+  grep -q 'よくある失敗' "$file" || fail "$slug.html is missing common mistakes"
+  grep -q 'セルフレビュー' "$file" || fail "$slug.html is missing self-review prompts"
   grep -q '合格証跡' "$file" || fail "$slug.html is missing evidence criteria"
 done
 

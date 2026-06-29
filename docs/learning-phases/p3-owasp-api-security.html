@@ -43,6 +43,17 @@
       </article>
     </section>
 
+    <section class="grid two">
+      <article>
+        <h2>事前準備</h2>
+        <ul><li>前フェーズの合格証跡を確認し、未完了のまま次へ進まない。</li><li>scripts/learning_phase.sh config p3 で起動対象profileを確認する。</li><li>Docker DesktopまたはDocker Engineが起動し、docker compose config -q が通る。</li></ul>
+      </article>
+      <article>
+        <h2>安全境界</h2>
+        <ul><li>許可されたローカルDockerラボだけを対象にする。</li><li>外部IP、第三者service、実本番accountにscan、payload、負荷を向けない。</li><li>攻撃再現は教材内の明示されたendpoint、file、containerに限定する。</li></ul>
+      </article>
+    </section>
+
     <section>
       <h2>Hands-on Flow</h2>
       <ul><li>S2、S3を実行して認証攻撃とSQLi試行を検知する</li><li>失敗時にcredential materialやstack traceが漏れないことを確認する</li><li>S28に進む前段としてBOLA/SSRF/Uploadのred test設計を書く</li></ul>
@@ -61,6 +72,21 @@ scripts/learning_phase.sh status p3</code></pre>
 docker exec -it soc-lab-kali /scripts/s3_sqli.sh
 scripts/backend_hands_on_tests.sh
 sed -n &#39;1,220p&#39; docs/curriculum/owasp-api-security-track.md</code></pre>
+      </article>
+    </section>
+
+    <section class="grid three">
+      <article>
+        <h2>観測ポイント</h2>
+        <ul><li>開始時刻、対象profile、実行コマンド、終了時刻を記録する。</li><li>service health、ログ、メトリクス、テスト結果のどれで進捗を判断するかを決める。</li><li>次フェーズ判定「P4に進む前に、攻撃の成功/失敗理由をコードとログで説明できる」を満たした根拠を残す。</li></ul>
+      </article>
+      <article>
+        <h2>よくある失敗</h2>
+        <ul><li>profileを理解しないまま起動し、どのserviceを検証しているか説明できない。</li><li>コマンドが通った事実だけを残し、何を守ったか、何を観測したかを書かない。</li><li>設計だけで完了扱いにし、実行可能な証跡または安全上の制約を明記しない。</li></ul>
+      </article>
+      <article>
+        <h2>セルフレビュー</h2>
+        <ul><li>OWASP API Security・認証認可・安全な失敗の到達目標を、Whitehat/SRE/Backendのどの観点で達成したか説明できるか。</li><li>失敗した場合に最初に見るログ、テスト、メトリクスを言えるか。</li><li>本番相当へ進める時の追加権限、承認、rollback、ownerを定義できるか。</li></ul>
       </article>
     </section>
 

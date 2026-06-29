@@ -1574,6 +1574,58 @@ function scenarioExamples(scenario) {
   return scenario.examples || scenario.flow.slice(0, 3).map(([step, text]) => `${step}: ${text}`);
 }
 
+function scenarioPrerequisites(scenario) {
+  return scenario.prerequisites || [
+    'Docker DesktopまたはDocker Engineが起動している。',
+    'docker compose config -q が通り、対象service/profileを説明できる。',
+    `対象はローカルラボと${scenario.id}のHTMLに書かれた範囲だけに限定する。`,
+  ];
+}
+
+function scenarioSafety(scenario) {
+  const safety = [
+    '第三者環境、公共IP、許可のないcloud accountには実行しない。',
+    'payload、scan、負荷はHTMLに書かれたローカル対象へ限定する。',
+  ];
+  const context = `${scenario.title} ${scenario.summary} ${scenario.layer}`;
+
+  if (/BGP|Anycast|CDN|Cloud|IAM|KMS|Terraform|OPA/.test(context)) {
+    safety.push('実cloud、BGP、CDN、組織policyは変更せず、設計レビュー、サンプルログ、ローカル検証に限定する。');
+  }
+  if (/DoS|Session|Load|Backpressure|Performance|負荷/.test(context)) {
+    safety.push('負荷値は小さく始め、SLO悪化を確認したらすぐ停止できる状態で実行する。');
+  }
+  if (/RCE|Upload|SSRF|BOLA|SQL|Traversal|権限|改変/.test(context)) {
+    safety.push('攻撃payloadは教材内の明示されたendpoint、file、containerだけに向ける。');
+  }
+
+  return scenario.safety || safety;
+}
+
+function scenarioObservationPoints(scenario) {
+  return scenario.observations || [
+    '実行コマンドの開始時刻、対象、終了時刻を記録する。',
+    'HTTP status、アプリログ、検知ログ、メトリクスのどれで成功/失敗を証明するかを決める。',
+    `合格証跡として「${scenario.evidence[0]}」を第三者が追える形で残す。`,
+  ];
+}
+
+function scenarioCommonMistakes(scenario) {
+  return scenario.commonMistakes || [
+    '攻撃が成功したことと、検知や防御が成功したことを混同する。',
+    'source、timestamp、request、検索条件を残さず、後から再現できない。',
+    'ローカルで動いた事実だけで完了扱いにし、本番で必要な追加統制を説明しない。',
+  ];
+}
+
+function scenarioSelfReview(scenario) {
+  return scenario.selfReview || [
+    `${scenario.title}で守りたい資産と失敗条件を一文で説明できるか。`,
+    'どのログ、テスト、メトリクスが判断根拠かを第三者が追えるか。',
+    '本番導入時の追加統制、owner、rollback条件を言えるか。',
+  ];
+}
+
 function flowMarkup(flow) {
   return `<ol class="flow">${flow
     .map(([step, text]) => `<li><span>${escapeHtml(step)}</span><p>${escapeHtml(text)}</p></li>`)
@@ -1654,6 +1706,17 @@ function scenarioPage(scenario) {
       </article>
     </section>
 
+    <section class="grid two">
+      <article>
+        <h2>事前準備</h2>
+        ${list(scenarioPrerequisites(scenario))}
+      </article>
+      <article>
+        <h2>安全境界</h2>
+        ${list(scenarioSafety(scenario))}
+      </article>
+    </section>
+
     <section>
       <h2>Hands-on Flow</h2>
       ${flowMarkup(scenario.flow)}
@@ -1673,6 +1736,21 @@ function scenarioPage(scenario) {
     <section>
       <h2>ツール活用</h2>
       ${toolTable(scenario.tools)}
+    </section>
+
+    <section class="grid three">
+      <article>
+        <h2>観測ポイント</h2>
+        ${list(scenarioObservationPoints(scenario))}
+      </article>
+      <article>
+        <h2>よくある失敗</h2>
+        ${list(scenarioCommonMistakes(scenario))}
+      </article>
+      <article>
+        <h2>セルフレビュー</h2>
+        ${list(scenarioSelfReview(scenario))}
+      </article>
     </section>
 
     <section class="grid two">

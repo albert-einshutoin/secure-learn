@@ -44,6 +44,17 @@
       </article>
     </section>
 
+    <section class="grid two">
+      <article>
+        <h2>事前準備</h2>
+        <ul><li>Docker DesktopまたはDocker Engineが起動している。</li><li>docker compose config -q が通り、対象service/profileを説明できる。</li><li>対象はローカルラボとS32のHTMLに書かれた範囲だけに限定する。</li></ul>
+      </article>
+      <article>
+        <h2>安全境界</h2>
+        <ul><li>第三者環境、公共IP、許可のないcloud accountには実行しない。</li><li>payload、scan、負荷はHTMLに書かれたローカル対象へ限定する。</li><li>負荷値は小さく始め、SLO悪化を確認したらすぐ停止できる状態で実行する。</li></ul>
+      </article>
+    </section>
+
     <section>
       <h2>Hands-on Flow</h2>
       <ol class="flow"><li><span>Measure</span><p>load testでp95/p99とfailureを取る。</p></li><li><span>Hypothesize</span><p>CPU、memory、DB、connection pool、networkの仮説を立てる。</p></li><li><span>Profile</span><p>ラボではNode build/testとOS観測を使い、実務ではflamegraph/query planへ拡張する。</p></li><li><span>Fix safely</span><p>index、pagination、pool、cache、backpressureの副作用を比較する。</p></li><li><span>Verify</span><p>before/afterのSLOとrollback条件を記録する。</p></li></ol>
@@ -66,6 +77,21 @@ sed -n &quot;1,220p&quot; docs/templates/backend-test-report.md</code></pre>
     <section>
       <h2>ツール活用</h2>
       <table><thead><tr><th>Tool</th><th>使い方</th></tr></thead><tbody><tr><td><strong>Load test</strong></td><td>p95/p99、throughput、failureを測る。</td></tr><tr><td><strong>Flamegraph/profiler</strong></td><td>CPU hot pathを特定する。</td></tr><tr><td><strong>DB query plan</strong></td><td>index、scan、join、sortを確認する。</td></tr><tr><td><strong>Heap/GC tools</strong></td><td>memory leakとGC pauseを調査する。</td></tr></tbody></table>
+    </section>
+
+    <section class="grid three">
+      <article>
+        <h2>観測ポイント</h2>
+        <ul><li>実行コマンドの開始時刻、対象、終了時刻を記録する。</li><li>HTTP status、アプリログ、検知ログ、メトリクスのどれで成功/失敗を証明するかを決める。</li><li>合格証跡として「p95/p99とthroughput」を第三者が追える形で残す。</li></ul>
+      </article>
+      <article>
+        <h2>よくある失敗</h2>
+        <ul><li>攻撃が成功したことと、検知や防御が成功したことを混同する。</li><li>source、timestamp、request、検索条件を残さず、後から再現できない。</li><li>ローカルで動いた事実だけで完了扱いにし、本番で必要な追加統制を説明しない。</li></ul>
+      </article>
+      <article>
+        <h2>セルフレビュー</h2>
+        <ul><li>Performance Engineering・Flamegraph・DB Query Planで守りたい資産と失敗条件を一文で説明できるか。</li><li>どのログ、テスト、メトリクスが判断根拠かを第三者が追えるか。</li><li>本番導入時の追加統制、owner、rollback条件を言えるか。</li></ul>
+      </article>
     </section>
 
     <section class="grid two">
