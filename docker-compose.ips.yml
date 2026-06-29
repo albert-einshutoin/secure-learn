@@ -7,7 +7,7 @@ services:
     container_name: soc-lab-suricata-ips
     volumes:
       - suricata_logs:/var/log/suricata
-    command: -c /etc/suricata/suricata-ips.yaml -q 0
+    command: -c /opt/soc-lab/suricata-ips.yaml -q 0
 
   # NFQUEUE rules are installed in the Suricata/App namespace only. This avoids
   # changing host iptables and keeps IPS mode safe to start and stop for labs.

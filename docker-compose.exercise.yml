@@ -145,7 +145,7 @@ services:
         ipv4_address: 172.23.0.5
     volumes:
       - suricata_logs:/var/log/suricata
-    command: -c /etc/suricata/suricata.yaml -i eth0
+    command: -c /opt/soc-lab/suricata.yaml -i eth0
 
   fail2ban:
     image: crazymax/fail2ban:latest

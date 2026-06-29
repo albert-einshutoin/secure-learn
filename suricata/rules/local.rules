@@ -91,6 +91,29 @@ alert http any any -> $HOME_NET $HTTP_PORTS (msg:"WEB-ATTACK Encoded Path Traver
 alert http any any -> $HOME_NET $HTTP_PORTS (msg:"WEB-ATTACK /etc/passwd Access Attempt"; flow:to_server,established; http.uri; content:"/etc/passwd"; nocase; classtype:web-application-attack; sid:1000042; rev:1;)
 
 # ============================================
+# S8-S13: OSI Layer Learning Rules
+# ============================================
+
+# L2 ARP is handled by the S8 script through ip neigh/arping. The Suricata 7
+# image used by this lab does not accept alert arp signatures, so keeping L2 as
+# an observation exercise is more stable than shipping a parser-invalid rule.
+
+# L3 ICMP echo reconnaissance.
+alert icmp any any -> $HOME_NET any (msg:"L3 ICMP Echo Recon"; itype:8; classtype:attempted-recon; sid:1000061; rev:2;)
+
+# L4 abnormal TCP flag probes.
+alert tcp any any -> $HOME_NET any (msg:"L4 TCP XMAS Probe"; flags:FPU; classtype:attempted-recon; sid:1000062; rev:2;)
+alert tcp any any -> $HOME_NET any (msg:"L4 TCP NULL Probe"; flags:0; classtype:attempted-recon; sid:1000063; rev:2;)
+
+# L5 session pressure. This overlaps with DOS detection by design; the distinct
+# message lets learners filter for session-management lessons separately.
+alert tcp any any -> $HOME_NET $HTTP_PORTS (msg:"L5 Session Pressure TCP Open Burst"; flow:to_server; flags:S; threshold:type both,track by_src,count 5,seconds 30; classtype:attempted-dos; sid:1000064; rev:3;)
+
+# L6 TLS probe against the plaintext HTTP service. This teaches the visibility
+# boundary around TLS termination without adding a separate proxy dependency.
+alert tls any any -> $HOME_NET $HTTP_PORTS (msg:"L6 TLS ClientHello to HTTP Port"; flow:to_server; classtype:protocol-command-decode; sid:1000065; rev:1;)
+
+# ============================================
 # General Web Attack Detection
 # ============================================
 

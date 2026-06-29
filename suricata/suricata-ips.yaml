@@ -103,7 +103,7 @@ threading:
   detect-thread-ratio: 1.0
 
 # Rule files
-default-rule-path: /var/lib/suricata/rules
+default-rule-path: /opt/soc-lab/rules
 rule-files:
   - local.rules
   - drop.rules
