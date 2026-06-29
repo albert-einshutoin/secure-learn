@@ -10,6 +10,20 @@ jobs:
   app:
     name: NestJS app build
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_USER: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
     defaults:
       run:
         working-directory: app
@@ -32,6 +46,13 @@ jobs:
 
       - name: Unit tests
         run: npm test
+
+      - name: Database integration tests
+        run: npm run test:integration
+        env:
+          DB_HOST: 127.0.0.1
+          DB_USER: postgres
+          DB_NAME: postgres
 
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high
@@ -57,6 +78,12 @@ jobs:
 
       - name: Check shell script syntax
         run: find attack/scripts scripts -type f -name '*.sh' -print0 | xargs -0 bash -n
+
+      - name: Kubernetes static checks
+        run: scripts/k8s_static_check.sh
+
+      - name: Build app Docker image
+        run: docker build -t secure-learn-app-ci ./app
 
       - name: Check for local environment files
         run: |
