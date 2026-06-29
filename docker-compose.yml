@@ -55,7 +55,7 @@ services:
       - "3000:3000"
     volumes:
       - suricata_logs:/var/log/suricata
-    command: -c /etc/suricata/suricata.yaml -i eth0
+    command: -c /opt/soc-lab/suricata.yaml -i eth0
 
   # ============================================
   # Application Zone - NestJS App (Vulnerable)
