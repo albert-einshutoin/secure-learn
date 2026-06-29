@@ -1,0 +1,11 @@
+{
+  "application": "SOC-Lab",
+  "version": "1.0.0",
+  "description": "Security Operations Center Training Lab",
+  "features": [
+    "Vulnerability scanning",
+    "Log analysis",
+    "Incident response training"
+  ]
+}
+
