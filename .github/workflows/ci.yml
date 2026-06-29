@@ -92,6 +92,30 @@ jobs:
             exit 1
           fi
 
+  docs:
+    name: Scenario guide validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Check generator syntax
+        run: node --check scripts/generate_scenario_html.js
+
+      - name: Regenerate scenario guides
+        run: node scripts/generate_scenario_html.js
+
+      - name: Check generated scenario guides
+        run: scripts/scenario_html_check.sh
+
+      - name: Ensure generated guides are committed
+        run: git diff --exit-code -- docs/scenario-guides
+
   suricata:
     name: Suricata rule validation
     runs-on: ubuntu-latest
