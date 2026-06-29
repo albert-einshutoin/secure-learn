@@ -1,0 +1,29 @@
+# SOC-Lab Docker Compose Override - Alerting
+# Phase 2: ElastAlert with Slack notifications
+
+services:
+  # ElastAlert for automated alerting
+  elastalert:
+    build:
+      context: ./alerting/elastalert
+      dockerfile: Dockerfile
+    container_name: soc-lab-elastalert
+    hostname: elastalert
+    networks:
+      - monitor_net
+    environment:
+      - ES_HOST=elasticsearch
+      - ES_PORT=9200
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL:-https://hooks.slack.com/services/YOUR/WEBHOOK/URL}
+    volumes:
+      - ./alerting/elastalert/config.yaml:/opt/elastalert/config.yaml:ro
+      - ./alerting/elastalert/rules:/opt/elastalert/rules:ro
+      - elastalert_logs:/var/log/elastalert
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  elastalert_logs:
+

@@ -1,0 +1,284 @@
+# SOC-Lab Docker Compose - Red vs Blue Exercise Mode
+# Phase 3: Team-based security exercise environment
+
+services:
+  # ============================================
+  # Red Team Zone
+  # ============================================
+  red_kali:
+    build:
+      context: ./attack
+      dockerfile: Dockerfile
+    container_name: soc-lab-red-kali
+    hostname: red-kali
+    tty: true
+    stdin_open: true
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    networks:
+      red_team:
+        ipv4_address: 172.30.0.10
+      shared_target:
+        ipv4_address: 172.32.0.10
+    volumes:
+      - ./attack/scripts:/scripts:ro
+      - ./attack/wordlists:/wordlists:ro
+      - red_results:/results
+    command: /bin/bash
+    environment:
+      - TEAM=RED
+      - TARGET_IP=172.32.0.100
+
+  # ============================================
+  # Blue Team Zone
+  # ============================================
+  blue_soc:
+    image: docker.elastic.co/kibana/kibana:8.11.0
+    container_name: soc-lab-blue-soc
+    hostname: blue-soc
+    networks:
+      blue_team:
+        ipv4_address: 172.31.0.10
+      monitor_net:
+        ipv4_address: 172.24.0.100
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - SERVER_NAME=blue-soc
+      - XPACK_SECURITY_ENABLED=false
+      - TEAM=BLUE
+    ports:
+      - "5602:5601"
+    depends_on:
+      - elasticsearch
+
+  blue_terminal:
+    image: alpine
+    container_name: soc-lab-blue-terminal
+    hostname: blue-terminal
+    tty: true
+    stdin_open: true
+    networks:
+      blue_team:
+        ipv4_address: 172.31.0.20
+      shared_target:
+        ipv4_address: 172.32.0.20
+    volumes:
+      - ./scripts:/scripts:ro
+      - blue_results:/results
+    command: sh -c "apk add --no-cache curl jq && sh"
+    environment:
+      - TEAM=BLUE
+
+  # ============================================
+  # Shared Target Zone (DMZ)
+  # ============================================
+  target_app:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    container_name: soc-lab-target-app
+    hostname: target-app
+    networks:
+      shared_target:
+        ipv4_address: 172.32.0.100
+      app_net:
+        ipv4_address: 172.23.0.100
+    volumes:
+      - target_logs:/var/log/app
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - LOG_PATH=/var/log/app
+      - DB_HOST=target_db
+      - DB_PORT=5432
+      - DB_USER=soclab
+      - DB_PASS=soclab_password
+      - DB_NAME=soclab
+    depends_on:
+      target_db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/health >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  target_db:
+    image: postgres:15-alpine
+    container_name: soc-lab-target-db
+    hostname: target-db
+    networks:
+      - app_net
+    environment:
+      - POSTGRES_USER=soclab
+      - POSTGRES_PASSWORD=soclab_password
+      - POSTGRES_DB=soclab
+    volumes:
+      - target_db_data:/var/lib/postgresql/data
+      - ./app/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U soclab -d soclab"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # ============================================
+  # Security Infrastructure
+  # ============================================
+  suricata:
+    build:
+      context: ./suricata
+      dockerfile: Dockerfile
+    container_name: soc-lab-exercise-suricata
+    hostname: suricata
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+      - SYS_NICE
+    networks:
+      shared_target:
+        ipv4_address: 172.32.0.5
+      app_net:
+        ipv4_address: 172.23.0.5
+    volumes:
+      - suricata_logs:/var/log/suricata
+    command: -c /etc/suricata/suricata.yaml -i eth0
+
+  fail2ban:
+    image: crazymax/fail2ban:latest
+    container_name: soc-lab-exercise-fail2ban
+    hostname: fail2ban
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    networks:
+      - app_net
+    volumes:
+      - ./fail2ban/jail.local:/etc/fail2ban/jail.local:ro
+      - ./fail2ban/filter.d:/etc/fail2ban/filter.d:ro
+      - target_logs:/var/log/app:ro
+      - fail2ban_data:/var/lib/fail2ban
+
+  # ============================================
+  # SIEM Infrastructure
+  # ============================================
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: soc-lab-exercise-es
+    hostname: elasticsearch
+    networks:
+      - monitor_net
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
+      - cluster.name=soc-lab-exercise
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.0
+    container_name: soc-lab-exercise-kibana
+    hostname: kibana
+    networks:
+      - monitor_net
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.11.0
+    container_name: soc-lab-exercise-filebeat
+    hostname: filebeat
+    user: root
+    networks:
+      - app_net
+      - monitor_net
+    volumes:
+      - ./elk/filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - suricata_logs:/var/log/suricata:ro
+      - target_logs:/var/log/app:ro
+      - fail2ban_data:/var/log/fail2ban:ro
+    command: filebeat -e -strict.perms=false
+    depends_on:
+      - elasticsearch
+
+  # ============================================
+  # Exercise Controller
+  # ============================================
+  exercise_controller:
+    image: alpine
+    container_name: soc-lab-exercise-controller
+    hostname: controller
+    networks:
+      - red_team
+      - blue_team
+      - monitor_net
+    volumes:
+      - ./scripts:/scripts:ro
+      - exercise_data:/data
+    command: sh -c "apk add --no-cache curl jq bash && tail -f /dev/null"
+    environment:
+      - EXERCISE_START_TIME=""
+      - EXERCISE_DURATION=3600
+
+# ============================================
+# Networks
+# ============================================
+networks:
+  # Red Team network (isolated)
+  red_team:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
+
+  # Blue Team network (isolated)
+  blue_team:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.31.0.0/24
+
+  # Shared target network (DMZ)
+  shared_target:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.32.0.0/24
+
+  # Application network
+  app_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.23.0.0/24
+
+  # Monitoring network
+  monitor_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.24.0.0/24
+
+# ============================================
+# Volumes
+# ============================================
+volumes:
+  red_results:
+  blue_results:
+  target_logs:
+  target_db_data:
+  suricata_logs:
+  fail2ban_data:
+  es_data:
+  exercise_data:
+

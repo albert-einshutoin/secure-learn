@@ -1,0 +1,246 @@
+# SOC-Lab: Docker-based Security Learning & SOC Training Environment
+# Phase 1: IDS / Fail2ban / Auditd / SIEM
+
+services:
+  # ============================================
+  # Attack Zone - Kali Linux
+  # ============================================
+  kali:
+    build:
+      context: ./attack
+      dockerfile: Dockerfile
+    container_name: soc-lab-kali
+    hostname: kali
+    tty: true
+    stdin_open: true
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    networks:
+      app_net:
+        ipv4_address: 172.23.0.30
+    volumes:
+      - ./attack/scripts:/scripts:ro
+      - ./attack/wordlists:/wordlists:ro
+      - attack_results:/results
+    environment:
+      - TARGET=app
+      - TARGET_IP=172.23.0.20
+      - TARGET_PORT=3000
+    command: /bin/bash
+    depends_on:
+      app:
+        condition: service_healthy
+
+  # ============================================
+  # Target namespace - Suricata IDS + vulnerable app + Fail2ban
+  # ============================================
+  suricata:
+    build:
+      context: ./suricata
+      dockerfile: Dockerfile
+    container_name: soc-lab-suricata
+    hostname: suricata
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+      - SYS_NICE
+    networks:
+      app_net:
+        ipv4_address: 172.23.0.20
+        aliases:
+          - app
+          - target-app
+    ports:
+      - "3000:3000"
+    volumes:
+      - suricata_logs:/var/log/suricata
+    command: -c /etc/suricata/suricata.yaml -i eth0
+
+  # ============================================
+  # Application Zone - NestJS App (Vulnerable)
+  #
+  # App shares Suricata's network namespace so packets to port 3000 arrive on
+  # the same eth0 interface that Suricata monitors. This keeps the lab stable in
+  # Docker without requiring host bridge sniffing or privileged host routing.
+  # ============================================
+  app:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    container_name: soc-lab-app
+    network_mode: "service:suricata"
+    volumes:
+      - app_logs:/var/log/app
+    environment:
+      - NODE_ENV=production
+      - LOG_PATH=/var/log/app
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=soclab
+      - DB_PASS=soclab_password
+      - DB_NAME=soclab
+    depends_on:
+      db:
+        condition: service_healthy
+      suricata:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/health >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  # ============================================
+  # Database - PostgreSQL (for SQLi scenarios)
+  # ============================================
+  db:
+    image: postgres:15-alpine
+    container_name: soc-lab-db
+    hostname: db
+    networks:
+      app_net:
+        ipv4_address: 172.23.0.40
+    environment:
+      - POSTGRES_USER=soclab
+      - POSTGRES_PASSWORD=soclab_password
+      - POSTGRES_DB=soclab
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./app/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U soclab -d soclab"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # ============================================
+  # Defense - Fail2ban
+  #
+  # Fail2ban also shares Suricata's namespace, so iptables bans are applied in
+  # the namespace that receives traffic for the vulnerable app.
+  # ============================================
+  fail2ban:
+    image: crazymax/fail2ban:latest
+    container_name: soc-lab-fail2ban
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    network_mode: "service:suricata"
+    volumes:
+      - ./fail2ban/jail.local:/etc/fail2ban/jail.local:ro
+      - ./fail2ban/filter.d:/etc/fail2ban/filter.d:ro
+      - ./fail2ban/action.d/slack-notify.conf:/etc/fail2ban/action.d/slack-notify.conf:ro
+      - app_logs:/var/log/app:ro
+      - fail2ban_logs:/var/log/fail2ban
+      - fail2ban_data:/var/lib/fail2ban
+    environment:
+      - TZ=Asia/Tokyo
+      - F2B_LOG_LEVEL=INFO
+      - F2B_LOG_TARGET=/var/log/fail2ban/fail2ban.log
+    depends_on:
+      app:
+        condition: service_healthy
+
+  # ============================================
+  # SIEM - Elasticsearch
+  # ============================================
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: soc-lab-elasticsearch
+    hostname: elasticsearch
+    networks:
+      - monitor_net
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - xpack.security.enrollment.enabled=false
+      - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
+      - cluster.name=soc-lab
+      - bootstrap.memory_lock=true
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -q 'green\\|yellow'"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # ============================================
+  # SIEM - Kibana
+  # ============================================
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.0
+    container_name: soc-lab-kibana
+    hostname: kibana
+    networks:
+      - monitor_net
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - SERVER_NAME=soc-lab-kibana
+      - XPACK_SECURITY_ENABLED=false
+    ports:
+      - "5601:5601"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+
+  # ============================================
+  # Log Collector - Filebeat
+  # ============================================
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.11.0
+    container_name: soc-lab-filebeat
+    hostname: filebeat
+    user: root
+    networks:
+      - app_net
+      - monitor_net
+    volumes:
+      - ./elk/filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - suricata_logs:/var/log/suricata:ro
+      - app_logs:/var/log/app:ro
+      - fail2ban_logs:/var/log/fail2ban:ro
+      - /var/log/audit:/var/log/audit:ro
+    command: filebeat -e -strict.perms=false
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+
+# ============================================
+# Networks
+# ============================================
+networks:
+  # Application network - Kali to Suricata/App and App to DB
+  app_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.23.0.0/24
+
+  # Monitor network - Filebeat to ELK
+  monitor_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.24.0.0/24
+
+# ============================================
+# Volumes
+# ============================================
+volumes:
+  suricata_logs:
+  app_logs:
+  attack_results:
+  fail2ban_logs:
+  fail2ban_data:
+  es_data:
+  db_data:
+

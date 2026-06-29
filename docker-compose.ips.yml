@@ -1,0 +1,39 @@
+# SOC-Lab Docker Compose Override - IPS Mode
+# Phase 2: Suricata in IPS mode with NFQUEUE inside the lab namespace.
+
+services:
+  # Suricata in IPS mode
+  suricata:
+    container_name: soc-lab-suricata-ips
+    volumes:
+      - suricata_logs:/var/log/suricata
+    command: -c /etc/suricata/suricata-ips.yaml -q 0
+
+  # NFQUEUE rules are installed in the Suricata/App namespace only. This avoids
+  # changing host iptables and keeps IPS mode safe to start and stop for labs.
+  ips-iptables:
+    image: alpine
+    container_name: soc-lab-ips-iptables
+    cap_add:
+      - NET_ADMIN
+    network_mode: "service:suricata"
+    command: >
+      sh -c "
+        apk add --no-cache iptables &&
+        if ! iptables -C INPUT -p tcp --dport 3000 -j NFQUEUE --queue-num 0 2>/dev/null; then
+          iptables -I INPUT -p tcp --dport 3000 -j NFQUEUE --queue-num 0;
+        fi &&
+        if ! iptables -C OUTPUT -p tcp --sport 3000 -j NFQUEUE --queue-num 0 2>/dev/null; then
+          iptables -I OUTPUT -p tcp --sport 3000 -j NFQUEUE --queue-num 0;
+        fi &&
+        echo 'NFQUEUE rules installed in lab namespace' &&
+        sleep infinity
+      "
+    depends_on:
+      suricata:
+        condition: service_started
+    restart: unless-stopped
+
+volumes:
+  suricata_logs:
+
