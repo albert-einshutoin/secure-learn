@@ -58,7 +58,7 @@ required_terms=(
 )
 
 for term in "${required_terms[@]}"; do
-  rg -q "$term" "$ROOT_DIR/learning/phases.json" "$ROOT_DIR/scripts/generate_scenario_html.js" "$ROOT_DIR/docs" || fail "missing required curriculum term: $term"
+  grep -R -F -q "$term" "$ROOT_DIR/learning/phases.json" "$ROOT_DIR/scripts/generate_scenario_html.js" "$ROOT_DIR/docs" || fail "missing required curriculum term: $term"
 done
 
 for file in "$ROOT_DIR"/docs/scenario-guides/s*.html "$ROOT_DIR"/docs/learning-phases/p*.html; do

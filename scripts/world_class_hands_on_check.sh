@@ -42,7 +42,7 @@ has_text() {
   local pattern="$1"
   local topic="$2"
   local detail="$3"
-  if rg -q "$pattern" "$ROOT_DIR"; then
+  if grep -R -E -q "$pattern" "$ROOT_DIR"; then
     record PASS "$topic" "$detail"
   else
     record WARN "$topic" "Coverage text not found: $pattern"
