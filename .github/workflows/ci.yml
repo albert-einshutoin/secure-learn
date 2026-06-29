@@ -127,6 +127,9 @@ jobs:
       - name: Regenerate learning phase guides
         run: node scripts/generate_learning_phase_html.js
 
+      - name: Check world-class curriculum coverage
+        run: scripts/world_class_curriculum_check.sh
+
       - name: Ensure generated learning guides are committed
         run: git diff --exit-code -- docs/learning-phases
 
