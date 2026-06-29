@@ -107,6 +107,19 @@ Kali コンテナはこのリポジトリの `attack/Dockerfile` からビルド
 scripts/sre_smoke.sh
 ```
 
+### バックエンド・ハンズオンテスト
+
+```bash
+# 軽量ユニットテスト
+npm --prefix app test
+
+# Docker起動後のAPI/セキュリティ観測
+scripts/backend_hands_on_tests.sh
+
+# ローカル総合ゲート
+scripts/lab_quality_gate.sh
+```
+
 ## 学習シナリオ
 
 | No | シナリオ | 主レイヤー | 難易度 |
@@ -185,6 +198,11 @@ docker compose -f docker-compose.yml -f docker-compose.alerting.yml up -d --buil
 - [カリキュラム概要](docs/curriculum/overview.md)
 - [OSI学習マップ](docs/curriculum/osi-learning-map.md)
 - [スキル評価マトリクス](docs/curriculum/competency-matrix.md)
+- [業務レベル到達ロードマップ](docs/curriculum/professional-readiness-roadmap.md)
+- [バックエンドテスト・ハンズオン](docs/curriculum/backend-engineer-test-hands-on.md)
+- [OWASP API Security Track](docs/curriculum/owasp-api-security-track.md)
+- [SRE Production Track](docs/curriculum/sre-production-track.md)
+- [Supply Chain Security Track](docs/curriculum/supply-chain-security-track.md)
 - [ブランチ分割方針](docs/curriculum/branch-plan.md)
 - [インシデントレポートテンプレート](docs/templates/incident-report.md)
 - [評価チェックリスト](docs/templates/evaluation-checklist.md)
