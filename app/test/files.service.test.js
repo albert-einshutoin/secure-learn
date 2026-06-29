@@ -19,9 +19,7 @@ function createFixture() {
 
 test('reads files from the configured public directory', async () => {
   const { root, publicDir } = createFixture();
-  const service = new FilesService();
-
-  service.baseDir = publicDir;
+  const service = new FilesService(publicDir);
 
   try {
     const content = await service.readFile('readme.txt');
@@ -31,20 +29,30 @@ test('reads files from the configured public directory', async () => {
   }
 });
 
-test('documents the current path traversal vulnerability for remediation TDD', async () => {
+test('rejects path traversal outside the configured public directory', async () => {
   const { root, publicDir } = createFixture();
-  const service = new FilesService();
-
-  service.baseDir = publicDir;
+  const service = new FilesService(publicDir);
 
   try {
-    // This assertion intentionally captures the current vulnerable behavior.
-    // When learners implement the secure fix, this test should be changed to
-    // expect rejection and paired with a new passing regression test.
-    const content = await service.readFile('../secret.txt');
-    assert.equal(content, 'outside content');
+    await assert.rejects(
+      () => service.readFile('../secret.txt'),
+      (error) => error.status === 403 && /traversal/i.test(error.message),
+    );
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
 
+test('rejects encoded path traversal outside the configured public directory', async () => {
+  const { root, publicDir } = createFixture();
+  const service = new FilesService(publicDir);
+
+  try {
+    await assert.rejects(
+      () => service.readFile('..%2Fsecret.txt'),
+      (error) => error.status === 403 && /traversal/i.test(error.message),
+    );
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});

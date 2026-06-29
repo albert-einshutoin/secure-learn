@@ -6,6 +6,7 @@ import { EcsLoggerService } from '../common/logging/ecs-logger.service';
 @Module({
   controllers: [AuthController],
   providers: [AuthService, EcsLoggerService],
+  exports: [AuthService],
 })
 export class AuthModule {}
 

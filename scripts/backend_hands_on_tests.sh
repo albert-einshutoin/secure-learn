@@ -50,6 +50,16 @@ http_status() {
   fi
 }
 
+http_status_with_auth() {
+  local method="$1"
+  local path="$2"
+  local token="$3"
+
+  curl -sS -o "$REPORT_DIR/response.json" -w '%{http_code}' \
+    -X "$method" "$BASE_URL$path" \
+    -H "authorization: Bearer $token"
+}
+
 {
   echo "# Backend Hands-on Test Report"
   echo
@@ -74,13 +84,26 @@ else
   record FAIL "health endpoint" "Expected HTTP 200 with status ok, got $status"
 fi
 
+status=$(http_status GET /health/ready)
+if [ "$status" = "200" ] && grep -q '"database"' "$REPORT_DIR/response.json"; then
+  record PASS "readiness endpoint" "HTTP 200 and dependency checks returned"
+else
+  record WARN "readiness endpoint" "Expected readiness HTTP 200 with dependency checks, got HTTP $status"
+fi
+
 auth_field='pass''word'
 login_body=$(printf '{"username":"%s","%s":"%s"}' "$LAB_LOGIN_NAME" "$auth_field" "$LAB_LOGIN_VALUE")
 status=$(http_status POST /auth/login "$login_body")
-if { [ "$status" = "200" ] || [ "$status" = "201" ]; } && grep -q 'Login successful' "$REPORT_DIR/response.json" && ! grep -q '"password"' "$REPORT_DIR/response.json"; then
-  record PASS "auth success contract" "Successful login does not expose password"
+access_token=""
+if { [ "$status" = "200" ] || [ "$status" = "201" ]; } && grep -q 'Login successful' "$REPORT_DIR/response.json" && ! grep -q '"credentialHash"' "$REPORT_DIR/response.json"; then
+  access_token=$(node -e "const fs=require('fs'); const data=JSON.parse(fs.readFileSync(process.argv[1], 'utf8')); process.stdout.write(data.accessToken || '')" "$REPORT_DIR/response.json")
+  if [ -n "$access_token" ]; then
+    record PASS "auth success contract" "Successful login returns a bearer token without credential material"
+  else
+    record FAIL "auth success contract" "Successful login did not return accessToken"
+  fi
 else
-  record FAIL "auth success contract" "Expected successful login without password, got HTTP $status"
+  record FAIL "auth success contract" "Expected successful login without credential material, got HTTP $status"
 fi
 
 invalid_login_body=$(printf '{"username":"%s","%s":"no-match-%s"}' "$LAB_LOGIN_NAME" "$auth_field" "$LAB_LOGIN_VALUE")
@@ -92,17 +115,26 @@ else
 fi
 
 status=$(http_status GET '/users?id=1%20OR%201=1')
-if [ "$status" = "200" ]; then
-  record VULNERABLE "SQL injection probe" "Payload returned HTTP 200; use this as the red test before parameterized-query remediation"
+if [ "$status" = "400" ]; then
+  record PASS "SQL injection remediation" "Injection payload rejected with HTTP 400 before database query"
 else
-  record WARN "SQL injection probe" "Payload did not return 200; inspect app and Suricata logs, HTTP $status"
+  record FAIL "SQL injection remediation" "Expected HTTP 400 for injection payload, got HTTP $status"
 fi
 
 status=$(http_status GET '/files/..%2F..%2Fetc%2Fpasswd')
-if [ "$status" = "200" ] && grep -q 'root:' "$REPORT_DIR/response.json"; then
-  record VULNERABLE "path traversal probe" "Read /etc/passwd from lab container; use this as the red test before path normalization remediation"
+if [ "$status" = "403" ]; then
+  record PASS "path traversal remediation" "Traversal payload denied with HTTP 403"
 else
-  record WARN "path traversal probe" "Traversal did not expose /etc/passwd; inspect file service behavior, HTTP $status"
+  record FAIL "path traversal remediation" "Expected HTTP 403 for traversal payload, got HTTP $status"
+fi
+
+if [ -n "$access_token" ]; then
+  status=$(http_status_with_auth GET /users/admin/audit "$access_token")
+  if [ "$status" = "403" ]; then
+    record PASS "authorization role guard" "Non-admin bearer token cannot access admin audit endpoint"
+  else
+    record FAIL "authorization role guard" "Expected non-admin HTTP 403, got HTTP $status"
+  fi
 fi
 
 status=$(http_status GET /)
@@ -123,10 +155,9 @@ cat >> "$REPORT_FILE" << EOF
 
 ## Next Actions
 
-1. Convert VULNERABLE rows into failing remediation tests.
-2. Implement the secure fix with the smallest backend change.
-3. Re-run this script plus app unit tests.
-4. Attach this report to the remediation PR.
+1. Any FAIL row must be fixed before treating the lab as remediated.
+2. Keep PASS rows as regression evidence in remediation PRs.
+3. Attach this report to the incident or remediation evidence bundle.
 EOF
 
 echo

@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     username VARCHAR(50) NOT NULL UNIQUE,
     email VARCHAR(100) NOT NULL,
-    password VARCHAR(255) NOT NULL,
+    credential_hash VARCHAR(255) NOT NULL,
     role VARCHAR(20) DEFAULT 'user',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -32,12 +32,12 @@ CREATE TABLE IF NOT EXISTS audit_log (
 );
 
 -- Insert sample users
-INSERT INTO users (username, email, password, role) VALUES
-    ('admin', 'admin@soclab.local', 'admin123', 'admin'),
-    ('john_doe', 'john@soclab.local', 'password123', 'user'),
-    ('jane_smith', 'jane@soclab.local', 'securepass', 'user'),
-    ('bob_wilson', 'bob@soclab.local', 'bobpass', 'user'),
-    ('alice_jones', 'alice@soclab.local', 'alice2024', 'moderator')
+INSERT INTO users (username, email, credential_hash, role) VALUES
+    ('admin', 'admin@soclab.local', 'demo-hash-admin', 'admin'),
+    ('john_doe', 'john@soclab.local', 'demo-hash-john', 'user'),
+    ('jane_smith', 'jane@soclab.local', 'demo-hash-jane', 'user'),
+    ('bob_wilson', 'bob@soclab.local', 'demo-hash-bob', 'user'),
+    ('alice_jones', 'alice@soclab.local', 'demo-hash-alice', 'moderator')
 ON CONFLICT (username) DO NOTHING;
 
 -- Insert sample sensitive data

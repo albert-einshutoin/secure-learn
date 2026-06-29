@@ -1,55 +1,75 @@
-import { Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Inject,
+  Injectable,
+  NotFoundException,
+  Optional,
+} from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
 
 @Injectable()
 export class FilesService {
-  private readonly baseDir = '/app/public';
+  private readonly baseDir: string;
 
-  /**
-   * VULNERABLE: Path Traversal
-   * The filePath is not properly sanitized, allowing access to files outside baseDir
-   * Example attack: ../../../etc/passwd
-   */
-  async readFile(filePath: string): Promise<string> {
-    // INTENTIONALLY VULNERABLE - DO NOT USE IN PRODUCTION
-    // Only basic URL decoding, no path sanitization
-    const decodedPath = decodeURIComponent(filePath);
-    const fullPath = path.join(this.baseDir, decodedPath);
-    
-    console.log('Attempting to read file:', fullPath);
-
-    try {
-      // Check if file exists
-      if (!fs.existsSync(fullPath)) {
-        throw new Error(`File not found: ${filePath}`);
-      }
-
-      // Read and return file content
-      const content = fs.readFileSync(fullPath, 'utf-8');
-      return content;
-    } catch (error) {
-      throw new Error(`Cannot read file: ${error.message}`);
-    }
+  constructor(@Optional() @Inject('PUBLIC_DIR') baseDir = process.env.PUBLIC_DIR || '/app/public') {
+    this.baseDir = path.resolve(baseDir);
   }
 
-  /**
-   * List files in directory - Also vulnerable
-   */
-  async listFiles(dirPath: string = ''): Promise<string[]> {
-    const decodedPath = decodeURIComponent(dirPath);
-    const fullPath = path.join(this.baseDir, decodedPath);
+  async readFile(filePath: string): Promise<string> {
+    const fullPath = this.resolveInsideBaseDir(filePath);
 
-    try {
-      if (!fs.existsSync(fullPath)) {
-        throw new Error(`Directory not found: ${dirPath}`);
-      }
-
-      const files = fs.readdirSync(fullPath);
-      return files;
-    } catch (error) {
-      throw new Error(`Cannot list directory: ${error.message}`);
+    if (!fs.existsSync(fullPath)) {
+      throw new NotFoundException('File not found');
     }
+
+    const stat = fs.statSync(fullPath);
+    if (!stat.isFile()) {
+      throw new BadRequestException('Path is not a file');
+    }
+
+    return fs.readFileSync(fullPath, 'utf-8');
+  }
+
+  async listFiles(dirPath: string = ''): Promise<string[]> {
+    const fullPath = this.resolveInsideBaseDir(dirPath);
+
+    if (!fs.existsSync(fullPath)) {
+      throw new NotFoundException('Directory not found');
+    }
+
+    const stat = fs.statSync(fullPath);
+    if (!stat.isDirectory()) {
+      throw new BadRequestException('Path is not a directory');
+    }
+
+    return fs.readdirSync(fullPath).sort();
+  }
+
+  private resolveInsideBaseDir(inputPath: string): string {
+    let decodedPath: string;
+    try {
+      decodedPath = decodeURIComponent(String(inputPath || ''));
+    } catch {
+      throw new BadRequestException('Invalid path encoding');
+    }
+
+    if (!decodedPath || decodedPath.includes('\0')) {
+      throw new BadRequestException('Invalid file path');
+    }
+
+    const relativeInput = decodedPath.replace(/^[/\\]+/, '');
+    const fullPath = path.resolve(this.baseDir, relativeInput);
+    const relativeToBase = path.relative(this.baseDir, fullPath);
+
+    // path.resolve alone normalizes traversal; the relative check proves the final target
+    // still lives under the published directory instead of trusting the input string.
+    if (relativeToBase === '..' || relativeToBase.startsWith(`..${path.sep}`) || path.isAbsolute(relativeToBase)) {
+      throw new ForbiddenException('Path traversal denied');
+    }
+
+    return fullPath;
   }
 }
 
