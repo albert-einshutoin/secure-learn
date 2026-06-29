@@ -1,4 +1,4 @@
-FROM node:20-alpine AS deps
+FROM node:26-alpine AS deps
 
 WORKDIR /app
 COPY package*.json ./
@@ -10,7 +10,7 @@ COPY . .
 RUN npm run build
 RUN npm prune --omit=dev
 
-FROM node:20-alpine AS runner
+FROM node:26-alpine AS runner
 
 WORKDIR /app
 
