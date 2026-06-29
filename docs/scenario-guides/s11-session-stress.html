@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>S11 L5セッション圧迫 - Secure Learn</title>
+  <link rel="stylesheet" href="assets/scenario.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="index.html">Secure Learn Scenario Guides</a>
+    <nav aria-label="Scenario navigation"><a href="s1-portscan.html">S1</a><a href="s2-bruteforce.html">S2</a><a href="s3-sqli.html">S3</a><a href="s4-dos.html">S4</a><a href="s5-file-tamper.html">S5</a><a href="s6-privesc.html">S6</a><a href="s7-lateral.html">S7</a><a href="s8-arp.html">S8</a><a href="s9-icmp.html">S9</a><a href="s10-tcp-state.html">S10</a><a aria-current="page" href="s11-session-stress.html">S11</a><a href="s12-tls-boundary.html">S12</a><a href="s13-dns.html">S13</a><a href="s14-sre-incident.html">S14</a><a href="s15-capstone.html">S15</a></nav>
+  </header>
+  <main>
+    <section class="scenario-head">
+      <p class="eyebrow">S11 / L5 / 中級</p>
+      <h1>L5セッション圧迫</h1>
+      <p class="lead">不完全HTTP sessionを保持し、timeout、connection limit、SLO影響を観測する。</p>
+      <div class="meta-row">
+        <span class="score score-3">3/5 実務中級</span>
+        <span class="pill">SRE</span><span class="pill">Backend</span>
+      </div>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>目的</h2>
+        <p>大量攻撃ではなく少数接続のリソース消費を理解し、proxy/app/IDSの責務分担を説明する。</p>
+      </article>
+      <article>
+        <h2>世界レベル評価</h2>
+        <p>基礎から実務中級までは有効です。世界レベルには追加課題の実測化が必要です。</p>
+      </article>
+    </section>
+
+    <section>
+      <h2>Hands-on Flow</h2>
+      <ol class="flow"><li><span>Baseline</span><p>/healthとload gateで正常時latencyを測る。</p></li><li><span>Execute</span><p>/scripts/s11_l5_session_stress.shで不完全sessionを作る。</p></li><li><span>Observe</span><p>接続保持時間、Suricata alert、/health latencyを見る。</p></li><li><span>Triage</span><p>timeout、keepalive、rate limit、connection limitを分けて説明する。</p></li><li><span>Improve</span><p>reverse proxyやapp serverのtimeout設計を提案する。</p></li></ol>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>実行コマンド</h2>
+        <pre><code>scripts/sre_smoke.sh
+docker exec -it soc-lab-kali /bin/bash
+/scripts/s11_l5_session_stress.sh
+scripts/load_hands_on_tests.sh
+docker exec soc-lab-suricata tail -30 /var/log/suricata/fast.log</code></pre>
+      </article>
+      <article>
+        <h2>合格証跡</h2>
+        <ul><li>接続保持数と保持時間</li><li>攻撃中のlatency/failure</li><li>timeout設定案</li><li>正常ユーザー影響の判断</li></ul>
+      </article>
+    </section>
+
+    <section>
+      <h2>ツール活用</h2>
+      <table><thead><tr><th>Tool</th><th>使い方</th></tr></thead><tbody><tr><td><strong>nc</strong></td><td>不完全なHTTP sessionを保持する。</td></tr><tr><td><strong>Suricata</strong></td><td>session pressure/DOS系alertを確認する。</td></tr><tr><td><strong>SRE smoke/load</strong></td><td>latencyとavailabilityを定量化する。</td></tr><tr><td><strong>Proxy config</strong></td><td>header timeout、keepalive、max connectionsを設計する。</td></tr></tbody></table>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>Whitehat / SRE / Backend 観点</h2>
+        <ul><li>Whitehat: このシナリオでは補助観点として扱う。</li><li>SRE: SLO、可用性、レイテンシ、復旧判断へ接続する。</li><li>Backend: 入力検証、契約、テスト、エラー安全性を確認する。</li></ul>
+      </article>
+      <article>
+        <h2>世界レベルへ足す課題</h2>
+        <ul><li>slowloris系の安全な再現とproxy防御を追加する。</li><li>event loop lagやconnection pool exhaustionをmetrics化する。</li><li>負荷と攻撃を区別するalert設計を追加する。</li></ul>
+      </article>
+    </section>
+
+    <section>
+      <h2>関連シナリオ</h2>
+      <div class="links"><a href="s1-portscan.html">S1 ポートスキャン</a><a href="s2-bruteforce.html">S2 APIブルートフォース</a><a href="s3-sqli.html">S3 SQLインジェクション</a><a href="s4-dos.html">S4 DoS攻撃</a></div>
+    </section>
+
+  </main>
+</body>
+</html>

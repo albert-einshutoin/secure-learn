@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>S14 SREインシデント対応 - Secure Learn</title>
+  <link rel="stylesheet" href="assets/scenario.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="index.html">Secure Learn Scenario Guides</a>
+    <nav aria-label="Scenario navigation"><a href="s1-portscan.html">S1</a><a href="s2-bruteforce.html">S2</a><a href="s3-sqli.html">S3</a><a href="s4-dos.html">S4</a><a href="s5-file-tamper.html">S5</a><a href="s6-privesc.html">S6</a><a href="s7-lateral.html">S7</a><a href="s8-arp.html">S8</a><a href="s9-icmp.html">S9</a><a href="s10-tcp-state.html">S10</a><a href="s11-session-stress.html">S11</a><a href="s12-tls-boundary.html">S12</a><a href="s13-dns.html">S13</a><a aria-current="page" href="s14-sre-incident.html">S14</a><a href="s15-capstone.html">S15</a></nav>
+  </header>
+  <main>
+    <section class="scenario-head">
+      <p class="eyebrow">S14 / 横断/SRE / 上級</p>
+      <h1>SREインシデント対応</h1>
+      <p class="lead">攻撃やDB停止をSLO/incident responseへ接続し、MTTD/MTTRとpostmortemを作る。</p>
+      <div class="meta-row">
+        <span class="score score-4">4/5 実務上級</span>
+        <span class="pill">SRE</span><span class="pill">Backend</span><span class="pill">Whitehat</span>
+      </div>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>目的</h2>
+        <p>セキュリティイベントをサービス影響へ翻訳し、severity、暫定対応、恒久対応を判断する。</p>
+      </article>
+      <article>
+        <h2>世界レベル評価</h2>
+        <p>実務上級に近い構成です。証跡、修正、運用判断まで扱えます。</p>
+      </article>
+    </section>
+
+    <section>
+      <h2>Hands-on Flow</h2>
+      <ol class="flow"><li><span>Baseline</span><p>scripts/sre_smoke.shとload gateで正常時SLOを記録する。</p></li><li><span>Inject</span><p>DoSまたはRUN_CHAOS=1 scripts/incident_drill.shで障害を注入する。</p></li><li><span>Detect</span><p>/health/ready、Suricata、Fail2ban、Kibanaを同時に見る。</p></li><li><span>Respond</span><p>severity、incident commander、customer impact、rollback判断を記録する。</p></li><li><span>Learn</span><p>postmortemで再発防止とownerを明記する。</p></li></ol>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>実行コマンド</h2>
+        <pre><code>scripts/sre_smoke.sh
+REQUESTS=100 CONCURRENCY=10 scripts/load_hands_on_tests.sh
+RUN_CHAOS=1 scripts/incident_drill.sh
+docker compose ps
+docker exec soc-lab-fail2ban fail2ban-client status</code></pre>
+      </article>
+      <article>
+        <h2>合格証跡</h2>
+        <ul><li>SLO baselineと障害中の差分</li><li>MTTD/MTTR</li><li>severityと顧客影響</li><li>postmortem action item</li></ul>
+      </article>
+    </section>
+
+    <section>
+      <h2>ツール活用</h2>
+      <table><thead><tr><th>Tool</th><th>使い方</th></tr></thead><tbody><tr><td><strong>SRE smoke/load scripts</strong></td><td>availabilityとp95 latencyを測る。</td></tr><tr><td><strong>readiness probe</strong></td><td>依存関係障害を/healthと分離する。</td></tr><tr><td><strong>Kibana</strong></td><td>alertとuser impactを相関する。</td></tr><tr><td><strong>Postmortem template</strong></td><td>timeline、impact、action itemを残す。</td></tr></tbody></table>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>Whitehat / SRE / Backend 観点</h2>
+        <ul><li>Whitehat: 攻撃を許可範囲に限定し、再現性と検知証跡を残す。</li><li>SRE: SLO、可用性、レイテンシ、復旧判断へ接続する。</li><li>Backend: 入力検証、契約、テスト、エラー安全性を確認する。</li></ul>
+      </article>
+      <article>
+        <h2>世界レベルへ足す課題</h2>
+        <ul><li>burn-rate multi-window alertを実装する。</li><li>canary/rollback/release freeze判断をdrill化する。</li><li>traces/metrics/logsの相関とdashboardを追加する。</li></ul>
+      </article>
+    </section>
+
+    <section>
+      <h2>関連シナリオ</h2>
+      <div class="links"><a href="s1-portscan.html">S1 ポートスキャン</a><a href="s2-bruteforce.html">S2 APIブルートフォース</a><a href="s3-sqli.html">S3 SQLインジェクション</a><a href="s4-dos.html">S4 DoS攻撃</a></div>
+    </section>
+
+  </main>
+</body>
+</html>

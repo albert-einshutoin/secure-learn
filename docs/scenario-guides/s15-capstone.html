@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>S15 ホワイトハット/SRE修了課題 - Secure Learn</title>
+  <link rel="stylesheet" href="assets/scenario.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="index.html">Secure Learn Scenario Guides</a>
+    <nav aria-label="Scenario navigation"><a href="s1-portscan.html">S1</a><a href="s2-bruteforce.html">S2</a><a href="s3-sqli.html">S3</a><a href="s4-dos.html">S4</a><a href="s5-file-tamper.html">S5</a><a href="s6-privesc.html">S6</a><a href="s7-lateral.html">S7</a><a href="s8-arp.html">S8</a><a href="s9-icmp.html">S9</a><a href="s10-tcp-state.html">S10</a><a href="s11-session-stress.html">S11</a><a href="s12-tls-boundary.html">S12</a><a href="s13-dns.html">S13</a><a href="s14-sre-incident.html">S14</a><a aria-current="page" href="s15-capstone.html">S15</a></nav>
+  </header>
+  <main>
+    <section class="scenario-head">
+      <p class="eyebrow">S15 / 全体 / 上級</p>
+      <h1>ホワイトハット/SRE修了課題</h1>
+      <p class="lead">S1-S14を組み合わせ、攻撃、検知、修正、運用、報告を一つの成果物にする。</p>
+      <div class="meta-row">
+        <span class="score score-4">4/5 実務上級</span>
+        <span class="pill">Whitehat</span><span class="pill">SRE</span><span class="pill">Backend</span>
+      </div>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>目的</h2>
+        <p>単発実行ではなく、第三者が再現できるevidence portfolioを作り、PR品質で改善を説明する。</p>
+      </article>
+      <article>
+        <h2>世界レベル評価</h2>
+        <p>実務上級に近い構成です。証跡、修正、運用判断まで扱えます。</p>
+      </article>
+    </section>
+
+    <section>
+      <h2>Hands-on Flow</h2>
+      <ol class="flow"><li><span>Plan</span><p>S8-S13から2つ、S2-S6から2つ、S14を選ぶ。</p></li><li><span>Run</span><p>各シナリオのHTMLに従い、開始/検知/対応時刻を記録する。</p></li><li><span>Correlate</span><p>Kibana、logs、scripts reportsを一つのtimelineにまとめる。</p></li><li><span>Improve</span><p>1つ以上の検知/運用/backend改善をPR形式で説明する。</p></li><li><span>Review</span><p>安全性、再現性、検知、対応、改善、報告の全項目でセルフレビューする。</p></li></ol>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>実行コマンド</h2>
+        <pre><code>docker compose up -d --build
+scripts/lab_quality_gate.sh
+RUN_CHAOS=1 scripts/incident_drill.sh
+cp docs/templates/incident-report.md reports/my-incident-report.md
+cp docs/templates/vulnerability-remediation-pr.md reports/my-remediation-pr.md</code></pre>
+      </article>
+      <article>
+        <h2>合格証跡</h2>
+        <ul><li>選択シナリオと実行ログ</li><li>timeline、MTTD、MTTR</li><li>検知ルールまたはアプリ/運用改善案</li><li>セルフレビューと残リスク</li></ul>
+      </article>
+    </section>
+
+    <section>
+      <h2>ツール活用</h2>
+      <table><thead><tr><th>Tool</th><th>使い方</th></tr></thead><tbody><tr><td><strong>All attack scripts</strong></td><td>選択したscenarioを安全に実行する。</td></tr><tr><td><strong>Quality gate</strong></td><td>backend/security/opsの回帰を確認する。</td></tr><tr><td><strong>Templates</strong></td><td>incident、remediation、postmortemを成果物化する。</td></tr><tr><td><strong>GitHub PR</strong></td><td>改善をreview可能な単位で提出する。</td></tr></tbody></table>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>Whitehat / SRE / Backend 観点</h2>
+        <ul><li>Whitehat: 攻撃を許可範囲に限定し、再現性と検知証跡を残す。</li><li>SRE: SLO、可用性、レイテンシ、復旧判断へ接続する。</li><li>Backend: 入力検証、契約、テスト、エラー安全性を確認する。</li></ul>
+      </article>
+      <article>
+        <h2>世界レベルへ足す課題</h2>
+        <ul><li>CVSS/CWE、MITRE、SLO、rollbackを一つのexecutive summaryへ統合する。</li><li>peer reviewを前提に、反証可能な証跡だけで主張を組み立てる。</li><li>次のissue backlogを優先度付きで作る。</li></ul>
+      </article>
+    </section>
+
+    <section>
+      <h2>関連シナリオ</h2>
+      <div class="links"><a href="s1-portscan.html">S1 ポートスキャン</a><a href="s2-bruteforce.html">S2 APIブルートフォース</a><a href="s3-sqli.html">S3 SQLインジェクション</a><a href="s4-dos.html">S4 DoS攻撃</a></div>
+    </section>
+
+  </main>
+</body>
+</html>

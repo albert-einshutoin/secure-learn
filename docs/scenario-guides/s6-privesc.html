@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>S6 権限昇格 - Secure Learn</title>
+  <link rel="stylesheet" href="assets/scenario.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="index.html">Secure Learn Scenario Guides</a>
+    <nav aria-label="Scenario navigation"><a href="s1-portscan.html">S1</a><a href="s2-bruteforce.html">S2</a><a href="s3-sqli.html">S3</a><a href="s4-dos.html">S4</a><a href="s5-file-tamper.html">S5</a><a aria-current="page" href="s6-privesc.html">S6</a><a href="s7-lateral.html">S7</a><a href="s8-arp.html">S8</a><a href="s9-icmp.html">S9</a><a href="s10-tcp-state.html">S10</a><a href="s11-session-stress.html">S11</a><a href="s12-tls-boundary.html">S12</a><a href="s13-dns.html">S13</a><a href="s14-sre-incident.html">S14</a><a href="s15-capstone.html">S15</a></nav>
+  </header>
+  <main>
+    <section class="scenario-head">
+      <p class="eyebrow">S6 / OS / 中級</p>
+      <h1>権限昇格</h1>
+      <p class="lead">sudo/su/SUID探索をAuditdで記録し、最小権限と異常昇格の判断を学ぶ。</p>
+      <div class="meta-row">
+        <span class="score score-3">3/5 実務中級</span>
+        <span class="pill">Whitehat</span><span class="pill">SRE</span>
+      </div>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>目的</h2>
+        <p>権限昇格を実行できたで終わらせず、許可、証跡、影響、封じ込め、権限設計まで説明する。</p>
+      </article>
+      <article>
+        <h2>世界レベル評価</h2>
+        <p>基礎から実務中級までは有効です。世界レベルには追加課題の実測化が必要です。</p>
+      </article>
+    </section>
+
+    <section>
+      <h2>Hands-on Flow</h2>
+      <ol class="flow"><li><span>Prepare</span><p>auditdとprivilege escalation rulesを有効化する。</p></li><li><span>Execute</span><p>sudo、su、SUID列挙を安全な範囲で実行する。</p></li><li><span>Observe</span><p>audit.logとauth.logでeuid=0、auid、commandを確認する。</p></li><li><span>Decide</span><p>正当運用、要調査、不正昇格に分類する。</p></li><li><span>Improve</span><p>sudoers最小化、MFA、session recordingを提案する。</p></li></ol>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>実行コマンド</h2>
+        <pre><code>sudo auditctl -l | grep privilege
+sudo whoami
+find / -perm -4000 2&gt;/dev/null | head
+sudo ausearch -k privilege_escalation -i | head -50
+sudo aureport --auth --summary</code></pre>
+      </article>
+      <article>
+        <h2>合格証跡</h2>
+        <ul><li>昇格前後のuid/euid</li><li>auditdのexecve証跡</li><li>正当性判断とowner確認</li><li>sudoers改善案とrollback手順</li></ul>
+      </article>
+    </section>
+
+    <section>
+      <h2>ツール活用</h2>
+      <table><thead><tr><th>Tool</th><th>使い方</th></tr></thead><tbody><tr><td><strong>sudo/su</strong></td><td>昇格イベントを意図的に発生させる。</td></tr><tr><td><strong>find</strong></td><td>SUID/SGIDの攻撃面を列挙する。</td></tr><tr><td><strong>Auditd</strong></td><td>euid、auid、execveを保存する。</td></tr><tr><td><strong>sudoers review</strong></td><td>NOPASSWDや広すぎる権限を評価する。</td></tr></tbody></table>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>Whitehat / SRE / Backend 観点</h2>
+        <ul><li>Whitehat: 攻撃を許可範囲に限定し、再現性と検知証跡を残す。</li><li>SRE: SLO、可用性、レイテンシ、復旧判断へ接続する。</li><li>Backend: サービス露出、ログ、HTTP契約との関係を確認する。</li></ul>
+      </article>
+      <article>
+        <h2>世界レベルへ足す課題</h2>
+        <ul><li>GTFOBins調査、container breakout防止、Linux capabilityを追加する。</li><li>PAM/MFA/session recordingの運用設計を追加する。</li><li>Kubernetes RBAC/PodSecurityと接続する。</li></ul>
+      </article>
+    </section>
+
+    <section>
+      <h2>関連シナリオ</h2>
+      <div class="links"><a href="s1-portscan.html">S1 ポートスキャン</a><a href="s2-bruteforce.html">S2 APIブルートフォース</a><a href="s3-sqli.html">S3 SQLインジェクション</a><a href="s4-dos.html">S4 DoS攻撃</a></div>
+    </section>
+
+  </main>
+</body>
+</html>

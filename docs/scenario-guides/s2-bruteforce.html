@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>S2 APIブルートフォース - Secure Learn</title>
+  <link rel="stylesheet" href="assets/scenario.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="index.html">Secure Learn Scenario Guides</a>
+    <nav aria-label="Scenario navigation"><a href="s1-portscan.html">S1</a><a aria-current="page" href="s2-bruteforce.html">S2</a><a href="s3-sqli.html">S3</a><a href="s4-dos.html">S4</a><a href="s5-file-tamper.html">S5</a><a href="s6-privesc.html">S6</a><a href="s7-lateral.html">S7</a><a href="s8-arp.html">S8</a><a href="s9-icmp.html">S9</a><a href="s10-tcp-state.html">S10</a><a href="s11-session-stress.html">S11</a><a href="s12-tls-boundary.html">S12</a><a href="s13-dns.html">S13</a><a href="s14-sre-incident.html">S14</a><a href="s15-capstone.html">S15</a></nav>
+  </header>
+  <main>
+    <section class="scenario-head">
+      <p class="eyebrow">S2 / L7 / 初級</p>
+      <h1>APIブルートフォース</h1>
+      <p class="lead">Hydraとアプリログを使い、認証攻撃、lockout、Fail2ban、SIEM相関を確認する。</p>
+      <div class="meta-row">
+        <span class="score score-4">4/5 実務上級</span>
+        <span class="pill">Whitehat</span><span class="pill">Backend</span><span class="pill">SRE</span>
+      </div>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>目的</h2>
+        <p>認証失敗のログ、アプリ側lockout、Fail2ban BAN、正常ユーザー影響を一つの時系列で説明する。</p>
+      </article>
+      <article>
+        <h2>世界レベル評価</h2>
+        <p>実務上級に近い構成です。証跡、修正、運用判断まで扱えます。</p>
+      </article>
+    </section>
+
+    <section>
+      <h2>Hands-on Flow</h2>
+      <ol class="flow"><li><span>Prepare</span><p>docker compose up -d --buildで最新版アプリを起動する。</p></li><li><span>Execute</span><p>/scripts/s2_bruteforce.shで低リスクな認証試行を行う。</p></li><li><span>Observe</span><p>auth.log、Fail2ban status、Kibana Timelineを確認する。</p></li><li><span>Backend check</span><p>AuthServiceのlockout unit testとtoken検証を確認する。</p></li><li><span>SRE check</span><p>BAN中も/healthと/health/readyがSLO内か確認する。</p></li></ol>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>実行コマンド</h2>
+        <pre><code>docker compose up -d --build
+docker exec -it soc-lab-kali /bin/bash
+/scripts/s2_bruteforce.sh
+docker exec soc-lab-app tail -20 /var/log/app/auth.log
+docker exec soc-lab-fail2ban fail2ban-client status nestjs-auth
+npm --prefix app test -- --test-name-pattern auth</code></pre>
+      </article>
+      <article>
+        <h2>合格証跡</h2>
+        <ul><li>auth.logの失敗回数とsource.ip</li><li>Fail2banのBAN状態</li><li>正常ログインがcredential materialを返さない証跡</li><li>lockout発動条件と誤検知時のunban手順</li></ul>
+      </article>
+    </section>
+
+    <section>
+      <h2>ツール活用</h2>
+      <table><thead><tr><th>Tool</th><th>使い方</th></tr></thead><tbody><tr><td><strong>Hydra</strong></td><td>認証試行を自動化する。対象は必ずラボ内に限定する。</td></tr><tr><td><strong>NestJS auth.log</strong></td><td>login_failed/login_successをsource.ipとuser.nameで見る。</td></tr><tr><td><strong>Fail2ban</strong></td><td>BAN有無、jail、bantime、findtime、maxretryを確認する。</td></tr><tr><td><strong>Node test</strong></td><td>lockout、token署名、credential material非露出を回帰テスト化する。</td></tr></tbody></table>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>Whitehat / SRE / Backend 観点</h2>
+        <ul><li>Whitehat: 攻撃を許可範囲に限定し、再現性と検知証跡を残す。</li><li>SRE: SLO、可用性、レイテンシ、復旧判断へ接続する。</li><li>Backend: 入力検証、契約、テスト、エラー安全性を確認する。</li></ul>
+      </article>
+      <article>
+        <h2>世界レベルへ足す課題</h2>
+        <ul><li>credential stuffing検知として、同一credentialの横展開やlow-and-slow attackを追加する。</li><li>MFA、risk-based authentication、rate limitのshared store化を設計課題にする。</li><li>アカウントロックがDoS化しないよう、解除・通知・support flowを追加する。</li></ul>
+      </article>
+    </section>
+
+    <section>
+      <h2>関連シナリオ</h2>
+      <div class="links"><a href="s1-portscan.html">S1 ポートスキャン</a><a href="s3-sqli.html">S3 SQLインジェクション</a><a href="s4-dos.html">S4 DoS攻撃</a><a href="s5-file-tamper.html">S5 重要ファイル改変</a></div>
+    </section>
+
+  </main>
+</body>
+</html>

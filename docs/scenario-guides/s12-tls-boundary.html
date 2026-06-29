@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>S12 L6 TLS可視性境界 - Secure Learn</title>
+  <link rel="stylesheet" href="assets/scenario.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="index.html">Secure Learn Scenario Guides</a>
+    <nav aria-label="Scenario navigation"><a href="s1-portscan.html">S1</a><a href="s2-bruteforce.html">S2</a><a href="s3-sqli.html">S3</a><a href="s4-dos.html">S4</a><a href="s5-file-tamper.html">S5</a><a href="s6-privesc.html">S6</a><a href="s7-lateral.html">S7</a><a href="s8-arp.html">S8</a><a href="s9-icmp.html">S9</a><a href="s10-tcp-state.html">S10</a><a href="s11-session-stress.html">S11</a><a aria-current="page" href="s12-tls-boundary.html">S12</a><a href="s13-dns.html">S13</a><a href="s14-sre-incident.html">S14</a><a href="s15-capstone.html">S15</a></nav>
+  </header>
+  <main>
+    <section class="scenario-head">
+      <p class="eyebrow">S12 / L6 / 中級</p>
+      <h1>L6 TLS可視性境界</h1>
+      <p class="lead">TLS ClientHelloをHTTP serviceへ送り、暗号化境界とIDS可視性の制約を理解する。</p>
+      <div class="meta-row">
+        <span class="score score-2">2/5 基礎良好</span>
+        <span class="pill">Whitehat</span><span class="pill">SRE</span><span class="pill">Backend</span>
+      </div>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>目的</h2>
+        <p>TLS終端前後で見える情報、見えない情報、監査すべきログを説明できるようにする。</p>
+      </article>
+      <article>
+        <h2>世界レベル評価</h2>
+        <p>基礎から実務中級までは有効です。世界レベルには追加課題の実測化が必要です。</p>
+      </article>
+    </section>
+
+    <section>
+      <h2>Hands-on Flow</h2>
+      <ol class="flow"><li><span>Execute</span><p>/scripts/s12_l6_tls_boundary.shを実行する。</p></li><li><span>Observe</span><p>openssl s_clientとcurl -vkの失敗理由を読む。</p></li><li><span>Explain</span><p>TLS終端前にIDSが見られるSNI/証明書/flowと、見られないHTTP bodyを分ける。</p></li><li><span>Design</span><p>reverse proxyでTLS終端する場合のaccess log、cert expiry、WAF位置を決める。</p></li><li><span>Operate</span><p>証明書期限とTLS設定を監視対象に加える。</p></li></ol>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>実行コマンド</h2>
+        <pre><code>docker exec -it soc-lab-kali /bin/bash
+/scripts/s12_l6_tls_boundary.sh
+openssl s_client -connect app:3000 -servername app
+curl -vk https://localhost:3000/health</code></pre>
+      </article>
+      <article>
+        <h2>合格証跡</h2>
+        <ul><li>TLS handshake failureの出力</li><li>可視性境界の説明</li><li>本番相当のTLS termination案</li><li>証明書期限監視案</li></ul>
+      </article>
+    </section>
+
+    <section>
+      <h2>ツール活用</h2>
+      <table><thead><tr><th>Tool</th><th>使い方</th></tr></thead><tbody><tr><td><strong>openssl s_client</strong></td><td>handshakeと証明書情報を確認する。</td></tr><tr><td><strong>curl -vk</strong></td><td>HTTPS/TLS failureをHTTP layerと分けて見る。</td></tr><tr><td><strong>Suricata</strong></td><td>TLS metadataが見える範囲を確認する。</td></tr><tr><td><strong>Reverse proxy</strong></td><td>TLS終端とWAF/IDSの責務分担を設計する。</td></tr></tbody></table>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>Whitehat / SRE / Backend 観点</h2>
+        <ul><li>Whitehat: 攻撃を許可範囲に限定し、再現性と検知証跡を残す。</li><li>SRE: SLO、可用性、レイテンシ、復旧判断へ接続する。</li><li>Backend: 入力検証、契約、テスト、エラー安全性を確認する。</li></ul>
+      </article>
+      <article>
+        <h2>世界レベルへ足す課題</h2>
+        <ul><li>nginx/EnvoyなどのTLS終端を実装してmTLS、HSTS、cipher policyを扱う。</li><li>certificate expiry alertとrenewal drillを追加する。</li><li>暗号化通信検査の法務/プライバシー判断を課題化する。</li></ul>
+      </article>
+    </section>
+
+    <section>
+      <h2>関連シナリオ</h2>
+      <div class="links"><a href="s1-portscan.html">S1 ポートスキャン</a><a href="s2-bruteforce.html">S2 APIブルートフォース</a><a href="s3-sqli.html">S3 SQLインジェクション</a><a href="s4-dos.html">S4 DoS攻撃</a></div>
+    </section>
+
+  </main>
+</body>
+</html>

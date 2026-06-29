@@ -205,6 +205,8 @@ docker compose -f docker-compose.yml -f docker-compose.alerting.yml up -d --buil
 - [SOCプレイブック](docs/soc-playbook.md)
 - [カリキュラム概要](docs/curriculum/overview.md)
 - [OSI学習マップ](docs/curriculum/osi-learning-map.md)
+- [シナリオ別HTMLハンズオン](docs/scenario-guides/index.html)
+- [世界レベル到達度評価](docs/curriculum/world-class-scenario-evaluation.md)
 - [スキル評価マトリクス](docs/curriculum/competency-matrix.md)
 - [業務レベル到達ロードマップ](docs/curriculum/professional-readiness-roadmap.md)
 - [バックエンドテスト・ハンズオン](docs/curriculum/backend-engineer-test-hands-on.md)

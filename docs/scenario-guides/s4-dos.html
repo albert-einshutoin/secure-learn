@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>S4 DoS攻撃 - Secure Learn</title>
+  <link rel="stylesheet" href="assets/scenario.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="index.html">Secure Learn Scenario Guides</a>
+    <nav aria-label="Scenario navigation"><a href="s1-portscan.html">S1</a><a href="s2-bruteforce.html">S2</a><a href="s3-sqli.html">S3</a><a aria-current="page" href="s4-dos.html">S4</a><a href="s5-file-tamper.html">S5</a><a href="s6-privesc.html">S6</a><a href="s7-lateral.html">S7</a><a href="s8-arp.html">S8</a><a href="s9-icmp.html">S9</a><a href="s10-tcp-state.html">S10</a><a href="s11-session-stress.html">S11</a><a href="s12-tls-boundary.html">S12</a><a href="s13-dns.html">S13</a><a href="s14-sre-incident.html">S14</a><a href="s15-capstone.html">S15</a></nav>
+  </header>
+  <main>
+    <section class="scenario-head">
+      <p class="eyebrow">S4 / L7/SRE / 初級</p>
+      <h1>DoS攻撃</h1>
+      <p class="lead">安全なリクエスト量でL7負荷をかけ、rate limit、latency、availability、BAN判断を確認する。</p>
+      <div class="meta-row">
+        <span class="score score-3">3/5 実務中級</span>
+        <span class="pill">SRE</span><span class="pill">Whitehat</span><span class="pill">Backend</span>
+      </div>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>目的</h2>
+        <p>攻撃検知とSLO劣化を分け、availabilityとp95 latencyを根拠にincident severityを判断する。</p>
+      </article>
+      <article>
+        <h2>世界レベル評価</h2>
+        <p>基礎から実務中級までは有効です。世界レベルには追加課題の実測化が必要です。</p>
+      </article>
+    </section>
+
+    <section>
+      <h2>Hands-on Flow</h2>
+      <ol class="flow"><li><span>Baseline</span><p>scripts/sre_smoke.shとscripts/load_hands_on_tests.shで攻撃前のSLOを測る。</p></li><li><span>Execute</span><p>/scripts/s4_dos.shで安全な負荷をかける。</p></li><li><span>Observe</span><p>access.log、Suricata、Fail2ban、/healthを同時に見る。</p></li><li><span>Decide</span><p>rate limit、BAN、capacity増強、rollbackのどれを選ぶか判断する。</p></li><li><span>Recover</span><p>負荷停止後のSLO回復とMTTRを記録する。</p></li></ol>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>実行コマンド</h2>
+        <pre><code>scripts/sre_smoke.sh
+REQUESTS=100 CONCURRENCY=10 scripts/load_hands_on_tests.sh
+docker exec -it soc-lab-kali /bin/bash
+/scripts/s4_dos.sh
+docker exec soc-lab-app tail -30 /var/log/app/access.log</code></pre>
+      </article>
+      <article>
+        <h2>合格証跡</h2>
+        <ul><li>攻撃前後のp95 latency、failure count</li><li>429/5xxの比率</li><li>rate limitまたはBANの発動有無</li><li>顧客影響とseverity判断</li></ul>
+      </article>
+    </section>
+
+    <section>
+      <h2>ツール活用</h2>
+      <table><thead><tr><th>Tool</th><th>使い方</th></tr></thead><tbody><tr><td><strong>curl/ab-like shell loop</strong></td><td>安全な範囲でリクエスト量を作る。</td></tr><tr><td><strong>express-rate-limit</strong></td><td>429 contractと正当ユーザー影響を確認する。</td></tr><tr><td><strong>SRE smoke/load scripts</strong></td><td>latencyとfailureを定量化する。</td></tr><tr><td><strong>Kibana</strong></td><td>error rate、status code、source.ipを時系列化する。</td></tr></tbody></table>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>Whitehat / SRE / Backend 観点</h2>
+        <ul><li>Whitehat: 攻撃を許可範囲に限定し、再現性と検知証跡を残す。</li><li>SRE: SLO、可用性、レイテンシ、復旧判断へ接続する。</li><li>Backend: 入力検証、契約、テスト、エラー安全性を確認する。</li></ul>
+      </article>
+      <article>
+        <h2>世界レベルへ足す課題</h2>
+        <ul><li>burn-rate alertとerror budget消費を追加する。</li><li>queueing、timeout、circuit breaker、autoscalingの比較課題を入れる。</li><li>負荷テスト結果からcapacity planning reportを作る。</li></ul>
+      </article>
+    </section>
+
+    <section>
+      <h2>関連シナリオ</h2>
+      <div class="links"><a href="s1-portscan.html">S1 ポートスキャン</a><a href="s2-bruteforce.html">S2 APIブルートフォース</a><a href="s3-sqli.html">S3 SQLインジェクション</a><a href="s5-file-tamper.html">S5 重要ファイル改変</a></div>
+    </section>
+
+  </main>
+</body>
+</html>
