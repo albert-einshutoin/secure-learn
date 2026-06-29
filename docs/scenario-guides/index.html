@@ -52,6 +52,35 @@
       </div></div>
     </section>
 
+    <section>
+      <h2>役割と証跡の図</h2>
+      <div class="visual-map" role="list"><div class="visual-node actor" role="listitem">
+        <span class="visual-label">Whitehat</span>
+        <strong>安全な再現</strong>
+        <p>許可範囲、payload、影響範囲、検知証跡を揃える。</p>
+      </div><div class="visual-node target" role="listitem">
+        <span class="visual-label">Backend</span>
+        <strong>再発防止</strong>
+        <p>入力検証、認証認可、DB/API contract、テストで固定する。</p>
+      </div><div class="visual-node observe" role="listitem">
+        <span class="visual-label">SRE</span>
+        <strong>顧客影響</strong>
+        <p>SLI/SLO、latency、availability、MTTRで判断する。</p>
+      </div><div class="visual-node control" role="listitem">
+        <span class="visual-label">Platform</span>
+        <strong>安全装置</strong>
+        <p>Kubernetes、Cloud、IaC、release guardrailでblast radiusを下げる。</p>
+      </div><div class="visual-node evidence" role="listitem">
+        <span class="visual-label">Detection</span>
+        <strong>相関証跡</strong>
+        <p>ログ、alert、case、MITRE mappingで第三者が追える形にする。</p>
+      </div><div class="visual-node improve" role="listitem">
+        <span class="visual-label">OSS</span>
+        <strong>公開運用</strong>
+        <p>SBOM、advisory、license、review disciplineで継続運用する。</p>
+      </div></div>
+    </section>
+
     <section class="grid three">
       <article><h2>Whitehat</h2><p class="big">27/33</p><p>この観点を主対象または副対象として扱うシナリオ数です。</p></article><article><h2>SRE</h2><p class="big">31/33</p><p>この観点を主対象または副対象として扱うシナリオ数です。</p></article><article><h2>Backend</h2><p class="big">18/33</p><p>この観点を主対象または副対象として扱うシナリオ数です。</p></article>
     </section>

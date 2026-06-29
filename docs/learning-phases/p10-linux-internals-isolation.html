@@ -70,6 +70,35 @@
       </div></div>
     </section>
 
+    <section>
+      <h2>Dockerと証跡の図</h2>
+      <div class="visual-map" role="list"><div class="visual-node actor" role="listitem">
+        <span class="visual-label">Learner</span>
+        <strong>Lead 3</strong>
+        <p>SRE / Whitehatの観点で学ぶ。</p>
+      </div><div class="visual-node target" role="listitem">
+        <span class="visual-label">Docker</span>
+        <strong>phase10-linux-internals</strong>
+        <p>learning_phase.shでphase10-linux-internalsを起動する。</p>
+      </div><div class="visual-node control" role="listitem">
+        <span class="visual-label">Scope</span>
+        <strong>安全境界</strong>
+        <p>許可されたローカルDockerラボだけを対象にする。</p>
+      </div><div class="visual-node observe" role="listitem">
+        <span class="visual-label">Observe</span>
+        <strong>観測対象</strong>
+        <p>service health、ログ、メトリクス、テスト結果のどれで進捗を判断するかを決める。</p>
+      </div><div class="visual-node evidence" role="listitem">
+        <span class="visual-label">Evidence</span>
+        <strong>合格証跡</strong>
+        <p>process/socket/syscall/file descriptorを紐づけたメモがある</p>
+      </div><div class="visual-node improve" role="listitem">
+        <span class="visual-label">Gate</span>
+        <strong>次フェーズ判定</strong>
+        <p>P11に進む前に、OS資源不足とアプリ障害をログだけで混同しない</p>
+      </div></div>
+    </section>
+
     <section class="grid two">
       <article>
         <h2>到達目標</h2>
