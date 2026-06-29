@@ -1,0 +1,9 @@
+apiVersion: 1
+
+datasources:
+  - name: Learning Prometheus
+    type: prometheus
+    access: proxy
+    url: http://learning-prometheus:9090
+    isDefault: true
+    editable: true

@@ -1,0 +1,158 @@
+# Optional learning profiles that extend the base SOC lab.
+# Use with: docker compose -f docker-compose.yml -f docker-compose.learning.yml --profile <profile> up -d --build
+
+services:
+  learn-toolbox:
+    build:
+      context: ./learning/toolbox
+      dockerfile: Dockerfile
+    container_name: learn-toolbox
+    hostname: learn-toolbox
+    profiles:
+      - phase5-observability
+      - phase6-release
+      - phase8-distributed
+      - capstone
+    command: ["sleep", "infinity"]
+    networks:
+      - app_net
+      - monitor_net
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+    depends_on:
+      app:
+        condition: service_healthy
+
+  learning-blackbox:
+    image: prom/blackbox-exporter:v0.25.0
+    container_name: learning-blackbox
+    profiles:
+      - phase5-observability
+      - capstone
+    command:
+      - --config.file=/etc/blackbox_exporter/config.yml
+    volumes:
+      - ./learning/blackbox/blackbox.yml:/etc/blackbox_exporter/config.yml:ro
+    networks:
+      - app_net
+      - monitor_net
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+  learning-prometheus:
+    image: prom/prometheus:v2.54.1
+    container_name: learning-prometheus
+    profiles:
+      - phase5-observability
+      - capstone
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=2d
+      - --web.enable-lifecycle
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./learning/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - learning_prometheus_data:/prometheus
+    networks:
+      - app_net
+      - monitor_net
+    depends_on:
+      - learning-blackbox
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+  learning-grafana:
+    image: grafana/grafana:11.2.0
+    container_name: learning-grafana
+    profiles:
+      - phase5-observability
+      - capstone
+    ports:
+      - "3001:3000"
+    volumes:
+      - learning_grafana_data:/var/lib/grafana
+      - ./learning/grafana/provisioning:/etc/grafana/provisioning:ro
+    networks:
+      - monitor_net
+    depends_on:
+      - learning-prometheus
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+  learning-otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.110.0
+    container_name: learning-otel-collector
+    profiles:
+      - phase5-observability
+      - capstone
+    command:
+      - --config=/etc/otelcol/config.yml
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+    volumes:
+      - ./learning/otel/otel-collector.yml:/etc/otelcol/config.yml:ro
+    networks:
+      - monitor_net
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+  learning-edge-proxy:
+    image: nginxinc/nginx-unprivileged:1.27-alpine
+    container_name: learning-edge-proxy
+    profiles:
+      - phase6-release
+      - capstone
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./learning/nginx/edge.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - app_net
+    depends_on:
+      app:
+        condition: service_healthy
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+  learning-redis:
+    image: redis:7.4-alpine
+    container_name: learning-redis
+    profiles:
+      - phase8-distributed
+      - capstone
+    command: ["redis-server", "--appendonly", "yes", "--save", "60", "1"]
+    ports:
+      - "127.0.0.1:6380:6379"
+    volumes:
+      - learning_redis_data:/data
+    networks:
+      - app_net
+    # The official Redis entrypoint drops privileges with setpriv. Dropping all
+    # capabilities before that point prevents the local training service from
+    # starting, so this lab keeps the image default and constrains it with
+    # no-new-privileges plus localhost-only port publishing.
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  learning_prometheus_data:
+  learning_grafana_data:
+  learning_redis_data:

@@ -25,6 +25,16 @@
 | 4 | SRE実務 | S14 | 監視、SLO、インシデント対応を運用に接続する |
 | 5 | 修了課題 | S15 | ホワイトハット/SRE 両面の最終証跡を作る |
 | 6 | 業務レベル拡張 | Professional tracks | OWASP、backend TDD、Kubernetes、SRE、supply chain を補完する |
+| 7 | 大手セキュアインフラ準備 | P0-P9 Learning Docker | Linux、Docker、Backend、Detection、Observability、Kubernetes、分散システム、Capstone を段階的に通す |
+
+## Learning Docker
+
+初学者から大手セキュアインフラ実務レベルまでの段階的な入口は [Secure Infrastructure Learning Docker](secure-infra-learning-docker.md) にまとめています。
+
+```bash
+scripts/learning_phase.sh list
+scripts/learning_phase.sh start p5
+```
 
 ## 修了の定義
 

@@ -127,6 +127,17 @@ RUN_CHAOS=1 scripts/incident_drill.sh
 scripts/lab_quality_gate.sh
 ```
 
+### フェーズ別 Learning Docker
+
+初学者から大手セキュアインフラ実務レベルまで、段階ごとに必要なDocker profileを起動できます。
+
+```bash
+scripts/learning_phase.sh list
+scripts/learning_phase.sh start p5
+scripts/learning_phase.sh status p5
+scripts/learning_phase.sh stop p5
+```
+
 ## 学習シナリオ
 
 | No | シナリオ | 主レイヤー | 難易度 |
@@ -205,6 +216,8 @@ docker compose -f docker-compose.yml -f docker-compose.alerting.yml up -d --buil
 - [SOCプレイブック](docs/soc-playbook.md)
 - [カリキュラム概要](docs/curriculum/overview.md)
 - [OSI学習マップ](docs/curriculum/osi-learning-map.md)
+- [フェーズ別 Learning Docker](docs/curriculum/secure-infra-learning-docker.md)
+- [フェーズ別HTMLガイド](docs/learning-phases/index.html)
 - [シナリオ別HTMLハンズオン](docs/scenario-guides/index.html)
 - [世界レベル到達度評価](docs/curriculum/world-class-scenario-evaluation.md)
 - [スキル評価マトリクス](docs/curriculum/competency-matrix.md)

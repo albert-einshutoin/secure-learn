@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Learning Phase Index - Secure Learn</title>
+  <link rel="stylesheet" href="../scenario-guides/assets/scenario.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="index.html">Secure Learn Learning Phases</a>
+    <nav aria-label="Learning phase navigation"><a href="p0-ethics-setup.html">P0</a><a href="p1-linux-docker-networking.html">P1</a><a href="p2-backend-tdd-api.html">P2</a><a href="p3-owasp-api-security.html">P3</a><a href="p4-detection-soc-engineering.html">P4</a><a href="p5-observability-sre.html">P5</a><a href="p6-secure-release-kubernetes-iac.html">P6</a><a href="p7-endpoint-edr-detection.html">P7</a><a href="p8-distributed-performance.html">P8</a><a href="p9-secure-infra-capstone.html">P9</a></nav>
+  </header>
+  <main>
+    <section class="scenario-head">
+      <p class="eyebrow">Junior to secure infrastructure lead</p>
+      <h1>フェーズ別 Learning Docker</h1>
+      <p class="lead">初学者がDocker、Linux、Backend、Whitehat、SRE、Kubernetes、Observability、分散システム、Supply Chainまで段階的に進むための実行可能な学習導線です。</p>
+    </section>
+
+    <section class="grid three">
+      <article><h2>Phases</h2><p class="big">10</p><p>Junior 0 から Lead 2 まで。</p></article>
+      <article><h2>Docker</h2><p class="big">Profiles</p><p>base、observability、release、distributed、capstone。</p></article>
+      <article><h2>Gate</h2><p class="big">Evidence</p><p>各フェーズで合格証跡を要求。</p></article>
+    </section>
+
+    <section>
+      <h2>起動方法</h2>
+      <pre><code>scripts/learning_phase.sh list
+scripts/learning_phase.sh start p5
+scripts/learning_phase.sh status p5
+scripts/learning_phase.sh stop p5</code></pre>
+    </section>
+
+    <section>
+      <h2>フェーズ一覧</h2>
+      <table>
+        <thead><tr><th>Phase</th><th>Level</th><th>Title</th><th>Docker profile</th><th>Roles</th><th>Skills</th></tr></thead>
+        <tbody><tr>
+        <td><a href="p0-ethics-setup.html">P0</a></td>
+        <td>Junior 0</td>
+        <td>倫理・安全範囲・作業環境</td>
+        <td>base</td>
+        <td>Whitehat, SRE, Backend</td>
+        <td>許可範囲, GitHub Flow, Docker基礎, 証跡管理</td>
+      </tr><tr>
+        <td><a href="p1-linux-docker-networking.html">P1</a></td>
+        <td>Junior 1</td>
+        <td>Linux・Docker・ネットワーク基礎</td>
+        <td>base</td>
+        <td>Whitehat, SRE</td>
+        <td>Linux process, namespace, container network, tcpdump, ss</td>
+      </tr><tr>
+        <td><a href="p2-backend-tdd-api.html">P2</a></td>
+        <td>Junior 2</td>
+        <td>Backend TDD・API契約・DB境界</td>
+        <td>base</td>
+        <td>Backend, SRE</td>
+        <td>unit test, integration test, OpenAPI, PostgreSQL, error contract</td>
+      </tr><tr>
+        <td><a href="p3-owasp-api-security.html">P3</a></td>
+        <td>Operator 1</td>
+        <td>OWASP API Security・認証認可・安全な失敗</td>
+        <td>base</td>
+        <td>Whitehat, Backend</td>
+        <td>BOLA, auth hardening, SQLi, path traversal, rate limit</td>
+      </tr><tr>
+        <td><a href="p4-detection-soc-engineering.html">P4</a></td>
+        <td>Operator 2</td>
+        <td>Detection Engineering・SOC相関・誤検知調整</td>
+        <td>base</td>
+        <td>Whitehat, SRE</td>
+        <td>Suricata, Fail2ban, Auditd, Kibana, MITRE ATT&amp;CK</td>
+      </tr><tr>
+        <td><a href="p5-observability-sre.html">P5</a></td>
+        <td>Independent 1</td>
+        <td>Observability・SLO・Incident Command</td>
+        <td>phase5-observability</td>
+        <td>SRE, Backend</td>
+        <td>Prometheus, Grafana, OpenTelemetry, blackbox probe, burn-rate</td>
+      </tr><tr>
+        <td><a href="p6-secure-release-kubernetes-iac.html">P6</a></td>
+        <td>Independent 2</td>
+        <td>Kubernetes・IaC・安全なリリース</td>
+        <td>phase6-release</td>
+        <td>SRE, Backend</td>
+        <td>Kubernetes, NetworkPolicy, rollback, canary, Terraform design</td>
+      </tr><tr>
+        <td><a href="p7-endpoint-edr-detection.html">P7</a></td>
+        <td>Independent 3</td>
+        <td>Endpoint/EDR観点・OS監査・検知改善</td>
+        <td>base</td>
+        <td>Whitehat, SRE</td>
+        <td>auditd, process tree, privilege escalation, case management, YARA/Sigma design</td>
+      </tr><tr>
+        <td><a href="p8-distributed-performance.html">P8</a></td>
+        <td>Lead 1</td>
+        <td>分散システム・性能・容量計画</td>
+        <td>phase8-distributed</td>
+        <td>SRE, Backend</td>
+        <td>Redis, queue, backpressure, idempotency, capacity planning</td>
+      </tr><tr>
+        <td><a href="p9-secure-infra-capstone.html">P9</a></td>
+        <td>Lead 2</td>
+        <td>大手セキュアインフラ相当Capstone</td>
+        <td>capstone</td>
+        <td>Whitehat, SRE, Backend</td>
+        <td>cloud security, supply chain, release engineering, incident leadership, executive reporting</td>
+      </tr></tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>主要URL</h2>
+      <table>
+        <thead><tr><th>Service</th><th>URL</th><th>Phase</th></tr></thead>
+        <tbody>
+          <tr><td>App</td><td>http://localhost:3000</td><td>P1+</td></tr>
+          <tr><td>Kibana</td><td>http://localhost:5601</td><td>P4+</td></tr>
+          <tr><td>Prometheus</td><td>http://localhost:9090</td><td>P5/P9</td></tr>
+          <tr><td>Grafana</td><td>http://localhost:3001</td><td>P5/P9</td></tr>
+          <tr><td>Edge proxy</td><td>http://localhost:8080</td><td>P6/P9</td></tr>
+          <tr><td>Redis</td><td>127.0.0.1:6380</td><td>P8/P9</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+  </main>
+</body>
+</html>
