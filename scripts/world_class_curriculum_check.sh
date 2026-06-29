@@ -67,6 +67,7 @@ for file in "$ROOT_DIR"/docs/scenario-guides/s*.html "$ROOT_DIR"/docs/learning-p
   grep -q '初学者の見方' "$file" || fail "$(basename "$file") missing beginner guidance"
   grep -q '経験者の深掘り' "$file" || fail "$(basename "$file") missing experienced guidance"
   grep -q '学習フロー図' "$file" || fail "$(basename "$file") missing learning diagram"
+  grep -q '証跡の図' "$file" || fail "$(basename "$file") missing evidence diagram"
   grep -q '事前準備' "$file" || fail "$(basename "$file") missing prerequisites"
   grep -q '安全境界' "$file" || fail "$(basename "$file") missing safety boundary"
   grep -q 'Hands-on Flow' "$file" || fail "$(basename "$file") missing hands-on flow"

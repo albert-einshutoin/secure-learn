@@ -89,6 +89,7 @@ PY
   grep -q '初学者の見方' "$file" || fail "$slug.html is missing beginner guidance"
   grep -q '経験者の深掘り' "$file" || fail "$slug.html is missing experienced guidance"
   grep -q '学習フロー図' "$file" || fail "$slug.html is missing learning diagram"
+  grep -q 'Dockerと証跡の図' "$file" || fail "$slug.html is missing Docker evidence diagram"
   grep -q '事前準備' "$file" || fail "$slug.html is missing prerequisites"
   grep -q '安全境界' "$file" || fail "$slug.html is missing safety boundary"
   grep -q 'Hands-on Flow' "$file" || fail "$slug.html is missing hands-on flow"

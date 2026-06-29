@@ -29,6 +29,7 @@ for file in "${scenario_pages[@]}"; do
   grep -q '初学者の見方' "$file" || fail "$(basename "$file") is missing beginner guidance"
   grep -q '経験者の深掘り' "$file" || fail "$(basename "$file") is missing experienced guidance"
   grep -q '学習フロー図' "$file" || fail "$(basename "$file") is missing learning diagram"
+  grep -q '環境と証跡の図' "$file" || fail "$(basename "$file") is missing environment evidence diagram"
   grep -q '事前準備' "$file" || fail "$(basename "$file") is missing prerequisites"
   grep -q '安全境界' "$file" || fail "$(basename "$file") is missing safety boundary"
   grep -q 'Hands-on Flow' "$file" || fail "$(basename "$file") is missing hands-on flow"

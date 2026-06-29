@@ -144,6 +144,59 @@ function learningDiagram(nodes) {
     .join('')}</div>`;
 }
 
+function visualMap(nodes) {
+  return `<div class="visual-map" role="list">${nodes
+    .map(
+      ({ kind, label, title, text }) => `<div class="visual-node ${kind}" role="listitem">
+        <span class="visual-label">${escapeHtml(label)}</span>
+        <strong>${escapeHtml(title)}</strong>
+        <p>${escapeHtml(text)}</p>
+      </div>`,
+    )
+    .join('')}</div>`;
+}
+
+function phaseVisualMap(phase) {
+  return visualMap([
+    {
+      kind: 'actor',
+      label: 'Learner',
+      title: phase.level,
+      text: `${phase.roles.join(' / ')}の観点で学ぶ。`,
+    },
+    {
+      kind: 'target',
+      label: 'Docker',
+      title: phase.profile,
+      text: `learning_phase.shで${phase.profile}を起動する。`,
+    },
+    {
+      kind: 'control',
+      label: 'Scope',
+      title: '安全境界',
+      text: phaseSafety(phase)[0],
+    },
+    {
+      kind: 'observe',
+      label: 'Observe',
+      title: '観測対象',
+      text: phaseObservationPoints(phase)[1],
+    },
+    {
+      kind: 'evidence',
+      label: 'Evidence',
+      title: '合格証跡',
+      text: phase.evidence[0],
+    },
+    {
+      kind: 'improve',
+      label: 'Gate',
+      title: '次フェーズ判定',
+      text: phase.next_gate,
+    },
+  ]);
+}
+
 function phaseDiagram(phase) {
   const preparationText =
     phase.id === 'P0'
@@ -226,6 +279,11 @@ function phasePage(phase) {
     <section>
       <h2>学習フロー図</h2>
       ${phaseDiagram(phase)}
+    </section>
+
+    <section>
+      <h2>Dockerと証跡の図</h2>
+      ${phaseVisualMap(phase)}
     </section>
 
     <section class="grid two">
@@ -351,6 +409,18 @@ function indexPage() {
         ['P8-P12', 'Platform', '分散、capstone、Linux internals、network edge、Kubernetes platformを扱う。'],
         ['P13-P18', '実務上級', 'Cloud、IaC、observability、分散信頼性、backend production、secure releaseへ広げる。'],
         ['P19', 'Principal', '検知、EDR、OSS governance、開示運用を統合する。'],
+      ])}
+    </section>
+
+    <section>
+      <h2>Learning Docker全体像</h2>
+      ${visualMap([
+        { kind: 'actor', label: 'Start', title: 'P0-P2', text: '安全範囲、Docker、Linux、Backend TDDの基礎を作る。' },
+        { kind: 'target', label: 'Profile', title: 'P3-P8', text: 'API security、detection、observability、distributed profileを使う。' },
+        { kind: 'control', label: 'Guardrail', title: 'P9-P14', text: 'capstone、Linux internals、network、Kubernetes、Cloud、IaCを統合する。' },
+        { kind: 'observe', label: 'Telemetry', title: 'P15-P16', text: 'burn-rate、trace/log correlation、queue/backpressureを観測する。' },
+        { kind: 'evidence', label: 'Contract', title: 'P17-P18', text: 'migration、API compatibility、supply chain、release証跡を揃える。' },
+        { kind: 'improve', label: 'Principal', title: 'P19', text: 'Detection、EDR、OSS governance、responsible disclosureで仕上げる。' },
       ])}
     </section>
 

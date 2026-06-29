@@ -2,7 +2,7 @@
 
 このトラックは、初学者が `docker compose up` から始めて、Whitehat、SRE、Backend、Detection、Cloud/IaC、Supply Chain、Release Governance まで段階的に進むためのフェーズ制カリキュラムです。
 
-各フェーズのHTMLガイドは [Learning Phase Guides](../learning-phases/index.html) を正とします。HTMLには、抽象的に何を学ぶか、具体例、初学者の見方、経験者の深掘り、学習フロー図、事前準備、安全境界、Hands-on Flow、Docker実行、観測ポイント、よくある失敗、セルフレビュー、合格証跡を入れています。
+各フェーズのHTMLガイドは [Learning Phase Guides](../learning-phases/index.html) を正とします。HTMLには、抽象的に何を学ぶか、具体例、初学者の見方、経験者の深掘り、学習フロー図、Dockerと証跡の図、事前準備、安全境界、Hands-on Flow、Docker実行、観測ポイント、よくある失敗、セルフレビュー、合格証跡を入れています。
 
 ## 実行入口
 

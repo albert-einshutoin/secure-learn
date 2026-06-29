@@ -1667,6 +1667,72 @@ function learningDiagram(nodes) {
     .join('')}</div>`;
 }
 
+function visualMap(nodes) {
+  return `<div class="visual-map" role="list">${nodes
+    .map(
+      ({ kind, label, title, text }) => `<div class="visual-node ${kind}" role="listitem">
+        <span class="visual-label">${escapeHtml(label)}</span>
+        <strong>${escapeHtml(title)}</strong>
+        <p>${escapeHtml(text)}</p>
+      </div>`,
+    )
+    .join('')}</div>`;
+}
+
+function scenarioTargetLabel(scenario) {
+  const context = `${scenario.layer} ${scenario.title}`;
+  if (/Kubernetes/.test(context)) return 'Kubernetes / Platform';
+  if (/Cloud|IAM|KMS/.test(context)) return 'Cloud design / Audit logs';
+  if (/IaC|Terraform|OPA/.test(context)) return 'IaC plan / Policy';
+  if (/Observability|SRE|Burn|OpenTelemetry/.test(context)) return 'Telemetry / SLO';
+  if (/Distributed|Queue|Backend|SQL|API|BOLA|SSRF|Supply/.test(context)) return 'App / API / DB';
+  if (/L2|L3|L4|TCP|TLS|DNS|Edge|CDN/.test(context)) return 'Network / Edge';
+  if (/OS|Linux|Endpoint|EDR/.test(context)) return 'Host / Process / File';
+  return 'Local lab service';
+}
+
+function scenarioVisualMap(scenario) {
+  const firstCommand = scenario.commands[0] || 'HTMLの手順から開始する';
+  return visualMap([
+    {
+      kind: 'actor',
+      label: 'Input',
+      title: '実行する刺激',
+      text: firstCommand,
+    },
+    {
+      kind: 'target',
+      label: 'Target',
+      title: scenarioTargetLabel(scenario),
+      text: `${scenario.layer}で${scenario.title}を安全に扱う。`,
+    },
+    {
+      kind: 'control',
+      label: 'Control',
+      title: '安全境界',
+      text: scenarioSafety(scenario)[0],
+    },
+    {
+      kind: 'observe',
+      label: 'Observe',
+      title: '見るべき信号',
+      text: scenarioObservationPoints(scenario)[1],
+    },
+    {
+      kind: 'evidence',
+      label: 'Evidence',
+      title: '残す証跡',
+      text: scenario.evidence[0],
+    },
+    {
+      kind: 'improve',
+      label: 'Improve',
+      title: '経験者の深掘り',
+      text: scenario.worldClass[0],
+    },
+  ]);
+}
+
 function scenarioDiagram(scenario) {
   return learningDiagram([
     ['1', '理解', '抽象説明、目的、具体例で守る資産と失敗条件を把握する。'],
@@ -1786,6 +1852,11 @@ function scenarioPage(scenario) {
     <section>
       <h2>学習フロー図</h2>
       ${scenarioDiagram(scenario)}
+    </section>
+
+    <section>
+      <h2>環境と証跡の図</h2>
+      ${scenarioVisualMap(scenario)}
     </section>
 
     <section class="grid two">
@@ -1926,6 +1997,18 @@ function indexPage() {
       ])}
     </section>
 
+    <section>
+      <h2>役割と証跡の図</h2>
+      ${visualMap([
+        { kind: 'actor', label: 'Whitehat', title: '安全な再現', text: '許可範囲、payload、影響範囲、検知証跡を揃える。' },
+        { kind: 'target', label: 'Backend', title: '再発防止', text: '入力検証、認証認可、DB/API contract、テストで固定する。' },
+        { kind: 'observe', label: 'SRE', title: '顧客影響', text: 'SLI/SLO、latency、availability、MTTRで判断する。' },
+        { kind: 'control', label: 'Platform', title: '安全装置', text: 'Kubernetes、Cloud、IaC、release guardrailでblast radiusを下げる。' },
+        { kind: 'evidence', label: 'Detection', title: '相関証跡', text: 'ログ、alert、case、MITRE mappingで第三者が追える形にする。' },
+        { kind: 'improve', label: 'OSS', title: '公開運用', text: 'SBOM、advisory、license、review disciplineで継続運用する。' },
+      ])}
+    </section>
+
     <section class="grid three">
       ${roleCoverage
         .map(([role, count]) => `<article><h2>${role}</h2><p class="big">${count}/${scenarios.length}</p><p>この観点を主対象または副対象として扱うシナリオ数です。</p></article>`)
@@ -1972,6 +2055,15 @@ function writeCss() {
   --warn: #b45309;
   --danger: #b91c1c;
   --ok: #15803d;
+  --blue: #1d4ed8;
+  --cyan: #0369a1;
+  --violet: #6d28d9;
+  --surface-green: #ecfdf3;
+  --surface-blue: #eff6ff;
+  --surface-cyan: #ecfeff;
+  --surface-amber: #fff7ed;
+  --surface-red: #fff1f2;
+  --surface-violet: #f5f3ff;
 }
 
 * { box-sizing: border-box; }
@@ -2008,6 +2100,10 @@ a { color: var(--accent-2); text-decoration-thickness: 1px; }
 
 nav {
   display: flex;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  flex: 1 1 auto;
   gap: 6px;
   overflow-x: auto;
   padding-bottom: 2px;
@@ -2102,11 +2198,12 @@ article {
 
 .track-card {
   border-top: 5px solid var(--accent);
+  background: linear-gradient(180deg, #ffffff 0%, #fbfdfd 100%);
 }
 
-.track-card.beginner { border-top-color: var(--accent); }
-.track-card.experienced { border-top-color: var(--accent-2); }
-.track-card.review { border-top-color: var(--warn); }
+.track-card.beginner { border-top-color: var(--accent); background: var(--surface-green); }
+.track-card.experienced { border-top-color: var(--accent-2); background: var(--surface-blue); }
+.track-card.review { border-top-color: var(--warn); background: var(--surface-amber); }
 
 .track-card h3 {
   color: var(--text);
@@ -2127,6 +2224,13 @@ article {
   border-radius: 8px;
   background: var(--panel);
 }
+
+.diagram-node:nth-child(1) { border-left-color: var(--accent); background: var(--surface-green); }
+.diagram-node:nth-child(2) { border-left-color: var(--cyan); background: var(--surface-cyan); }
+.diagram-node:nth-child(3) { border-left-color: var(--accent-2); background: var(--surface-blue); }
+.diagram-node:nth-child(4) { border-left-color: var(--warn); background: var(--surface-amber); }
+.diagram-node:nth-child(5) { border-left-color: var(--ok); background: #f0fdf4; }
+.diagram-node:nth-child(6) { border-left-color: var(--violet); background: var(--surface-violet); }
 
 .diagram-node::after {
   content: ">";
@@ -2164,6 +2268,57 @@ article {
   font-weight: 800;
   font-size: 13px;
 }
+
+.visual-map {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+}
+
+.visual-node {
+  min-height: 160px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.55);
+}
+
+.visual-node strong {
+  display: block;
+  margin-top: 10px;
+  font-size: 15px;
+}
+
+.visual-node p {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.visual-label {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: 999px;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.visual-node.actor { border-top: 5px solid var(--accent); background: var(--surface-green); }
+.visual-node.actor .visual-label { background: var(--accent); }
+.visual-node.target { border-top: 5px solid var(--accent-2); background: var(--surface-blue); }
+.visual-node.target .visual-label { background: var(--accent-2); }
+.visual-node.control { border-top: 5px solid var(--danger); background: var(--surface-red); }
+.visual-node.control .visual-label { background: var(--danger); }
+.visual-node.observe { border-top: 5px solid var(--cyan); background: var(--surface-cyan); }
+.visual-node.observe .visual-label { background: var(--cyan); }
+.visual-node.evidence { border-top: 5px solid var(--ok); background: #f0fdf4; }
+.visual-node.evidence .visual-label { background: var(--ok); }
+.visual-node.improve { border-top: 5px solid var(--violet); background: var(--surface-violet); }
+.visual-node.improve .visual-label { background: var(--violet); }
 
 .role-lanes {
   display: grid;
@@ -2238,6 +2393,12 @@ article {
   background: var(--panel);
 }
 
+.flow li:nth-child(1) { border-top-color: var(--accent); background: var(--surface-green); }
+.flow li:nth-child(2) { border-top-color: var(--accent-2); background: var(--surface-blue); }
+.flow li:nth-child(3) { border-top-color: var(--cyan); background: var(--surface-cyan); }
+.flow li:nth-child(4) { border-top-color: var(--warn); background: var(--surface-amber); }
+.flow li:nth-child(5) { border-top-color: var(--violet); background: var(--surface-violet); }
+
 .flow span {
   display: block;
   margin-bottom: 8px;
@@ -2296,7 +2457,7 @@ li + li { margin-top: 6px; }
 @media (max-width: 900px) {
   .topbar { align-items: flex-start; flex-direction: column; }
   h1 { font-size: 30px; }
-  .grid.two, .grid.three, .track-grid, .learning-diagram, .flow { grid-template-columns: 1fr; }
+  .grid.two, .grid.three, .track-grid, .learning-diagram, .visual-map, .flow { grid-template-columns: 1fr; }
   .diagram-node::after { content: ""; }
 }
 `;

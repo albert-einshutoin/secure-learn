@@ -71,6 +71,35 @@
       </div></div>
     </section>
 
+    <section>
+      <h2>環境と証跡の図</h2>
+      <div class="visual-map" role="list"><div class="visual-node actor" role="listitem">
+        <span class="visual-label">Input</span>
+        <strong>実行する刺激</strong>
+        <p>scripts/learning_phase.sh start p10</p>
+      </div><div class="visual-node target" role="listitem">
+        <span class="visual-label">Target</span>
+        <strong>Telemetry / SLO</strong>
+        <p>Kernel/ObservabilityでeBPF・perf・低レイヤー可観測性を安全に扱う。</p>
+      </div><div class="visual-node control" role="listitem">
+        <span class="visual-label">Control</span>
+        <strong>安全境界</strong>
+        <p>第三者環境、公共IP、許可のないcloud accountには実行しない。</p>
+      </div><div class="visual-node observe" role="listitem">
+        <span class="visual-label">Observe</span>
+        <strong>見るべき信号</strong>
+        <p>HTTP status、アプリログ、検知ログ、メトリクスのどれで成功/失敗を証明するかを決める。</p>
+      </div><div class="visual-node evidence" role="listitem">
+        <span class="visual-label">Evidence</span>
+        <strong>残す証跡</strong>
+        <p>観測したい質問と選んだtoolの理由</p>
+      </div><div class="visual-node improve" role="listitem">
+        <span class="visual-label">Improve</span>
+        <strong>経験者の深掘り</strong>
+        <p>BCC/bpftrace/Cilium Tetragonなどで実イベントを取得する。</p>
+      </div></div>
+    </section>
+
     <section class="grid two">
       <article>
         <h2>目的</h2>
