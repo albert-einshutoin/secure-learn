@@ -56,3 +56,39 @@ test('rejects encoded path traversal outside the configured public directory', a
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
+
+test('lists public entries deterministically', async () => {
+  const { root, publicDir } = createFixture();
+  const service = new FilesService(publicDir);
+  fs.writeFileSync(path.join(publicDir, 'a-first.txt'), 'first', 'utf8');
+
+  try {
+    assert.deepEqual(await service.listFiles(), ['a-first.txt', 'readme.txt']);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('reports missing files and rejects directories as files', async () => {
+  const { root, publicDir } = createFixture();
+  const service = new FilesService(publicDir);
+
+  try {
+    await assert.rejects(() => service.readFile('missing.txt'), (error) => error.status === 404);
+    await assert.rejects(() => service.readFile('.'), (error) => error.status === 400);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('rejects invalid encodings and empty file paths', async () => {
+  const { root, publicDir } = createFixture();
+  const service = new FilesService(publicDir);
+
+  try {
+    await assert.rejects(() => service.readFile('%E0%A4%A'), (error) => error.status === 400);
+    await assert.rejects(() => service.readFile(''), (error) => error.status === 400);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});

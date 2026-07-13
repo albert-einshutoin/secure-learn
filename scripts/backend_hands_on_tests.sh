@@ -1,7 +1,6 @@
 #!/bin/bash
 # Backend-focused hands-on test runner for the running Secure Learn lab.
-# It reports security findings without failing the shell, because several
-# endpoints are intentionally vulnerable for remediation practice.
+# It reports security findings and fails when a hardened API boundary regresses.
 
 set -euo pipefail
 

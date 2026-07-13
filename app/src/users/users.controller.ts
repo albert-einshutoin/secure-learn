@@ -6,6 +6,7 @@ import {
   HttpException,
   HttpStatus,
   InternalServerErrorException,
+  UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
 import { Request } from 'express';
@@ -82,6 +83,11 @@ export class UsersController {
   @UseGuards(BearerAuthGuard, RolesGuard)
   @Roles('admin')
   async adminAudit(@Req() req: AuthenticatedRequest) {
+    if (!req.user) {
+      // Guards establish this invariant, but the explicit runtime check keeps
+      // the controller safe if its decorator chain is changed later.
+      throw new UnauthorizedException('Authenticated user is missing');
+    }
     return {
       status: 'ok',
       viewer: req.user.username,

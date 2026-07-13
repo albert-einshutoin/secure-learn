@@ -5,6 +5,10 @@ import rateLimit from 'express-rate-limit';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  // The framework name provides no learning value and needlessly helps remote
+  // fingerprinting if a user later places the lab behind an approved proxy.
+  app.getHttpAdapter().getInstance().disable('x-powered-by');
+
   // Rate limiting for DoS protection (S4)
   // Intentionally set high for learning purposes
   app.use(

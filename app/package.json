@@ -1,13 +1,17 @@
 {
   "name": "soc-lab-app",
   "version": "1.0.0",
-  "description": "Vulnerable NestJS application for SOC training",
+  "description": "Remediated NestJS application for local SOC training",
   "author": "SOC-Lab",
   "private": true,
   "license": "MIT",
+  "engines": {
+    "node": ">=24 <25"
+  },
   "scripts": {
     "build": "nest build",
-    "check": "npm run build",
+    "typecheck": "tsc --noEmit",
+    "check": "npm run typecheck && npm run build",
     "test": "npm run build && npm run test:unit",
     "test:unit": "node --test test/*.test.js",
     "test:integration": "npm run build && RUN_DB_INTEGRATION=1 node --test test/users.integration.test.js",

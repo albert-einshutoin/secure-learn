@@ -33,7 +33,7 @@ export class FilesService {
   }
 
   async listFiles(dirPath: string = ''): Promise<string[]> {
-    const fullPath = this.resolveInsideBaseDir(dirPath);
+    const fullPath = this.resolveInsideBaseDir(dirPath, true);
 
     if (!fs.existsSync(fullPath)) {
       throw new NotFoundException('Directory not found');
@@ -47,7 +47,7 @@ export class FilesService {
     return fs.readdirSync(fullPath).sort();
   }
 
-  private resolveInsideBaseDir(inputPath: string): string {
+  private resolveInsideBaseDir(inputPath: string, allowBaseDir = false): string {
     let decodedPath: string;
     try {
       decodedPath = decodeURIComponent(String(inputPath || ''));
@@ -55,7 +55,9 @@ export class FilesService {
       throw new BadRequestException('Invalid path encoding');
     }
 
-    if (!decodedPath || decodedPath.includes('\0')) {
+    // An empty path is meaningful only for directory listing: it represents
+    // the public root. File reads still reject it to avoid ambiguous behavior.
+    if ((!decodedPath && !allowBaseDir) || decodedPath.includes('\0')) {
       throw new BadRequestException('Invalid file path');
     }
 

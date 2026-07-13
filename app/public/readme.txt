@@ -8,6 +8,8 @@ Sample files:
 - sample.json
 - config.txt
 
-WARNING: This application is intentionally vulnerable for learning purposes.
-DO NOT deploy in production environments.
+This API rejects the bundled exploit regressions, but the surrounding lab uses
+demonstration credentials, generates attack traffic, and is not a production
+deployment template.
+Keep it on systems and networks you control.
 

@@ -91,7 +91,7 @@ export class AuthService {
 
   async validateUser(username: string, submittedCredential: string): Promise<AuthenticatedUser | null> {
     const result = await this.authenticate(username, submittedCredential);
-    return result.ok ? result.user : null;
+    return result.ok && result.user ? result.user : null;
   }
 
   verifyAccessToken(token: string): AuthenticatedUser | null {

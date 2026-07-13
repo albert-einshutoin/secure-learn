@@ -31,10 +31,8 @@ export class UsersService {
       port: parseInt(process.env.DB_PORT || '5432', 10),
       user: process.env.DB_USER || 'soclab',
       database: process.env.DB_NAME || 'soclab',
+      ...(process.env.DB_PASS ? { password: process.env.DB_PASS } : {}),
     };
-    if (process.env.DB_PASS) {
-      this.clientConfig['pass' + 'word'] = process.env.DB_PASS;
-    }
     this.client = client || this.createClient();
     this.attachClientErrorHandler();
 
