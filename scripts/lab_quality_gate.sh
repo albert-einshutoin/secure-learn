@@ -5,6 +5,24 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
+verify_generator_idempotency() {
+  local generated_dir="$1"
+  shift
+  local snapshot
+  snapshot="$(mktemp -d)"
+
+  # Compare the generated tree to its immediate pre-run state so this gate is
+  # valid on an uncommitted feature branch as well as on a clean CI checkout.
+  cp -R "$generated_dir/." "$snapshot/"
+  "$@"
+  if ! diff -r "$snapshot" "$generated_dir"; then
+    rm -rf "$snapshot"
+    echo "Generated output is not reproducible: $generated_dir" >&2
+    return 1
+  fi
+  rm -rf "$snapshot"
+}
+
 echo "============================================"
 echo "Secure Learn Lab Quality Gate"
 echo "============================================"
@@ -34,9 +52,10 @@ docker compose -f "$ROOT_DIR/docker-compose.exercise.yml" config -q
 echo
 echo "[4/10] Learning Docker phases"
 node --check "$ROOT_DIR/scripts/generate_learning_phase_html.js"
-node "$ROOT_DIR/scripts/generate_learning_phase_html.js"
+verify_generator_idempotency \
+  "$ROOT_DIR/docs/learning-phases" \
+  node "$ROOT_DIR/scripts/generate_learning_phase_html.js"
 "$ROOT_DIR/scripts/learning_phase_check.sh"
-git -C "$ROOT_DIR" diff --exit-code -- docs/learning-phases
 
 echo
 echo "[5/10] Bash syntax"
@@ -55,9 +74,10 @@ echo "[7/10] Kubernetes static check"
 echo
 echo "[8/10] Scenario HTML guides"
 node --check "$ROOT_DIR/scripts/generate_scenario_html.js"
-node "$ROOT_DIR/scripts/generate_scenario_html.js"
+verify_generator_idempotency \
+  "$ROOT_DIR/docs/scenario-guides" \
+  node "$ROOT_DIR/scripts/generate_scenario_html.js"
 "$ROOT_DIR/scripts/scenario_html_check.sh"
-git -C "$ROOT_DIR" diff --exit-code -- docs/scenario-guides
 
 echo
 echo "[9/10] Git whitespace check"
@@ -73,6 +93,13 @@ if curl -fsS "$APP_HEALTH_URL" >/dev/null 2>&1; then
   BASE_URL="$APP_BASE_URL" REQUESTS=10 CONCURRENCY=2 "$ROOT_DIR/scripts/load_hands_on_tests.sh"
 else
   echo "App is not running at $APP_HEALTH_URL; skipping SRE smoke."
+fi
+
+if curl -fsS "${ELASTICSEARCH_URL:-http://127.0.0.1:9200}/_cluster/health" >/dev/null 2>&1 \
+  && curl -fsS "${KIBANA_URL:-http://127.0.0.1:5601}/api/status" >/dev/null 2>&1; then
+  "$ROOT_DIR/scripts/siem_e2e_check.sh"
+else
+  echo "Elasticsearch/Kibana are not running; skipping SIEM E2E check."
 fi
 
 echo

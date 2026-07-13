@@ -4,8 +4,10 @@ Thanks for helping improve Secure Learn / SOC-Lab.
 
 ## Scope
 
-This project is an intentionally vulnerable, local-only security training lab.
-Contributions should preserve that purpose:
+This project is a local-only security training lab that generates attack
+traffic and telemetry. The bundled exploit regressions are remediated, while
+demonstration credentials and observability remain local-only. Contributions
+should preserve those boundaries:
 
 - Keep attack traffic inside the Docker lab or explicitly documented host-only exercises.
 - Do not add code that targets third-party systems.
@@ -22,8 +24,10 @@ Contributions should preserve that purpose:
 ```bash
 cd app
 npm ci
-npm run build
+npm run check
+npm test
 cd ..
+node --test test/product-readiness.test.js
 docker compose config -q
 docker compose -f docker-compose.yml -f docker-compose.alerting.yml config -q
 docker compose -f docker-compose.yml -f docker-compose.ips.yml config -q
@@ -41,4 +45,4 @@ docker compose -f docker-compose.exercise.yml config -q
 ## Code Style
 
 Use the existing project style. Add comments when a decision is security-
-relevant, intentionally vulnerable, or non-obvious for lab stability.
+relevant, intentionally attack-generating, or non-obvious for lab stability.

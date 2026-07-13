@@ -6,6 +6,13 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   app:
     name: NestJS app build
@@ -34,7 +41,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
           cache-dependency-path: app/package-lock.json
 
@@ -43,6 +50,9 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Strict type check
+        run: npm run typecheck
 
       - name: Unit tests
         run: npm test
@@ -68,7 +78,10 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 24
+
+      - name: Product readiness regression tests
+        run: node --test test/product-readiness.test.js
 
       - name: Validate base compose
         run: docker compose config -q
@@ -86,7 +99,7 @@ jobs:
         run: scripts/learning_phase_check.sh
 
       - name: Check shell script syntax
-        run: find attack/scripts scripts -type f -name '*.sh' -print0 | xargs -0 bash -n
+        run: find attack/scripts scripts elk -type f -name '*.sh' -print0 | xargs -0 bash -n
 
       - name: Kubernetes static checks
         run: scripts/k8s_static_check.sh
@@ -111,7 +124,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 24
 
       - name: Check generator syntax
         run: node --check scripts/generate_scenario_html.js

@@ -1,0 +1,51 @@
+name: Bug report
+description: Report a reproducible defect in the local lab, API, SIEM, or learning guides.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: Do not include real credentials, private traffic, or attack targets outside your own lab.
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact and reason to fix
+      description: Explain which learning flow or safety boundary is blocked and why it matters.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction steps
+      description: Include the exact Compose command, scenario, request, and observed result.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: State the observable acceptance condition.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Sanitized evidence
+      description: Add relevant status, logs, or screenshots after removing secrets and sensitive traffic.
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, CPU architecture, Docker version, and Compose version.
+    validations:
+      required: true
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety confirmation
+      options:
+        - label: I reproduced this only on systems and networks I control.
+          required: true
+        - label: I removed secrets, tokens, private packet captures, and real webhook URLs.
+          required: true

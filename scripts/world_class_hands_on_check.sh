@@ -10,7 +10,9 @@ REPORT_FILE="$REPORT_DIR/summary.md"
 
 mkdir -p "$REPORT_DIR"
 
-pass_count=0
+verified_count=0
+present_count=0
+documented_count=0
 warn_count=0
 
 record() {
@@ -19,7 +21,9 @@ record() {
   local detail="$3"
 
   case "$status" in
-    PASS) pass_count=$((pass_count + 1)) ;;
+    VERIFIED) verified_count=$((verified_count + 1)) ;;
+    PRESENT) present_count=$((present_count + 1)) ;;
+    DOCUMENTED) documented_count=$((documented_count + 1)) ;;
     WARN) warn_count=$((warn_count + 1)) ;;
   esac
 
@@ -32,7 +36,7 @@ has_file() {
   local topic="$2"
   local detail="$3"
   if [[ -f "$ROOT_DIR/$file" ]]; then
-    record PASS "$topic" "$detail: $file"
+    record PRESENT "$topic" "$detail: $file"
   else
     record WARN "$topic" "Missing expected file: $file"
   fi
@@ -42,8 +46,16 @@ has_text() {
   local pattern="$1"
   local topic="$2"
   local detail="$3"
-  if grep -R -E -q "$pattern" "$ROOT_DIR"; then
-    record PASS "$topic" "$detail"
+  # Excluding this checker is essential: its own search patterns are not
+  # curriculum evidence. Generated reports and dependency trees are excluded
+  # for the same reason.
+  if grep -R -E -q \
+    --exclude='world_class_hands_on_check.sh' \
+    --exclude-dir=.git \
+    --exclude-dir=node_modules \
+    --exclude-dir=reports \
+    "$pattern" "$ROOT_DIR"; then
+    record DOCUMENTED "$topic" "$detail"
   else
     record WARN "$topic" "Coverage text not found: $pattern"
   fi
@@ -88,7 +100,7 @@ run_edge() {
 run_kubernetes() {
   section "kubernetes" "Kubernetesをpolicy、identity、network、upgradeを持つplatformとして扱う。" "k8s_static_checkを実行し、Admission/RBAC/NetworkPolicy/PodSecurityのreview観点を作る。"
   "$ROOT_DIR/scripts/k8s_static_check.sh" >/dev/null
-  record PASS kubernetes "k8s static guardrail check passed"
+  record VERIFIED kubernetes "k8s static guardrail check passed"
   has_text "Admission Controller|Helm|Kustomize|Operator|CRD" kubernetes "platform topics are documented"
 }
 
@@ -132,7 +144,7 @@ run_api_security() {
 run_supply_chain() {
   section "supply-chain" "依存、CI、artifact、署名、配布、開示までを攻撃面として扱う。" "npm audit、SBOM/SAST/DAST/SCA coverage、artifact signing、advisoryを確認する。"
   (cd "$ROOT_DIR/app" && npm audit --omit=dev --audit-level=high >/dev/null)
-  record PASS supply-chain "npm production dependency audit passed"
+  record VERIFIED supply-chain "npm production dependency audit passed"
   has_text "SBOM|SAST|DAST|SCA|artifact signing|provenance" supply-chain "supply chain topics are documented"
 }
 
@@ -193,7 +205,7 @@ run_topic() {
 }
 
 {
-  echo "# World-class Hands-on Evidence"
+  echo "# Advanced Curriculum Evidence Inventory"
   echo
   echo "- Date: $(date -Iseconds)"
   echo "- Topic: $TOPIC"
@@ -205,12 +217,14 @@ run_topic "$TOPIC"
   echo
   echo "## Summary"
   echo
-  echo "- PASS: $pass_count"
+  echo "- VERIFIED: $verified_count"
+  echo "- PRESENT: $present_count"
+  echo "- DOCUMENTED: $documented_count"
   echo "- WARN: $warn_count"
   echo
-  echo "WARN means the topic is documented but should be deepened with a real environment before claiming production mastery."
+  echo "VERIFIED means a command ran successfully. PRESENT and DOCUMENTED do not prove runtime behavior or production mastery."
 } >> "$REPORT_FILE"
 
 echo
-echo "Summary: PASS=$pass_count WARN=$warn_count"
+echo "Summary: VERIFIED=$verified_count PRESENT=$present_count DOCUMENTED=$documented_count WARN=$warn_count"
 echo "Report written to: $REPORT_FILE"

@@ -2,8 +2,11 @@
 
 ## Supported Use
 
-Secure Learn / SOC-Lab is an intentionally vulnerable training environment.
-Run it only on machines and networks you control.
+Secure Learn / SOC-Lab is a security training environment that generates
+attack traffic and security telemetry. The default API rejects the bundled SQL
+injection and path-traversal payloads and enforces authenticated role access.
+Predictable demonstration credentials and authentication-disabled observability
+services remain intentionally local-only.
 
 Do not expose the lab to the public internet.
 
@@ -20,12 +23,13 @@ Please include:
 - The affected component.
 - Whether the issue can escape the Docker lab boundary.
 
-## Intended Vulnerabilities
+## Intended Training Behavior
 
-The vulnerable NestJS app, SQL injection endpoints, weak credentials, path
-traversal behavior, attack scripts, and detection bypass exercises are expected
-training material. Reports about those intentional behaviors should be filed as
-documentation or scenario-improvement issues, not as security vulnerabilities.
+Attack scripts, weak local-only demonstration credentials, suspicious payloads,
+and detection exercises are expected training material. SQL injection and path
+traversal requests are logged but rejected by the default API. A bypass that
+escapes those controls, trusts forged client identity, exposes services beyond
+localhost, or escapes the Docker lab boundary is a security vulnerability.
 
 ## Safety Rules
 
