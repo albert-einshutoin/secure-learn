@@ -282,13 +282,13 @@
     "id": "P9",
     "slug": "p9-secure-infra-capstone",
     "level": "Lead 2",
-    "title": "大手セキュアインフラ相当Capstone",
+    "title": "セキュアインフラ統合Capstone",
     "profile": "capstone",
     "roles": ["Whitehat", "SRE", "Backend"],
     "skills": ["cloud security", "supply chain", "release engineering", "incident leadership", "executive reporting"],
     "objectives": [
       "攻撃、検知、修正、SLO、リリース、rollback、postmortemを一つの成果物にできる",
-      "CrowdStrike/Cloudflare/Palo Alto級のセキュアインフラ面接で説明できる証跡を作る",
+      "異なる企業や製品領域を想定した設計レビューで説明可能な証跡を作る",
       "高度領域をS16-S33のroadmap、Issue、PR単位へ分解できる"
     ],
     "hands_on": [

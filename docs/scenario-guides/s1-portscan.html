@@ -3,23 +3,38 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="nmapで露出ポートを列挙し、Suricata/Kibanaで偵察を検知する基礎シナリオ。">
   <title>S1 ポートスキャン - Secure Learn</title>
   <link rel="stylesheet" href="assets/scenario.css">
 </head>
 <body>
+  <a class="skip-link" href="#main-content">本文へスキップ</a>
   <header class="topbar">
     <a class="brand" href="index.html">Secure Learn Scenario Guides</a>
     <nav aria-label="Scenario navigation"><a aria-current="page" href="s1-portscan.html">S1</a><a href="s2-bruteforce.html">S2</a><a href="s3-sqli.html">S3</a><a href="s4-dos.html">S4</a><a href="s5-file-tamper.html">S5</a><a href="s6-privesc.html">S6</a><a href="s7-lateral.html">S7</a><a href="s8-arp.html">S8</a><a href="s9-icmp.html">S9</a><a href="s10-tcp-state.html">S10</a><a href="s11-session-stress.html">S11</a><a href="s12-tls-boundary.html">S12</a><a href="s13-dns.html">S13</a><a href="s14-sre-incident.html">S14</a><a href="s15-capstone.html">S15</a><a href="s16-linux-internals-isolation.html">S16</a><a href="s17-ebpf-perf-forensics.html">S17</a><a href="s18-tcp-backlog-loadbalancer.html">S18</a><a href="s19-mtls-cert-rotation.html">S19</a><a href="s20-quic-bgp-cdn-edge.html">S20</a><a href="s21-kubernetes-platform.html">S21</a><a href="s22-cloud-iam-audit.html">S22</a><a href="s23-terraform-policy-drift.html">S23</a><a href="s24-burn-rate-observability.html">S24</a><a href="s25-otel-trace-log-correlation.html">S25</a><a href="s26-queue-idempotency-backpressure.html">S26</a><a href="s27-backend-migration-contract.html">S27</a><a href="s28-api-business-logic-abuse.html">S28</a><a href="s29-supply-chain-release.html">S29</a><a href="s30-detection-edr-case.html">S30</a><a href="s31-endpoint-sysmon-malware.html">S31</a><a href="s32-performance-flamegraph-db.html">S32</a><a href="s33-gitops-progressive-delivery.html">S33</a></nav>
   </header>
-  <main>
+  <main id="main-content" tabindex="-1">
     <section class="scenario-head">
       <p class="eyebrow">S1 / L3/L4 / 初級</p>
       <h1>ポートスキャン</h1>
       <p class="lead">nmapで露出ポートを列挙し、Suricata/Kibanaで偵察を検知する基礎シナリオ。</p>
       <div class="meta-row">
-        <span class="score score-3">3/5 実務中級</span>
+        <span class="pill mode-runnable">実行型ラボ</span>
+        <span class="score score-3">3/5 標準</span>
         <span class="pill">Whitehat</span><span class="pill">SRE</span>
       </div>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>実行形式</h2>
+        <p><strong>実行型ラボ</strong></p>
+        <p>同梱Docker環境、攻撃スクリプト、検証スクリプトを使って再現と観測を実行します。</p>
+      </article>
+      <article>
+        <h2>教材範囲の自己評価</h2>
+        <p>基礎概念と観測の土台を扱う教材です。点数は教材範囲の内部目安であり、技能や本番適合性の認定ではありません。</p>
+      </article>
     </section>
 
     <section class="grid two">
@@ -37,7 +52,7 @@
       <h2>読み方</h2>
       <div class="track-grid">
         <article class="track-card beginner"><h3>初学者の見方</h3><ul><li>最初に「抽象的に何を学ぶか」と「目的」を読み、何を守る演習かを言葉にする。</li><li>事前準備と安全境界を確認してから、実行コマンドを上から順に一つずつ実行する。</li><li>合格証跡の先頭項目「scan開始時刻、終了時刻、対象IP、実行コマンド」を残し、ログまたはHTTP結果と対応付ける。</li></ul></article>
-        <article class="track-card experienced"><h3>経験者の深掘り</h3><ul><li>攻撃/障害の再現だけで止めず、検知漏れ、誤検知、本番移行時の追加統制を洗い出す。</li><li>ツール活用と観測ポイントを読み、どの信号が意思決定に使えるかを評価する。</li><li>世界レベル課題の先頭項目「承認済みscannerと攻撃者scanを区別するallowlist/threshold設計を追加する。」をPRレビュー観点へ落とす。</li></ul></article>
+        <article class="track-card experienced"><h3>経験者の深掘り</h3><ul><li>攻撃/障害の再現だけで止めず、検知漏れ、誤検知、本番移行時の追加統制を洗い出す。</li><li>ツール活用と観測ポイントを読み、どの信号が意思決定に使えるかを評価する。</li><li>発展課題の先頭項目「承認済みscannerと攻撃者scanを区別するallowlist/threshold設計を追加する。」をPRレビュー観点へ落とす。</li></ul></article>
         <article class="track-card review"><h3>レビューで見ること</h3><ul><li>第三者が再現できるように、対象、時刻、payload、検索条件、判断理由を揃える。</li><li>Whitehat/SRE/Backendの観点で、誰がownerになり、どこでrollbackするかを決める。</li><li>セルフレビューの回答をincident reportまたはremediation PRの本文へ転記する。</li></ul></article>
       </div>
     </section>
@@ -67,7 +82,7 @@
       </div><div class="diagram-node" role="listitem">
         <span class="node-label">6</span>
         <strong>深掘り</strong>
-        <p>世界レベル課題を本番運用、PR、runbookへ変換する。</p>
+        <p>発展課題を本番運用、PR、runbookへ変換する。</p>
       </div></div>
     </section>
 
@@ -229,8 +244,8 @@
         <p>許可されたDockerネットワーク内でactive scanningを実行し、検知、攻撃元特定、誤検知判断、遮断判断までを説明できるようにする。</p>
       </article>
       <article>
-        <h2>世界レベル評価</h2>
-        <p>基礎から実務中級の土台を作る構成です。高度領域はS16以降の専門シナリオへ接続します。</p>
+        <h2>本番環境との差分</h2>
+        <p>ローカル教材で得た証跡だけでは本番適合性を保証できません。組織固有の脅威モデル、権限、可用性、法令、変更管理で追加検証してください。</p>
       </article>
     </section>
 
@@ -291,7 +306,7 @@ docker exec soc-lab-suricata jq &#39;select(.alert)&#39; /var/log/suricata/eve.j
         <div class="role-lanes"><div class="role-lane"><span>Whitehat</span><p>攻撃を許可範囲に限定し、再現性、検知証跡、影響範囲を明確にする。</p></div><div class="role-lane"><span>SRE</span><p>SLO、可用性、レイテンシ、復旧判断、incident severityへ接続する。</p></div><div class="role-lane"><span>Backend</span><p>サービス露出、ログ、HTTP contract、依存関係への影響を確認する。</p></div></div>
       </article>
       <article>
-        <h2>世界レベルへ足す課題</h2>
+        <h2>本番導入へ追加する課題</h2>
         <ul><li>承認済みscannerと攻撃者scanを区別するallowlist/threshold設計を追加する。</li><li>検知ルール変更をPR化し、before/afterの検知率と誤検知率を比較する。</li><li>資産台帳や変更管理と照合する運用判断を課題に加える。</li></ul>
       </article>
     </section>

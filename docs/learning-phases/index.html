@@ -3,26 +3,28 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Docker、Linux、Backend、SOC、SRE、Platform領域をP0からP19まで段階的に学ぶローカル教材ガイド。">
   <title>Learning Phase Index - Secure Learn</title>
   <link rel="stylesheet" href="../scenario-guides/assets/scenario.css">
 </head>
 <body>
+  <a class="skip-link" href="#main-content">本文へスキップ</a>
   <header class="topbar">
     <a class="brand" href="index.html">Secure Learn Learning Phases</a>
     <nav aria-label="Learning phase navigation"><a href="p0-ethics-setup.html">P0</a><a href="p1-linux-docker-networking.html">P1</a><a href="p2-backend-tdd-api.html">P2</a><a href="p3-owasp-api-security.html">P3</a><a href="p4-detection-soc-engineering.html">P4</a><a href="p5-observability-sre.html">P5</a><a href="p6-secure-release-kubernetes-iac.html">P6</a><a href="p7-endpoint-edr-detection.html">P7</a><a href="p8-distributed-performance.html">P8</a><a href="p9-secure-infra-capstone.html">P9</a><a href="p10-linux-internals-isolation.html">P10</a><a href="p11-network-edge-routing.html">P11</a><a href="p12-kubernetes-platform-security.html">P12</a><a href="p13-cloud-security-iam.html">P13</a><a href="p14-iac-policy-as-code.html">P14</a><a href="p15-observability-incident-economics.html">P15</a><a href="p16-distributed-reliability.html">P16</a><a href="p17-backend-production-engineering.html">P17</a><a href="p18-security-supply-chain-release.html">P18</a><a href="p19-detection-edr-oss-governance.html">P19</a></nav>
   </header>
-  <main>
+  <main id="main-content" tabindex="-1">
     <section class="scenario-head">
-      <p class="eyebrow">Junior to secure infrastructure lead</p>
+      <p class="eyebrow">Beginner to advanced design review</p>
       <h1>フェーズ別 Learning Docker</h1>
-      <p class="lead">初学者がDocker、Linux、Backend、Whitehat、SRE、Kubernetes、Observability、分散システム、Supply Chainまで段階的に進むための実行可能な学習導線です。</p>
+      <p class="lead">初学者がDocker、Linux、Backend、Whitehat、SRE、Kubernetes、Observability、分散システム、Supply Chainまで段階的に進む学習導線です。各フェーズの実行環境と設計演習の範囲を確認して進めます。</p>
     </section>
 
     <section>
       <h2>全体の読み方</h2>
       <div class="track-grid">
         <article class="track-card beginner"><h3>初学者の見方</h3><ul><li>P0から順に進み、到達目標、事前準備、安全境界、Docker実行、合格証跡を確認する。</li><li>profileを起動する前に、何のserviceを使うフェーズかを言葉にする。</li><li>合格証跡が揃うまで次フェーズへ進まない。</li></ul></article>
-        <article class="track-card experienced"><h3>経験者の深掘り</h3><ul><li>自分の経験が薄いprofileを選び、失敗時のログ、metric、rollback条件を重点的に見る。</li><li>既存のCI、runbook、incident process、PR reviewへ移すなら何が足りないかを考える。</li><li>Principalフェーズでは、技術だけでなくOSS governanceと開示運用まで確認する。</li></ul></article>
+        <article class="track-card experienced"><h3>経験者の深掘り</h3><ul><li>自分の経験が薄いprofileを選び、失敗時のログ、metric、rollback条件を重点的に見る。</li><li>既存のCI、runbook、incident process、PR reviewへ移すなら何が足りないかを考える。</li><li>最終フェーズでは、技術だけでなくOSS governanceと開示運用まで確認する。</li></ul></article>
         <article class="track-card review"><h3>完成判定</h3><ul><li>実行コマンド、観測結果、合格証跡、次フェーズ判定が揃っている。</li><li>Whitehat/SRE/Backendそれぞれの観点で何を学んだか説明できる。</li><li>実cloudや本番環境へ持ち込む場合の追加承認、安全境界、ownerを定義できる。</li></ul></article>
       </div>
     </section>
@@ -43,11 +45,11 @@
         <p>分散、capstone、Linux internals、network edge、Kubernetes platformを扱う。</p>
       </div><div class="diagram-node" role="listitem">
         <span class="node-label">P13-P18</span>
-        <strong>実務上級</strong>
+        <strong>発展設計</strong>
         <p>Cloud、IaC、observability、分散信頼性、backend production、secure releaseへ広げる。</p>
       </div><div class="diagram-node" role="listitem">
         <span class="node-label">P19</span>
-        <strong>Principal</strong>
+        <strong>統合</strong>
         <p>検知、EDR、OSS governance、開示運用を統合する。</p>
       </div></div>
     </section>
@@ -75,14 +77,14 @@
         <strong>P17-P18</strong>
         <p>migration、API compatibility、supply chain、release証跡を揃える。</p>
       </div><div class="visual-node improve" role="listitem">
-        <span class="visual-label">Principal</span>
+        <span class="visual-label">Integrate</span>
         <strong>P19</strong>
-        <p>Detection、EDR、OSS governance、responsible disclosureで仕上げる。</p>
+        <p>Detection、EDR、OSS governance、responsible disclosureを統合する。</p>
       </div></div>
     </section>
 
     <section class="grid three">
-      <article><h2>Phases</h2><p class="big">20</p><p>Junior 0 から Principal まで。</p></article>
+      <article><h2>Phases</h2><p class="big">20</p><p>P0からP19までの段階的な教材。</p></article>
       <article><h2>Docker</h2><p class="big">Profiles</p><p>baseからcloud、IaC、Kubernetes、observability、distributed、capstoneまで。</p></article>
       <article><h2>Gate</h2><p class="big">Evidence</p><p>各フェーズで合格証跡を要求。</p></article>
     </section>
@@ -166,7 +168,7 @@ scripts/learning_phase.sh stop p10</code></pre>
       </tr><tr>
         <td><a href="p9-secure-infra-capstone.html">P9</a></td>
         <td>Lead 2</td>
-        <td>大手セキュアインフラ相当Capstone</td>
+        <td>セキュアインフラ統合Capstone</td>
         <td>capstone</td>
         <td>Whitehat, SRE, Backend</td>
         <td>cloud security, supply chain, release engineering, incident leadership, executive reporting</td>

@@ -25,12 +25,12 @@
 | 4 | SRE実務 | S14 | 監視、SLO、インシデント対応を運用に接続する |
 | 5 | 修了課題 | S15 | ホワイトハット/SRE 両面の最終証跡を作る |
 | 6 | 業務レベル拡張 | Professional tracks | OWASP、backend TDD、Kubernetes、SRE、supply chain を補完する |
-| 7 | 大手セキュアインフラ準備 | P0-P19 Learning Docker | Linux、Docker、Backend、Detection、Observability、Kubernetes、分散システム、Cloud/IaC、Supply Chain、Release Governance を段階的に通す |
-| 8 | 世界レベル補完 | S16-S33 | Linux internals、BGP/Anycast、mTLS、Kubernetes platform、Cloud IAM、Terraform/OPA、burn-rate、OpenTelemetry、Kafka/Temporal、migration、BOLA/SSRF、SBOM、EDR、flamegraph、GitOpsを実務証跡へ接続する |
+| 7 | 発展領域の準備 | P0-P19 Learning Docker | Linux、Docker、Backend、Detection、Observability、Kubernetes、分散システム、Cloud/IaC、Supply Chain、Release Governance を段階的に通す |
+| 8 | ガイド型設計演習 | S16-S33 | Linux internals、BGP/Anycast、mTLS、Kubernetes platform、Cloud IAM、Terraform/OPA、burn-rate、OpenTelemetry、Kafka/Temporal、migration、BOLA/SSRF、SBOM、EDR、flamegraph、GitOpsを設計レビューと証跡作成で扱う |
 
 ## Learning Docker
 
-初学者から大手セキュアインフラ実務レベルまでの段階的な入口は [Secure Infrastructure Learning Docker](secure-infra-learning-docker.md) にまとめています。各HTMLは「抽象的に何を学ぶか」と「具体例」を分けているため、単なるコマンド列ではなく、実務で説明する判断軸を追えます。
+初学者から発展領域までの段階的な入口は [Secure Infrastructure Learning Docker](secure-infra-learning-docker.md) にまとめています。各HTMLは「抽象的に何を学ぶか」と「具体例」を分けていますが、教材完了は本番技能や職務レベルの認定ではありません。
 
 ```bash
 scripts/learning_phase.sh list
@@ -40,7 +40,7 @@ scripts/world_class_hands_on_check.sh all
 
 ## 修了の定義
 
-このリポジトリ上では、次を満たしたときに「一人で安全に実務へ入れる基礎がある」とみなします。
+このリポジトリ上では、次を満たしたときに「教材内の学習証跡が揃った」とみなします。採用、配属、本番権限付与の判断には別の実技評価と組織固有の確認が必要です。
 
 - 全シナリオで攻撃開始時刻、検知時刻、対応時刻、改善内容を記録している
 - 少なくとも3つの Suricata/Fail2ban/Auditd ルールを自分で調整し、検知漏れと誤検知の影響を説明している

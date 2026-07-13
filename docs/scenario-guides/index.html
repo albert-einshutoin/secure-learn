@@ -3,26 +3,32 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Secure Learnの実行型ラボ15件とガイド型設計演習18件を一覧できるローカルSOC学習ガイド。">
   <title>Scenario Index - Secure Learn</title>
   <link rel="stylesheet" href="assets/scenario.css">
 </head>
 <body>
+  <a class="skip-link" href="#main-content">本文へスキップ</a>
   <header class="topbar">
     <a class="brand" href="index.html">Secure Learn Scenario Guides</a>
     <nav aria-label="Scenario navigation"><a href="s1-portscan.html">S1</a><a href="s2-bruteforce.html">S2</a><a href="s3-sqli.html">S3</a><a href="s4-dos.html">S4</a><a href="s5-file-tamper.html">S5</a><a href="s6-privesc.html">S6</a><a href="s7-lateral.html">S7</a><a href="s8-arp.html">S8</a><a href="s9-icmp.html">S9</a><a href="s10-tcp-state.html">S10</a><a href="s11-session-stress.html">S11</a><a href="s12-tls-boundary.html">S12</a><a href="s13-dns.html">S13</a><a href="s14-sre-incident.html">S14</a><a href="s15-capstone.html">S15</a><a href="s16-linux-internals-isolation.html">S16</a><a href="s17-ebpf-perf-forensics.html">S17</a><a href="s18-tcp-backlog-loadbalancer.html">S18</a><a href="s19-mtls-cert-rotation.html">S19</a><a href="s20-quic-bgp-cdn-edge.html">S20</a><a href="s21-kubernetes-platform.html">S21</a><a href="s22-cloud-iam-audit.html">S22</a><a href="s23-terraform-policy-drift.html">S23</a><a href="s24-burn-rate-observability.html">S24</a><a href="s25-otel-trace-log-correlation.html">S25</a><a href="s26-queue-idempotency-backpressure.html">S26</a><a href="s27-backend-migration-contract.html">S27</a><a href="s28-api-business-logic-abuse.html">S28</a><a href="s29-supply-chain-release.html">S29</a><a href="s30-detection-edr-case.html">S30</a><a href="s31-endpoint-sysmon-malware.html">S31</a><a href="s32-performance-flamegraph-db.html">S32</a><a href="s33-gitops-progressive-delivery.html">S33</a></nav>
   </header>
-  <main>
+  <main id="main-content" tabindex="-1">
     <section class="scenario-head">
-      <p class="eyebrow">World-class readiness review</p>
+      <p class="eyebrow">Local SOC learning curriculum</p>
       <h1>シナリオ別ハンズオンHTML</h1>
-      <p class="lead">33シナリオを、抽象説明、具体例、実行フロー、確認項目、ツール活用、証跡、世界レベルへの追加課題まで追える形に整理しています。</p>
+      <p class="lead">実行型ラボ 15件とガイド型設計演習 18件、合計33件を収録しています。専用スクリプトや実環境の有無を区別したうえで、実行フロー、観測、証跡作成まで追えます。</p>
+      <div class="meta-row">
+        <span class="pill mode-runnable">実行型ラボ 15</span>
+        <span class="pill mode-guided">ガイド型設計演習 18</span>
+      </div>
     </section>
 
     <section>
       <h2>全体の読み方</h2>
       <div class="track-grid">
         <article class="track-card beginner"><h3>初学者の見方</h3><ul><li>S1から順に進み、抽象説明、事前準備、安全境界、実行コマンド、合格証跡の順で読む。</li><li>知らない用語が出たら、その場で全部理解しようとせず、具体例と観測ポイントへ戻る。</li><li>1シナリオごとに「何を守ったか」「何を証跡にしたか」を一文で残す。</li></ul></article>
-        <article class="track-card experienced"><h3>経験者の深掘り</h3><ul><li>自分の得意領域から入り、世界レベル課題、検知漏れ、誤検知、本番移行条件をレビューする。</li><li>Whitehat、SRE、Backendのうち弱い役割の観点を重点的に読む。</li><li>既存業務ならどのrunbook、CI、SLO、PR reviewへ移すかを考える。</li></ul></article>
+        <article class="track-card experienced"><h3>経験者の深掘り</h3><ul><li>自分の得意領域から入り、発展課題、検知漏れ、誤検知、本番移行条件をレビューする。</li><li>Whitehat、SRE、Backendのうち弱い役割の観点を重点的に読む。</li><li>既存業務ならどのrunbook、CI、SLO、PR reviewへ移すかを考える。</li></ul></article>
         <article class="track-card review"><h3>完成判定</h3><ul><li>攻撃や障害の再現だけでなく、検知、修正、回帰テスト、運用判断まで説明できる。</li><li>第三者が同じ手順で再現できる証跡を残している。</li><li>安全境界を守り、外部環境へpayload、scan、負荷を向けていない。</li></ul></article>
       </div>
     </section>
@@ -210,244 +216,277 @@
 
     <section>
       <h2>総合評価</h2>
-      <p>現在のSecure Learnは、基礎15シナリオに加えて、Linux internals、cloud/IAM、IaC、Kubernetes platform、observability、distributed systems、backend production、supply chain、EDR、release governanceまでを順番に学ぶ高度シナリオを含みます。各ページは「抽象的に何を学ぶか」と「手元で何をするか」を分け、実務で説明可能な証跡へ接続します。</p>
+      <p>現在のSecure Learnは、S1-S15を同梱環境で再現できる実行型ラボ、S16-S33を設計レビューと証跡作成のガイド型演習として提供します。ガイド型演習は実クラウド、実BGP、実Kubernetesクラスタなどを同梱せず、本番技能の認定を意味しません。</p>
       <ul><li>API Securityの上位領域はS28で、IDOR/BOLA、SSRF、unsafe upload、RCE、business logic abuseとして扱う。</li><li>SRE/Observabilityの上位領域はS24-S25で、burn-rate alert、metrics/logs/traces、high-cardinality、alert fatigueとして扱う。</li><li>Backend/Distributed/Performanceの上位領域はS26-S27/S32で、idempotency、migration/rollback、transaction、pagination、query planとして扱う。</li><li>Cloud/IaC/Supply Chain/Releaseの上位領域はS22-S23/S29/S33で、IAM、KMS、OPA、SBOM、signing、canary、advisoryとして扱う。</li></ul>
     </section>
 
     <section>
       <h2>シナリオ一覧</h2>
       <table>
-        <thead><tr><th>ID</th><th>Scenario</th><th>Layer</th><th>Roles</th><th>Readiness</th><th>狙い</th></tr></thead>
+        <thead><tr><th>ID</th><th>Scenario</th><th>実行形式</th><th>Layer</th><th>Roles</th><th>教材範囲</th><th>狙い</th></tr></thead>
         <tbody><tr>
         <td><a href="s1-portscan.html">S1</a></td>
         <td>ポートスキャン</td>
+        <td><span class="pill mode-runnable">実行型ラボ</span></td>
         <td>L3/L4</td>
         <td>Whitehat, SRE</td>
-        <td><span class="score score-3">3/5 実務中級</span></td>
+        <td><span class="score score-3">3/5 標準</span></td>
         <td>nmapで露出ポートを列挙し、Suricata/Kibanaで偵察を検知する基礎シナリオ。</td>
       </tr><tr>
         <td><a href="s2-bruteforce.html">S2</a></td>
         <td>APIブルートフォース</td>
+        <td><span class="pill mode-runnable">実行型ラボ</span></td>
         <td>L7</td>
         <td>Whitehat, Backend, SRE</td>
-        <td><span class="score score-4">4/5 実務上級</span></td>
+        <td><span class="score score-4">4/5 発展</span></td>
         <td>Hydraとアプリログを使い、認証攻撃、lockout、Fail2ban、SIEM相関を確認する。</td>
       </tr><tr>
         <td><a href="s3-sqli.html">S3</a></td>
         <td>SQLインジェクション</td>
+        <td><span class="pill mode-runnable">実行型ラボ</span></td>
         <td>L7</td>
         <td>Whitehat, Backend</td>
-        <td><span class="score score-4">4/5 実務上級</span></td>
+        <td><span class="score score-4">4/5 発展</span></td>
         <td>sqlmap/curlでSQLiを試行し、アプリが400で拒否し、DB queryがparameterizedであることを証明する。</td>
       </tr><tr>
         <td><a href="s4-dos.html">S4</a></td>
         <td>DoS攻撃</td>
+        <td><span class="pill mode-runnable">実行型ラボ</span></td>
         <td>L7/SRE</td>
         <td>SRE, Whitehat, Backend</td>
-        <td><span class="score score-3">3/5 実務中級</span></td>
+        <td><span class="score score-3">3/5 標準</span></td>
         <td>安全なリクエスト量でL7負荷をかけ、rate limit、latency、availability、BAN判断を確認する。</td>
       </tr><tr>
         <td><a href="s5-file-tamper.html">S5</a></td>
         <td>重要ファイル改変</td>
+        <td><span class="pill mode-runnable">実行型ラボ</span></td>
         <td>OS</td>
         <td>Whitehat, SRE</td>
-        <td><span class="score score-3">3/5 実務中級</span></td>
+        <td><span class="score score-3">3/5 標準</span></td>
         <td>Auditdで重要ファイル変更を記録し、変更者、時刻、対象、復旧判断を追う。</td>
       </tr><tr>
         <td><a href="s6-privesc.html">S6</a></td>
         <td>権限昇格</td>
+        <td><span class="pill mode-runnable">実行型ラボ</span></td>
         <td>OS</td>
         <td>Whitehat, SRE</td>
-        <td><span class="score score-3">3/5 実務中級</span></td>
+        <td><span class="score score-3">3/5 標準</span></td>
         <td>sudo/su/SUID探索をAuditdで記録し、最小権限と異常昇格の判断を学ぶ。</td>
       </tr><tr>
         <td><a href="s7-lateral.html">S7</a></td>
         <td>横断インシデント</td>
+        <td><span class="pill mode-runnable">実行型ラボ</span></td>
         <td>全体</td>
         <td>Whitehat, SRE, Backend</td>
-        <td><span class="score score-4">4/5 実務上級</span></td>
+        <td><span class="score score-4">4/5 発展</span></td>
         <td>偵察、認証攻撃、SQLi試行、ファイル/権限イベントを一つのattack chainとして相関する。</td>
       </tr><tr>
         <td><a href="s8-arp.html">S8</a></td>
         <td>L2 ARP観測</td>
+        <td><span class="pill mode-runnable">実行型ラボ</span></td>
         <td>L2</td>
         <td>Whitehat, SRE</td>
-        <td><span class="score score-2">2/5 基礎良好</span></td>
+        <td><span class="score score-2">2/5 基礎</span></td>
         <td>Docker bridge上のARP/neighbor cacheを観測し、L2の限界と証跡不足を説明する。</td>
       </tr><tr>
         <td><a href="s9-icmp.html">S9</a></td>
         <td>L3 ICMP到達性・偵察</td>
+        <td><span class="pill mode-runnable">実行型ラボ</span></td>
         <td>L3</td>
         <td>Whitehat, SRE</td>
-        <td><span class="score score-3">3/5 実務中級</span></td>
+        <td><span class="score score-3">3/5 標準</span></td>
         <td>ping/tracerouteで到達性を確認し、ネットワーク障害とアプリ障害を切り分ける。</td>
       </tr><tr>
         <td><a href="s10-tcp-state.html">S10</a></td>
         <td>L4 TCP状態・フラグ異常</td>
+        <td><span class="pill mode-runnable">実行型ラボ</span></td>
         <td>L4</td>
         <td>Whitehat, SRE</td>
-        <td><span class="score score-3">3/5 実務中級</span></td>
+        <td><span class="score score-3">3/5 標準</span></td>
         <td>SYN/connect/FIN/NULL/XMAS scanの違いを観測し、L4状態と検知ルールを理解する。</td>
       </tr><tr>
         <td><a href="s11-session-stress.html">S11</a></td>
         <td>L5セッション圧迫</td>
+        <td><span class="pill mode-runnable">実行型ラボ</span></td>
         <td>L5</td>
         <td>SRE, Backend</td>
-        <td><span class="score score-3">3/5 実務中級</span></td>
+        <td><span class="score score-3">3/5 標準</span></td>
         <td>不完全HTTP sessionを保持し、timeout、connection limit、SLO影響を観測する。</td>
       </tr><tr>
         <td><a href="s12-tls-boundary.html">S12</a></td>
         <td>L6 TLS可視性境界</td>
+        <td><span class="pill mode-runnable">実行型ラボ</span></td>
         <td>L6</td>
         <td>Whitehat, SRE, Backend</td>
-        <td><span class="score score-2">2/5 基礎良好</span></td>
+        <td><span class="score score-2">2/5 基礎</span></td>
         <td>TLS ClientHelloをHTTP serviceへ送り、暗号化境界とIDS可視性の制約を理解する。</td>
       </tr><tr>
         <td><a href="s13-dns.html">S13</a></td>
         <td>L7 DNS観測</td>
+        <td><span class="pill mode-runnable">実行型ラボ</span></td>
         <td>L7</td>
         <td>Whitehat, SRE</td>
-        <td><span class="score score-2">2/5 基礎良好</span></td>
+        <td><span class="score score-2">2/5 基礎</span></td>
         <td>Docker embedded DNSのservice discoveryを観測し、内部偵察と運用依存を理解する。</td>
       </tr><tr>
         <td><a href="s14-sre-incident.html">S14</a></td>
         <td>SREインシデント対応</td>
+        <td><span class="pill mode-runnable">実行型ラボ</span></td>
         <td>横断/SRE</td>
         <td>SRE, Backend, Whitehat</td>
-        <td><span class="score score-4">4/5 実務上級</span></td>
+        <td><span class="score score-4">4/5 発展</span></td>
         <td>攻撃やDB停止をSLO/incident responseへ接続し、MTTD/MTTRとpostmortemを作る。</td>
       </tr><tr>
         <td><a href="s15-capstone.html">S15</a></td>
         <td>ホワイトハット/SRE修了課題</td>
+        <td><span class="pill mode-runnable">実行型ラボ</span></td>
         <td>全体</td>
         <td>Whitehat, SRE, Backend</td>
-        <td><span class="score score-4">4/5 実務上級</span></td>
+        <td><span class="score score-4">4/5 発展</span></td>
         <td>S1-S14を組み合わせ、攻撃、検知、修正、運用、報告を一つの成果物にする。</td>
       </tr><tr>
         <td><a href="s16-linux-internals-isolation.html">S16</a></td>
         <td>Linux Internals・隔離境界</td>
+        <td><span class="pill mode-guided">ガイド型設計演習</span></td>
         <td>OS/Kernel</td>
         <td>SRE, Whitehat</td>
-        <td><span class="score score-4">4/5 実務上級</span></td>
+        <td><span class="score score-4">4/5 発展</span></td>
         <td>systemd、cgroups、namespaces、seccomp、capabilitiesを、containerの障害調査と防御境界として扱う。</td>
       </tr><tr>
         <td><a href="s17-ebpf-perf-forensics.html">S17</a></td>
         <td>eBPF・perf・低レイヤー可観測性</td>
+        <td><span class="pill mode-guided">ガイド型設計演習</span></td>
         <td>Kernel/Observability</td>
         <td>SRE, Whitehat</td>
-        <td><span class="score score-3">3/5 実務中級</span></td>
+        <td><span class="score score-3">3/5 標準</span></td>
         <td>eBPF、perf、flamegraph、syscall telemetryを、性能調査と侵害調査の共通言語として整理する。</td>
       </tr><tr>
         <td><a href="s18-tcp-backlog-loadbalancer.html">S18</a></td>
         <td>TCP再送・SYN backlog・Load Balancer</td>
+        <td><span class="pill mode-guided">ガイド型設計演習</span></td>
         <td>L4/L7 Edge</td>
         <td>SRE, Whitehat</td>
-        <td><span class="score score-4">4/5 実務上級</span></td>
+        <td><span class="score score-4">4/5 発展</span></td>
         <td>TCP再送、SYN backlog、conntrack、L4/L7 load balancer logを、SLO劣化の根拠として扱う。</td>
       </tr><tr>
         <td><a href="s19-mtls-cert-rotation.html">S19</a></td>
         <td>TLS/mTLS・証明書ローテーション</td>
+        <td><span class="pill mode-guided">ガイド型設計演習</span></td>
         <td>L6/Security</td>
         <td>SRE, Backend, Whitehat</td>
-        <td><span class="score score-4">4/5 実務上級</span></td>
+        <td><span class="score score-4">4/5 発展</span></td>
         <td>TLS handshake、mTLS、証明書期限、cipher policy、rotationをreleaseとincidentの両面で扱う。</td>
       </tr><tr>
         <td><a href="s20-quic-bgp-cdn-edge.html">S20</a></td>
         <td>QUIC/HTTP3・BGP/Anycast・CDN Edge</td>
+        <td><span class="pill mode-guided">ガイド型設計演習</span></td>
         <td>Internet Edge</td>
         <td>SRE, Whitehat</td>
-        <td><span class="score score-3">3/5 実務中級</span></td>
+        <td><span class="score score-3">3/5 標準</span></td>
         <td>QUIC/HTTP3、BGP、Anycast、CDN routingを、直接操作せずに設計・観測・障害対応として学ぶ。</td>
       </tr><tr>
         <td><a href="s21-kubernetes-platform.html">S21</a></td>
         <td>Kubernetes本番運用・Platform Guardrails</td>
+        <td><span class="pill mode-guided">ガイド型設計演習</span></td>
         <td>Kubernetes</td>
         <td>SRE, Whitehat, Backend</td>
-        <td><span class="score score-4">4/5 実務上級</span></td>
+        <td><span class="score score-4">4/5 発展</span></td>
         <td>Helm、Kustomize、Operator/CRD、Admission、RBAC、NetworkPolicy、PodSecurity、HPA/VPA、upgradeを本番運用として扱う。</td>
       </tr><tr>
         <td><a href="s22-cloud-iam-audit.html">S22</a></td>
         <td>Cloud IAM/KMS/VPC/Audit Logs</td>
+        <td><span class="pill mode-guided">ガイド型設計演習</span></td>
         <td>Cloud Security</td>
         <td>Whitehat, SRE</td>
-        <td><span class="score score-4">4/5 実務上級</span></td>
+        <td><span class="score score-4">4/5 発展</span></td>
         <td>AWS/GCP/Azure共通のIAM、KMS、VPC、Security Group、Audit Logs、Org policyを設計レビューする。</td>
       </tr><tr>
         <td><a href="s23-terraform-policy-drift.html">S23</a></td>
         <td>Terraform・Drift Detection・OPA</td>
+        <td><span class="pill mode-guided">ガイド型設計演習</span></td>
         <td>IaC</td>
         <td>SRE, Whitehat</td>
-        <td><span class="score score-4">4/5 実務上級</span></td>
+        <td><span class="score score-4">4/5 発展</span></td>
         <td>Terraform module、state、drift、OPA/Conftest、CI plan reviewを、infra変更の安全装置として扱う。</td>
       </tr><tr>
         <td><a href="s24-burn-rate-observability.html">S24</a></td>
         <td>Burn-rate Alert・RED/USE・Alert Fatigue</td>
+        <td><span class="pill mode-guided">ガイド型設計演習</span></td>
         <td>Observability/SRE</td>
         <td>SRE, Backend</td>
-        <td><span class="score score-4">4/5 実務上級</span></td>
+        <td><span class="score score-4">4/5 発展</span></td>
         <td>SLI/SLO、error budget、multi-window burn-rate、RED/USE metrics、alert fatigueを実測結果へ接続する。</td>
       </tr><tr>
         <td><a href="s25-otel-trace-log-correlation.html">S25</a></td>
         <td>OpenTelemetry・Trace/Log Correlation</td>
+        <td><span class="pill mode-guided">ガイド型設計演習</span></td>
         <td>Observability</td>
         <td>SRE, Backend</td>
-        <td><span class="score score-3">3/5 実務中級</span></td>
+        <td><span class="score score-3">3/5 標準</span></td>
         <td>OpenTelemetry、tracing、log correlation、high-cardinality対策をbackendとSREの共通設計にする。</td>
       </tr><tr>
         <td><a href="s26-queue-idempotency-backpressure.html">S26</a></td>
         <td>Queue・Idempotency・Backpressure</td>
+        <td><span class="pill mode-guided">ガイド型設計演習</span></td>
         <td>Distributed Systems</td>
         <td>Backend, SRE</td>
-        <td><span class="score score-4">4/5 実務上級</span></td>
+        <td><span class="score score-4">4/5 発展</span></td>
         <td>Kafka/PubSub/Temporal相当の非同期処理を、retry、backoff、idempotency、backpressureとして設計する。</td>
       </tr><tr>
         <td><a href="s27-backend-migration-contract.html">S27</a></td>
         <td>Schema Migration・API Compatibility</td>
+        <td><span class="pill mode-guided">ガイド型設計演習</span></td>
         <td>Backend Production</td>
         <td>Backend, SRE</td>
-        <td><span class="score score-4">4/5 実務上級</span></td>
+        <td><span class="score score-4">4/5 発展</span></td>
         <td>schema migration/rollback、transaction、race condition、pagination、API versioning、OpenAPI compatibilityを扱う。</td>
       </tr><tr>
         <td><a href="s28-api-business-logic-abuse.html">S28</a></td>
         <td>BOLA/SSRF/Unsafe Upload/RCE</td>
+        <td><span class="pill mode-guided">ガイド型設計演習</span></td>
         <td>API Security</td>
         <td>Whitehat, Backend</td>
-        <td><span class="score score-4">4/5 実務上級</span></td>
+        <td><span class="score score-4">4/5 発展</span></td>
         <td>IDOR/BOLA、SSRF、unsafe upload、RCE、business logic abuseを安全なred test設計として扱う。</td>
       </tr><tr>
         <td><a href="s29-supply-chain-release.html">S29</a></td>
         <td>Supply Chain・SBOM・Secure Release</td>
+        <td><span class="pill mode-guided">ガイド型設計演習</span></td>
         <td>Secure SDLC</td>
         <td>Whitehat, Backend, SRE</td>
-        <td><span class="score score-4">4/5 実務上級</span></td>
+        <td><span class="score score-4">4/5 発展</span></td>
         <td>SBOM、SAST、DAST、SCA、secret scanning、artifact signing、provenance、release noteをrelease gateへ統合する。</td>
       </tr><tr>
         <td><a href="s30-detection-edr-case.html">S30</a></td>
         <td>Detection Engineering・EDR Case Management</td>
+        <td><span class="pill mode-guided">ガイド型設計演習</span></td>
         <td>Detection/EDR</td>
         <td>Whitehat, SRE</td>
-        <td><span class="score score-4">4/5 実務上級</span></td>
+        <td><span class="score score-4">4/5 発展</span></td>
         <td>Sigma、YARA、Suricata、MITRE ATT&amp;CK、false positive tuning、event normalization、SIEM query、case managementを扱う。</td>
       </tr><tr>
         <td><a href="s31-endpoint-sysmon-malware.html">S31</a></td>
         <td>Endpoint Telemetry・Sysmon・Malware Behavior</td>
+        <td><span class="pill mode-guided">ガイド型設計演習</span></td>
         <td>Endpoint/EDR</td>
         <td>Whitehat, SRE</td>
-        <td><span class="score score-3">3/5 実務中級</span></td>
+        <td><span class="score score-3">3/5 標準</span></td>
         <td>process tree、Windows/Linux telemetry、auditd、Sysmon、kernel/userland境界、malware behavior、sandboxingを扱う。</td>
       </tr><tr>
         <td><a href="s32-performance-flamegraph-db.html">S32</a></td>
         <td>Performance Engineering・Flamegraph・DB Query Plan</td>
+        <td><span class="pill mode-guided">ガイド型設計演習</span></td>
         <td>Performance</td>
         <td>Backend, SRE</td>
-        <td><span class="score score-4">4/5 実務上級</span></td>
+        <td><span class="score score-4">4/5 発展</span></td>
         <td>profiling、load test、p95/p99、connection pool、N+1、GC、CPU flamegraph、memory leak、DB index/query planを扱う。</td>
       </tr><tr>
         <td><a href="s33-gitops-progressive-delivery.html">S33</a></td>
         <td>GitOps・Progressive Delivery・OSS Governance</td>
+        <td><span class="pill mode-guided">ガイド型設計演習</span></td>
         <td>Release/OSS</td>
         <td>SRE, Backend, Whitehat</td>
-        <td><span class="score score-4">4/5 実務上級</span></td>
+        <td><span class="score score-4">4/5 発展</span></td>
         <td>GitOps、progressive delivery、feature flag、blue-green/canary、rollback safety、artifact signing、CVE/CVSS、responsible disclosure、branch protection、license complianceを扱う。</td>
       </tr></tbody>
       </table>

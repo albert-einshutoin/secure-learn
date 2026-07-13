@@ -7,17 +7,17 @@
 
 ## 概要
 
-SOC-Labは、セキュリティオペレーションセンター（SOC）の訓練を目的とした、Dockerで完結する実戦型学習環境です。
+SOC-Labは、セキュリティオペレーションセンター（SOC）の訓練を目的とした、ローカル専用の学習環境です。S1-S15は同梱Docker環境で実行でき、S16-S33は設計レビューと証跡作成を行うガイド型演習です。
 
 **攻撃 → 検知 → 対応 → 報告 → 改善** の一連のサイクルを体験できます。
 
 ## 特徴
 
 - 🐳 **Docker Compose一発起動** - 複雑な環境構築不要
-- 🎯 **33の学習シナリオ** - OSI L2-L7、Linux internals、Cloud/IaC、Supply Chain、EDR、Release Governanceまで
+- 🎯 **15の実行型ラボ + 18のガイド型設計演習** - 実行環境の有無を明示して33領域を学習
 - 📊 **リアルタイム可視化** - Kibanaダッシュボードで攻撃を観察
 - 🔔 **自動アラート** - ElastAlert + Slack通知
-- 📝 **評価システム** - 初級・中級・上級のレベル別評価
+- 📝 **証跡テンプレート** - incident、postmortem、remediation PRへ学習結果を整理
 
 ## アーキテクチャ
 
@@ -63,6 +63,8 @@ docker compose up -d --build
 # 起動確認
 docker compose ps
 ```
+
+初回起動時は `siem-setup` が Elasticsearch の保持ポリシー/index template と Kibana の data view/dashboard を自動投入します。`docker compose ps -a siem-setup` が `Exited (0)`、KibanaのDashboard一覧に4件が表示されれば初期化完了です。
 
 ### アクセス
 
@@ -129,7 +131,7 @@ scripts/lab_quality_gate.sh
 
 ### フェーズ別 Learning Docker
 
-初学者から大手セキュアインフラ実務レベルまで、段階ごとに必要なDocker profileを起動できます。
+初学者から発展領域の設計演習まで、段階ごとに必要なDocker profileを起動できます。教材の完了は本番技能や職務レベルの認定ではありません。
 
 ```bash
 scripts/learning_phase.sh list
@@ -149,8 +151,8 @@ HTMLガイドは `docs/learning-phases/index.html` と `docs/scenario-guides/ind
 |------|------------------|------|--------|
 | 1 | [README](README.md) | 全体像、起動方法、主要ドキュメントへの入口 | まず環境を起動し、どの学習入口を使うか決める |
 | 2 | [Learning Phase Guides](docs/learning-phases/index.html) | P0-P19を順番に進めるメイン教材 | 初学者はP0から、経験者は弱い領域のphaseから始める |
-| 3 | [Scenario HTML Guides](docs/scenario-guides/index.html) | S1-S33の具体ハンズオン教材 | phaseで出てきた領域を、攻撃、検知、修正、証跡で実践する |
-| 4 | [World-class Scenario Evaluation](docs/curriculum/world-class-scenario-evaluation.md) | ホワイトハット、SRE、Backend、Platform、Detectionの到達度評価 | 実施済みシナリオが業務レベルの証跡になっているか確認する |
+| 3 | [Scenario HTML Guides](docs/scenario-guides/index.html) | S1-S15の実行型ラボとS16-S33のガイド型設計演習 | 各ページの`実行形式`を確認し、再現または設計レビューの証跡を作る |
+| 4 | [Scenario Evidence Evaluation](docs/curriculum/world-class-scenario-evaluation.md) | Whitehat、SRE、Backend、Platform、Detectionの自己評価 | 教材内の証跡と、本番環境で追加検証すべき項目を分ける |
 | 5 | [Competency Matrix](docs/curriculum/competency-matrix.md) | スキル棚卸し表 | 自分の不足領域を見つけ、次に読むphaseやscenarioを選ぶ |
 | 6 | [Templates](docs/templates/) | incident、postmortem、remediation PR、評価チェックリスト | ハンズオン結果を第三者がレビューできる成果物に変換する |
 
@@ -190,10 +192,10 @@ HTMLガイドは `docs/learning-phases/index.html` と `docs/scenario-guides/ind
 3. 各phaseのHTMLで、`抽象的に何を学ぶか`、`具体例`、`学習フロー図`、`Dockerと証跡の図` を読む。
 4. `scripts/learning_phase.sh start <phase>` で必要なDocker profileを起動し、phase内のHands-on Flowを実行する。
 5. 対応する [Scenario HTML Guides](docs/scenario-guides/index.html) のS1-S33を開き、`OSI / HTTP / 到達前の図` で通信やアプリ境界のどこを扱うか確認する。
-6. シナリオのコマンドを実行し、Kibana、Suricata、App log、Fail2ban、Auditd、テスト結果を観測する。
+6. S1-S15はコマンドを実行してKibana、Suricata、App log、Fail2ban、Auditd、テスト結果を観測する。S16-S33はページに従い設計レビュー、静的検証、tabletopの証跡を作る。
 7. `合格証跡` を [Incident Report](docs/templates/incident-report.md)、[Postmortem](docs/templates/postmortem.md)、[Vulnerability Remediation PR](docs/templates/vulnerability-remediation-pr.md)、[Backend Test Report](docs/templates/backend-test-report.md) のいずれかにまとめる。
-8. `scripts/lab_quality_gate.sh` と `scripts/world_class_hands_on_check.sh all` を実行し、壊していないことを確認する。
-9. [World-class Scenario Evaluation](docs/curriculum/world-class-scenario-evaluation.md) と [Professional Readiness Roadmap](docs/curriculum/professional-readiness-roadmap.md) で、説明できない領域を次の学習対象にする。
+8. `scripts/lab_quality_gate.sh` で実装を検証し、`scripts/world_class_hands_on_check.sh all` で実行確認済み・存在確認・文書化・不足を区別したレポートを作る。
+9. [Scenario Evidence Evaluation](docs/curriculum/world-class-scenario-evaluation.md) と [Professional Readiness Roadmap](docs/curriculum/professional-readiness-roadmap.md) で、説明できない領域を次の学習対象にする。
 
 ### 目的別の入口
 
@@ -288,7 +290,7 @@ docker compose -f docker-compose.yml -f docker-compose.alerting.yml up -d --buil
 - [フェーズ別 Learning Docker](docs/curriculum/secure-infra-learning-docker.md)
 - [フェーズ別HTMLガイド](docs/learning-phases/index.html)
 - [シナリオ別HTMLハンズオン](docs/scenario-guides/index.html)
-- [世界レベル到達度評価](docs/curriculum/world-class-scenario-evaluation.md)
+- [シナリオ証跡の自己評価](docs/curriculum/world-class-scenario-evaluation.md)
 - [スキル評価マトリクス](docs/curriculum/competency-matrix.md)
 - [業務レベル到達ロードマップ](docs/curriculum/professional-readiness-roadmap.md)
 - [バックエンドテスト・ハンズオン](docs/curriculum/backend-engineer-test-hands-on.md)
@@ -321,4 +323,3 @@ Issue、Pull Requestを歓迎します。
 ## 作者
 
 SOC-Lab Project
-

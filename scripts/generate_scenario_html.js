@@ -1643,7 +1643,7 @@ function scenarioExperiencedTrack(scenario) {
   return scenario.experiencedTrack || [
     '攻撃/障害の再現だけで止めず、検知漏れ、誤検知、本番移行時の追加統制を洗い出す。',
     'ツール活用と観測ポイントを読み、どの信号が意思決定に使えるかを評価する。',
-    `世界レベル課題の先頭項目「${scenario.worldClass[0]}」をPRレビュー観点へ落とす。`,
+    `発展課題の先頭項目「${scenario.worldClass[0]}」をPRレビュー観点へ落とす。`,
   ];
 }
 
@@ -2157,7 +2157,7 @@ function scenarioDiagram(scenario) {
     ['3', '実行', 'Hands-on Flowと実行コマンドを小さく進める。'],
     ['4', '観測', 'HTTP、ログ、検知イベント、メトリクスを対応付ける。'],
     ['5', '証跡化', `合格証跡として${scenario.evidence[0]}を残す。`],
-    ['6', '深掘り', '世界レベル課題を本番運用、PR、runbookへ変換する。'],
+    ['6', '深掘り', '発展課題を本番運用、PR、runbookへ変換する。'],
   ]);
 }
 
@@ -2195,11 +2195,42 @@ function flowMarkup(flow) {
 }
 
 function rating(score) {
-  const labels = ['不足', '入門', '基礎良好', '実務中級', '実務上級'];
+  const labels = ['未整理', '導入', '基礎', '標準', '発展'];
   return `<span class="score score-${score}">${score}/5 ${labels[score] || ''}</span>`;
 }
 
-function layout(title, body, activeId = '') {
+function scenarioMode(scenario) {
+  const scenarioNumber = Number.parseInt(scenario.id.slice(1), 10);
+  if (scenarioNumber <= 15) {
+    return {
+      label: '実行型ラボ',
+      className: 'runnable',
+      description: '同梱Docker環境、攻撃スクリプト、検証スクリプトを使って再現と観測を実行します。',
+    };
+  }
+
+  return {
+    label: 'ガイド型設計演習',
+    className: 'guided',
+    description: '設計レビュー、静的検証、証跡作成を行う教材です。専用の実クラウドや本番相当基盤は同梱していません。',
+  };
+}
+
+function relatedScenarios(scenario) {
+  const currentIndex = scenarios.indexOf(scenario);
+  const candidates = [
+    scenarios[currentIndex - 1],
+    scenarios[currentIndex + 1],
+    ...scenarios.filter((item) => item.id !== scenario.id && item.layer === scenario.layer),
+    ...scenarios.filter(
+      (item) => item.id !== scenario.id && item.roles.some((role) => scenario.roles.includes(role)),
+    ),
+  ].filter(Boolean);
+
+  return [...new Map(candidates.map((item) => [item.id, item])).values()].slice(0, 4);
+}
+
+function layout(title, body, activeId = '', description = 'Secure LearnのローカルSOC学習シナリオガイド。') {
   const nav = scenarios
     .map((scenario) => {
       const href = `${scenario.slug}.html`;
@@ -2213,15 +2244,17 @@ function layout(title, body, activeId = '') {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="${escapeHtml(description)}">
   <title>${escapeHtml(title)} - Secure Learn</title>
   <link rel="stylesheet" href="assets/scenario.css">
 </head>
 <body>
+  <a class="skip-link" href="#main-content">本文へスキップ</a>
   <header class="topbar">
     <a class="brand" href="index.html">Secure Learn Scenario Guides</a>
     <nav aria-label="Scenario navigation">${nav}</nav>
   </header>
-  <main>
+  <main id="main-content" tabindex="-1">
 ${body}
   </main>
 </body>
@@ -2230,9 +2263,8 @@ ${body}
 }
 
 function scenarioPage(scenario) {
-  const related = scenarios
-    .filter((item) => item.id !== scenario.id && item.roles.some((role) => scenario.roles.includes(role)))
-    .slice(0, 4);
+  const related = relatedScenarios(scenario);
+  const mode = scenarioMode(scenario);
 
   return layout(
     `${scenario.id} ${scenario.title}`,
@@ -2241,9 +2273,22 @@ function scenarioPage(scenario) {
       <h1>${escapeHtml(scenario.title)}</h1>
       <p class="lead">${escapeHtml(scenario.summary)}</p>
       <div class="meta-row">
+        <span class="pill mode-${mode.className}">${mode.label}</span>
         ${rating(scenario.score)}
         ${scenario.roles.map((role) => `<span class="pill">${escapeHtml(role)}</span>`).join('')}
       </div>
+    </section>
+
+    <section class="grid two">
+      <article>
+        <h2>実行形式</h2>
+        <p><strong>${mode.label}</strong></p>
+        <p>${escapeHtml(mode.description)}</p>
+      </article>
+      <article>
+        <h2>教材範囲の自己評価</h2>
+        <p>${scenario.score >= 4 ? '複数の観点と証跡作成まで扱う発展教材です。点数は教材範囲の内部目安であり、技能や本番適合性の認定ではありません。' : '基礎概念と観測の土台を扱う教材です。点数は教材範囲の内部目安であり、技能や本番適合性の認定ではありません。'}</p>
+      </article>
     </section>
 
     <section class="grid two">
@@ -2287,8 +2332,8 @@ function scenarioPage(scenario) {
         <p>${escapeHtml(scenario.objective)}</p>
       </article>
       <article>
-        <h2>世界レベル評価</h2>
-        <p>${scenario.score >= 4 ? '実務上級に近い構成です。証跡、修正、運用判断まで扱えます。' : '基礎から実務中級の土台を作る構成です。高度領域はS16以降の専門シナリオへ接続します。'}</p>
+        <h2>本番環境との差分</h2>
+        <p>ローカル教材で得た証跡だけでは本番適合性を保証できません。組織固有の脅威モデル、権限、可用性、法令、変更管理で追加検証してください。</p>
       </article>
     </section>
 
@@ -2345,7 +2390,7 @@ function scenarioPage(scenario) {
         ${roleFocusMarkup(scenario)}
       </article>
       <article>
-        <h2>世界レベルへ足す課題</h2>
+        <h2>本番導入へ追加する課題</h2>
         ${list(scenario.worldClass)}
       </article>
     </section>
@@ -2356,21 +2401,26 @@ function scenarioPage(scenario) {
     </section>
 `,
     scenario.id,
+    scenario.summary,
   );
 }
 
 function indexPage() {
+  const runnableCount = scenarios.filter((scenario) => scenarioMode(scenario).className === 'runnable').length;
+  const guidedCount = scenarios.length - runnableCount;
   const rows = scenarios
-    .map(
-      (scenario) => `<tr>
+    .map((scenario) => {
+      const mode = scenarioMode(scenario);
+      return `<tr>
         <td><a href="${scenario.slug}.html">${scenario.id}</a></td>
         <td>${escapeHtml(scenario.title)}</td>
+        <td><span class="pill mode-${mode.className}">${mode.label}</span></td>
         <td>${escapeHtml(scenario.layer)}</td>
         <td>${scenario.roles.map(escapeHtml).join(', ')}</td>
         <td>${rating(scenario.score)}</td>
         <td>${escapeHtml(scenario.summary)}</td>
-      </tr>`,
-    )
+      </tr>`;
+    })
     .join('');
 
   const roleCoverage = [
@@ -2382,9 +2432,13 @@ function indexPage() {
   return layout(
     'Scenario Index',
     `    <section class="scenario-head">
-      <p class="eyebrow">World-class readiness review</p>
+      <p class="eyebrow">Local SOC learning curriculum</p>
       <h1>シナリオ別ハンズオンHTML</h1>
-      <p class="lead">${scenarios.length}シナリオを、抽象説明、具体例、実行フロー、確認項目、ツール活用、証跡、世界レベルへの追加課題まで追える形に整理しています。</p>
+      <p class="lead">実行型ラボ ${runnableCount}件とガイド型設計演習 ${guidedCount}件、合計${scenarios.length}件を収録しています。専用スクリプトや実環境の有無を区別したうえで、実行フロー、観測、証跡作成まで追えます。</p>
+      <div class="meta-row">
+        <span class="pill mode-runnable">実行型ラボ ${runnableCount}</span>
+        <span class="pill mode-guided">ガイド型設計演習 ${guidedCount}</span>
+      </div>
     </section>
 
     <section>
@@ -2396,7 +2450,7 @@ function indexPage() {
           '1シナリオごとに「何を守ったか」「何を証跡にしたか」を一文で残す。',
         ], 'beginner')}
         ${learningTrack('経験者の深掘り', [
-          '自分の得意領域から入り、世界レベル課題、検知漏れ、誤検知、本番移行条件をレビューする。',
+          '自分の得意領域から入り、発展課題、検知漏れ、誤検知、本番移行条件をレビューする。',
           'Whitehat、SRE、Backendのうち弱い役割の観点を重点的に読む。',
           '既存業務ならどのrunbook、CI、SLO、PR reviewへ移すかを考える。',
         ], 'experienced')}
@@ -2444,14 +2498,14 @@ function indexPage() {
 
     <section>
       <h2>総合評価</h2>
-      <p>現在のSecure Learnは、基礎15シナリオに加えて、Linux internals、cloud/IAM、IaC、Kubernetes platform、observability、distributed systems、backend production、supply chain、EDR、release governanceまでを順番に学ぶ高度シナリオを含みます。各ページは「抽象的に何を学ぶか」と「手元で何をするか」を分け、実務で説明可能な証跡へ接続します。</p>
+      <p>現在のSecure Learnは、S1-S15を同梱環境で再現できる実行型ラボ、S16-S33を設計レビューと証跡作成のガイド型演習として提供します。ガイド型演習は実クラウド、実BGP、実Kubernetesクラスタなどを同梱せず、本番技能の認定を意味しません。</p>
       ${list(globalGaps)}
     </section>
 
     <section>
       <h2>シナリオ一覧</h2>
       <table>
-        <thead><tr><th>ID</th><th>Scenario</th><th>Layer</th><th>Roles</th><th>Readiness</th><th>狙い</th></tr></thead>
+        <thead><tr><th>ID</th><th>Scenario</th><th>実行形式</th><th>Layer</th><th>Roles</th><th>教材範囲</th><th>狙い</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
     </section>
@@ -2466,6 +2520,8 @@ function indexPage() {
       </table>
     </section>
 `,
+    '',
+    'Secure Learnの実行型ラボ15件とガイド型設計演習18件を一覧できるローカルSOC学習ガイド。',
   );
 }
 
@@ -2508,6 +2564,27 @@ p, li, td, th, strong {
 }
 
 a { color: var(--accent-2); text-decoration-thickness: 1px; }
+
+a:focus-visible {
+  outline: 3px solid #f59e0b;
+  outline-offset: 3px;
+}
+
+.skip-link {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  z-index: 100;
+  padding: 10px 14px;
+  border-radius: 6px;
+  background: #111827;
+  color: #ffffff;
+  transform: translateY(-160%);
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
 
 .topbar {
   position: sticky;
@@ -2604,6 +2681,8 @@ section {
 }
 
 article, table, pre {
+  min-width: 0;
+  max-width: 100%;
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -2616,6 +2695,10 @@ article {
 .grid {
   display: grid;
   gap: 16px;
+}
+
+.grid > *, .track-grid > * {
+  min-width: 0;
 }
 
 .grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -2963,6 +3046,8 @@ article {
 .score-4, .score-5 { color: var(--ok); border-color: #86efac; }
 .score-3 { color: var(--warn); border-color: #facc15; }
 .score-0, .score-1, .score-2 { color: var(--danger); border-color: #fca5a5; }
+.mode-runnable { color: var(--ok); border-color: #86efac; background: #f0fdf4; }
+.mode-guided { color: var(--accent-2); border-color: #93c5fd; background: var(--surface-blue); }
 
 .big {
   font-size: 36px;

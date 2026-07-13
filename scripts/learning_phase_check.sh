@@ -74,6 +74,8 @@ for profile in \
 done
 
 [[ -f "$GUIDE_DIR/index.html" ]] || fail "missing generated index.html"
+grep -q '<meta name="description"' "$GUIDE_DIR/index.html" || fail "index.html is missing meta description"
+grep -q 'class="skip-link"' "$GUIDE_DIR/index.html" || fail "index.html is missing skip link"
 for slug in $(python3 - "$PHASE_FILE" <<'PY'
 import json
 import sys
@@ -84,6 +86,8 @@ PY
   file="$GUIDE_DIR/$slug.html"
   [[ -f "$file" ]] || fail "missing generated guide: $slug.html"
   grep -q '<html lang="ja">' "$file" || fail "$slug.html must declare Japanese language"
+  grep -q '<meta name="description"' "$file" || fail "$slug.html is missing meta description"
+  grep -q 'class="skip-link"' "$file" || fail "$slug.html is missing skip link"
   grep -q '抽象的に何を学ぶか' "$file" || fail "$slug.html is missing abstract concept"
   grep -q '具体例' "$file" || fail "$slug.html is missing concrete examples"
   grep -q '初学者の見方' "$file" || fail "$slug.html is missing beginner guidance"

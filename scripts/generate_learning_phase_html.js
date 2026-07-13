@@ -222,21 +222,23 @@ function nav(currentId) {
     .join('');
 }
 
-function layout(title, body, currentId = '') {
+function layout(title, body, currentId = '', description = 'Secure Learnのフェーズ別ローカル学習ガイド。') {
   return `<!doctype html>
 <html lang="ja">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="${escapeHtml(description)}">
   <title>${escapeHtml(title)} - Secure Learn</title>
   <link rel="stylesheet" href="../scenario-guides/assets/scenario.css">
 </head>
 <body>
+  <a class="skip-link" href="#main-content">本文へスキップ</a>
   <header class="topbar">
     <a class="brand" href="index.html">Secure Learn Learning Phases</a>
     <nav aria-label="Learning phase navigation">${nav(currentId)}</nav>
   </header>
-  <main>
+  <main id="main-content" tabindex="-1">
 ${body}
   </main>
 </body>
@@ -355,6 +357,7 @@ function phasePage(phase) {
     </section>
 `,
     phase.id,
+    phase.next_gate,
   );
 }
 
@@ -375,9 +378,9 @@ function indexPage() {
   return layout(
     'Learning Phase Index',
     `    <section class="scenario-head">
-      <p class="eyebrow">Junior to secure infrastructure lead</p>
+      <p class="eyebrow">Beginner to advanced design review</p>
       <h1>フェーズ別 Learning Docker</h1>
-      <p class="lead">初学者がDocker、Linux、Backend、Whitehat、SRE、Kubernetes、Observability、分散システム、Supply Chainまで段階的に進むための実行可能な学習導線です。</p>
+      <p class="lead">初学者がDocker、Linux、Backend、Whitehat、SRE、Kubernetes、Observability、分散システム、Supply Chainまで段階的に進む学習導線です。各フェーズの実行環境と設計演習の範囲を確認して進めます。</p>
     </section>
 
     <section>
@@ -391,7 +394,7 @@ function indexPage() {
         ${learningTrack('経験者の深掘り', [
           '自分の経験が薄いprofileを選び、失敗時のログ、metric、rollback条件を重点的に見る。',
           '既存のCI、runbook、incident process、PR reviewへ移すなら何が足りないかを考える。',
-          'Principalフェーズでは、技術だけでなくOSS governanceと開示運用まで確認する。',
+          '最終フェーズでは、技術だけでなくOSS governanceと開示運用まで確認する。',
         ], 'experienced')}
         ${learningTrack('完成判定', [
           '実行コマンド、観測結果、合格証跡、次フェーズ判定が揃っている。',
@@ -407,8 +410,8 @@ function indexPage() {
         ['P0-P2', '基礎', '倫理、Docker、Linux、Backend TDD、DB/API境界を固める。'],
         ['P3-P7', '運用入口', 'OWASP API、Detection、SLO、Kubernetes、Endpoint監査へ進む。'],
         ['P8-P12', 'Platform', '分散、capstone、Linux internals、network edge、Kubernetes platformを扱う。'],
-        ['P13-P18', '実務上級', 'Cloud、IaC、observability、分散信頼性、backend production、secure releaseへ広げる。'],
-        ['P19', 'Principal', '検知、EDR、OSS governance、開示運用を統合する。'],
+        ['P13-P18', '発展設計', 'Cloud、IaC、observability、分散信頼性、backend production、secure releaseへ広げる。'],
+        ['P19', '統合', '検知、EDR、OSS governance、開示運用を統合する。'],
       ])}
     </section>
 
@@ -420,12 +423,12 @@ function indexPage() {
         { kind: 'control', label: 'Guardrail', title: 'P9-P14', text: 'capstone、Linux internals、network、Kubernetes、Cloud、IaCを統合する。' },
         { kind: 'observe', label: 'Telemetry', title: 'P15-P16', text: 'burn-rate、trace/log correlation、queue/backpressureを観測する。' },
         { kind: 'evidence', label: 'Contract', title: 'P17-P18', text: 'migration、API compatibility、supply chain、release証跡を揃える。' },
-        { kind: 'improve', label: 'Principal', title: 'P19', text: 'Detection、EDR、OSS governance、responsible disclosureで仕上げる。' },
+        { kind: 'improve', label: 'Integrate', title: 'P19', text: 'Detection、EDR、OSS governance、responsible disclosureを統合する。' },
       ])}
     </section>
 
     <section class="grid three">
-      <article><h2>Phases</h2><p class="big">${phases.length}</p><p>Junior 0 から Principal まで。</p></article>
+      <article><h2>Phases</h2><p class="big">${phases.length}</p><p>P0からP19までの段階的な教材。</p></article>
       <article><h2>Docker</h2><p class="big">Profiles</p><p>baseからcloud、IaC、Kubernetes、observability、distributed、capstoneまで。</p></article>
       <article><h2>Gate</h2><p class="big">Evidence</p><p>各フェーズで合格証跡を要求。</p></article>
     </section>
@@ -464,6 +467,8 @@ function indexPage() {
       </table>
     </section>
 `,
+    '',
+    'Docker、Linux、Backend、SOC、SRE、Platform領域をP0からP19まで段階的に学ぶローカル教材ガイド。',
   );
 }
 
