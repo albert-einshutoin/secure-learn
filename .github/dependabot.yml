@@ -5,12 +5,24 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    ignore:
+      # Runtime types must follow the production LTS major. Major upgrades are
+      # reviewed together with Docker and CI instead of as isolated type PRs.
+      - dependency-name: "@types/node"
+        update-types:
+          - version-update:semver-major
 
   - package-ecosystem: docker
     directory: /app
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    ignore:
+      # Node Current is not a production upgrade target; stay on the supported
+      # LTS major while still receiving patch and digest updates.
+      - dependency-name: node
+        update-types:
+          - version-update:semver-major
 
   - package-ecosystem: docker
     directory: /attack

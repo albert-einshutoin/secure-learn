@@ -168,6 +168,7 @@ test('public product copy matches the remediated API and avoids job-level guaran
 test('application runtime and CI use the supported Node.js LTS line', () => {
   const dockerfile = read('app/Dockerfile');
   const workflow = read('.github/workflows/ci.yml');
+  const dependabot = read('.github/dependabot.yml');
   const appPackage = JSON.parse(read('app/package.json'));
 
   assert.match(dockerfile, /FROM node:24-alpine@sha256:[a-f0-9]{64}/);
@@ -175,4 +176,7 @@ test('application runtime and CI use the supported Node.js LTS line', () => {
   assert.equal((workflow.match(/node-version:\s*24/g) || []).length, 3);
   assert.doesNotMatch(workflow, /node-version:\s*20/);
   assert.equal(appPackage.engines.node, '>=24 <25');
+  assert.match(appPackage.devDependencies['@types/node'], /^\^24\./);
+  assert.match(dependabot, /package-ecosystem: npm[\s\S]*?dependency-name: "@types\/node"[\s\S]*?version-update:semver-major/);
+  assert.match(dependabot, /package-ecosystem: docker\n\s+directory: \/app[\s\S]*?dependency-name: node[\s\S]*?version-update:semver-major/);
 });
