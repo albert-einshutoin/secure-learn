@@ -33,18 +33,15 @@ services:
         condition: service_healthy
 
   # ============================================
-  # Target namespace - Suricata IDS + vulnerable app + Fail2ban
+  # Target namespace - Suricata IDS + training API + Fail2ban
   # ============================================
-  suricata:
-    build:
-      context: ./suricata
-      dockerfile: Dockerfile
-    container_name: soc-lab-suricata
-    hostname: suricata
-    cap_add:
-      - NET_ADMIN
-      - NET_RAW
-      - SYS_NICE
+  # This minimal owner keeps the namespace stable when the application or IDS
+  # image is rebuilt independently. Without it, long-running Fail2ban can stay
+  # attached to the deleted namespace of an old Suricata container.
+  target-netns:
+    image: alpine:3.22
+    container_name: soc-lab-target-netns
+    hostname: target
     networks:
       app_net:
         ipv4_address: 172.23.0.20
@@ -52,24 +49,67 @@ services:
           - app
           - target-app
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    command: ["tail", "-f", "/dev/null"]
+    restart: unless-stopped
+
+  suricata:
+    build:
+      context: ./suricata
+      dockerfile: Dockerfile
+    container_name: soc-lab-suricata
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+      - SYS_NICE
+    network_mode: "service:target-netns"
     volumes:
       - suricata_logs:/var/log/suricata
     command: -c /opt/soc-lab/suricata.yaml -i eth0
+    depends_on:
+      target-netns:
+        condition: service_started
+
+  # Rotated EVE files are retained for seven days, matching the Elasticsearch
+  # learning-data retention window. Active files are never deleted.
+  suricata-log-pruner:
+    image: alpine:3.22
+    container_name: soc-lab-suricata-log-pruner
+    network_mode: none
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    volumes:
+      - suricata_logs:/var/log/suricata
+    command: >
+      sh -c "while true; do
+        find /var/log/suricata -type f -name 'eve-*.json' -mtime +7 -exec rm -f '{}' ';';
+        sleep 21600;
+      done"
+    depends_on:
+      suricata:
+        condition: service_started
+    restart: unless-stopped
 
   # ============================================
-  # Application Zone - NestJS App (Vulnerable)
+  # Application Zone - remediated NestJS training API
   #
-  # App shares Suricata's network namespace so packets to port 3000 arrive on
-  # the same eth0 interface that Suricata monitors. This keeps the lab stable in
-  # Docker without requiring host bridge sniffing or privileged host routing.
+  # App and Suricata share the stable target namespace, so packets to port 3000
+  # arrive on the eth0 interface the IDS monitors without host bridge sniffing.
   # ============================================
   app:
     build:
       context: ./app
       dockerfile: Dockerfile
     container_name: soc-lab-app
-    network_mode: "service:suricata"
+    network_mode: "service:target-netns"
     volumes:
       - app_logs:/var/log/app
     environment:
@@ -84,6 +124,8 @@ services:
       db:
         condition: service_healthy
       suricata:
+        condition: service_started
+      target-netns:
         condition: service_started
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/health >/dev/null || exit 1"]
@@ -122,16 +164,16 @@ services:
   # ============================================
   # Defense - Fail2ban
   #
-  # Fail2ban also shares Suricata's namespace, so iptables bans are applied in
-  # the namespace that receives traffic for the vulnerable app.
+  # Fail2ban shares the stable target namespace, so iptables bans are applied
+  # where the training API receives traffic even after an App/IDS rebuild.
   # ============================================
   fail2ban:
-    image: crazymax/fail2ban:latest
+    image: crazymax/fail2ban@sha256:7cd8a427a44675397398a8dace2a3d755e62c72527f8730e4fd37697731a9321
     container_name: soc-lab-fail2ban
     cap_add:
       - NET_ADMIN
       - NET_RAW
-    network_mode: "service:suricata"
+    network_mode: "service:target-netns"
     volumes:
       - ./fail2ban/jail.local:/etc/fail2ban/jail.local:ro
       - ./fail2ban/filter.d:/etc/fail2ban/filter.d:ro
@@ -140,12 +182,16 @@ services:
       - fail2ban_logs:/var/log/fail2ban
       - fail2ban_data:/var/lib/fail2ban
     environment:
-      - TZ=Asia/Tokyo
+      # Application security logs are ISO-8601 UTC. Keeping Fail2ban in UTC
+      # prevents valid events from being treated as nine-hour-old records.
+      - TZ=UTC
       - F2B_LOG_LEVEL=INFO
       - F2B_LOG_TARGET=/var/log/fail2ban/fail2ban.log
     depends_on:
       app:
         condition: service_healthy
+      target-netns:
+        condition: service_started
 
   # ============================================
   # SIEM - Elasticsearch
@@ -170,7 +216,7 @@ services:
     volumes:
       - es_data:/usr/share/elasticsearch/data
     ports:
-      - "9200:9200"
+      - "127.0.0.1:9200:9200"
     healthcheck:
       test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -q 'green\\|yellow'"]
       interval: 30s
@@ -191,10 +237,33 @@ services:
       - SERVER_NAME=soc-lab-kibana
       - XPACK_SECURITY_ENABLED=false
     ports:
-      - "5601:5601"
+      - "127.0.0.1:5601:5601"
+    volumes:
+      - ./elk/kibana/kibana.yml:/usr/share/kibana/config/kibana.yml:ro
     depends_on:
       elasticsearch:
         condition: service_healthy
+
+  # ============================================
+  # SIEM Bootstrap - templates, retention, and saved objects
+  # ============================================
+  siem-setup:
+    image: curlimages/curl:8.10.1
+    container_name: soc-lab-siem-setup
+    networks:
+      - monitor_net
+    volumes:
+      - ./elk:/bootstrap:ro
+    entrypoint: ["sh", "/bootstrap/siem-bootstrap.sh"]
+    environment:
+      - ELASTICSEARCH_HOST=http://elasticsearch:9200
+      - KIBANA_HOST=http://kibana:5601
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      kibana:
+        condition: service_started
+    restart: "no"
 
   # ============================================
   # Log Collector - Filebeat
@@ -213,10 +282,13 @@ services:
       - app_logs:/var/log/app:ro
       - fail2ban_logs:/var/log/fail2ban:ro
       - /var/log/audit:/var/log/audit:ro
+      # Persist the registry so container recreation cannot duplicate-ingest
+      # the entire Suricata history.
+      - filebeat_data:/usr/share/filebeat/data
     command: filebeat -e -strict.perms=false
     depends_on:
-      elasticsearch:
-        condition: service_healthy
+      siem-setup:
+        condition: service_completed_successfully
 
 # ============================================
 # Networks
@@ -245,6 +317,7 @@ volumes:
   attack_results:
   fail2ban_logs:
   fail2ban_data:
+  filebeat_data:
   es_data:
   db_data:
 

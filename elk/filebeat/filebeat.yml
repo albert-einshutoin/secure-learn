@@ -8,7 +8,11 @@ filebeat.inputs:
   - type: log
     enabled: true
     paths:
-      - /var/log/suricata/eve.json
+      - /var/log/suricata/eve-*.json
+    # New installations start after the SIEM bootstrap. Beginning at EOF avoids
+    # replaying stale multi-GB lab volumes while all user-generated events that
+    # occur after startup are still collected.
+    tail_files: true
     json.keys_under_root: true
     json.add_error_key: true
     json.overwrite_keys: true
@@ -25,6 +29,7 @@ filebeat.inputs:
     enabled: true
     paths:
       - /var/log/app/auth.log
+    tail_files: true
     json.keys_under_root: true
     json.add_error_key: true
     json.overwrite_keys: true
@@ -37,6 +42,7 @@ filebeat.inputs:
     enabled: true
     paths:
       - /var/log/app/access.log
+    tail_files: true
     json.keys_under_root: true
     json.add_error_key: true
     json.overwrite_keys: true
@@ -49,6 +55,7 @@ filebeat.inputs:
     enabled: true
     paths:
       - /var/log/app/error.log
+    tail_files: true
     json.keys_under_root: true
     json.add_error_key: true
     json.overwrite_keys: true
@@ -64,6 +71,7 @@ filebeat.inputs:
     enabled: true
     paths:
       - /var/log/fail2ban/fail2ban.log
+    tail_files: true
     fields:
       event.module: fail2ban
       event.dataset: fail2ban.log
@@ -77,6 +85,7 @@ filebeat.inputs:
     enabled: true
     paths:
       - /var/log/audit/audit.log
+    tail_files: true
     fields:
       event.module: auditd
       event.dataset: auditd.log
@@ -198,28 +207,19 @@ output.elasticsearch:
         tags: "auditd"
 
 # ============================================
-# ILM (Index Lifecycle Management)
+# Lifecycle ownership
 # ============================================
-setup.ilm.enabled: true
-setup.ilm.rollover_alias: "soc-lab"
-setup.ilm.pattern: "{now/d}-000001"
-setup.ilm.policy_name: "soc-lab-policy"
-setup.ilm.overwrite: true
+# This pipeline writes explicit daily indices. Enabling Filebeat ILM would make
+# Beats attempt to create a soc-lab data stream/rollover alias, which is
+# incompatible with those index names. The bootstrap service installs the
+# delete-only lifecycle policy and regular composable templates instead.
+setup.ilm.enabled: false
 
-# Custom ILM policy
-setup.ilm.policy_file: ""
-
-# ============================================
-# Template settings
-# ============================================
-setup.template.name: "soc-lab"
-setup.template.pattern: "soc-lab-*"
-setup.template.enabled: true
-setup.template.overwrite: true
-setup.template.settings:
-  index.number_of_shards: 1
-  index.number_of_replicas: 0
-  index.lifecycle.name: "soc-lab-policy"
+# Filebeat 8 treats a Beat-managed template as a data-stream template and tries
+# to create that stream during the output handshake. The bootstrap service owns
+# regular composable templates, so disabling Beat template setup is required for
+# the explicit daily indices above to receive events.
+setup.template.enabled: false
 
 # ============================================
 # Kibana setup

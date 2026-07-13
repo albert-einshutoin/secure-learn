@@ -19,11 +19,16 @@ vars:
 # Logging configuration
 default-log-dir: /var/log/suricata/
 
+stats:
+  enabled: yes
+  interval: 60
+
 outputs:
   - eve-log:
       enabled: yes
       filetype: regular
-      filename: eve.json
+      filename: eve-%Y-%m-%d.json
+      rotate-interval: day
       pcap-file: false
       community-id: true
       types:
@@ -52,7 +57,7 @@ outputs:
       append: yes
 
   - stats:
-      enabled: yes
+      enabled: no
       filename: stats.log
       append: yes
       totals: yes

@@ -10,7 +10,7 @@ elasticsearch.hosts: ["http://elasticsearch:9200"]
 
 # Security settings (disabled for learning environment)
 xpack.security.enabled: false
-xpack.encryptedSavedObjects.encryptionKey: "soclab-encryption-key-32chars!!"
+xpack.encryptedSavedObjects.encryptionKey: "soclab-local-only-encryption-key-0001"
 
 # Monitoring
 monitoring.ui.enabled: true

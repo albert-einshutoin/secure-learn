@@ -19,12 +19,20 @@ vars:
 # Logging configuration
 default-log-dir: /var/log/suricata/
 
+# The default 8-second interval produced hundreds of MB of redundant text
+# statistics in long-running learning environments. EVE retains the useful
+# counters at a lower frequency.
+stats:
+  enabled: yes
+  interval: 60
+
 outputs:
   # EVE JSON output for SIEM integration
   - eve-log:
       enabled: yes
       filetype: regular
-      filename: eve.json
+      filename: eve-%Y-%m-%d.json
+      rotate-interval: day
       pcap-file: false
       community-id: true
       community-id-seed: 0
@@ -61,9 +69,10 @@ outputs:
       filename: fast.log
       append: yes
 
-  # Stats log
+  # Stats are already emitted as structured EVE records above. Disabling the
+  # duplicate text log prevents unbounded volume growth.
   - stats:
-      enabled: yes
+      enabled: no
       filename: stats.log
       append: yes
       totals: yes
