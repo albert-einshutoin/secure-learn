@@ -735,6 +735,10 @@ Apply these exact semantic changes:
 - S7 `Cross-Layer Incident`; explain it chains events against one trust zone and is not lateral movement.
 - Keep `s7_lateral.sh` as a compatibility filename, but print `Cross-Layer Incident` and remove `APT`/`Lateral Movement` success claims.
 - Scenario evaluation uses the same 11 Docker, 2 host-assisted, 2 workflow, 18 design split as README.
+- Treat manifest mode as authoritative over legacy static scenario mode, and use the same effective mode for page labels and index counts.
+- Keep S7 evidence free of secret values and label every phase as attempted/observed until a verifier proves its outcome.
+- Publish all generated pages and assets through validated, same-directory atomic writes that reject symlink and non-regular destinations.
+- Describe S15 as an integrated capstone and keep checklist levels explicitly non-certifying.
 
 - [ ] **Step 4: Regenerate HTML and run regressions**
 
