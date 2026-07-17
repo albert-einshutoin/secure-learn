@@ -2,7 +2,11 @@
 # SOC-Lab Exercise Stop Script
 # Phase 3: Stop and generate exercise report
 
-set -e
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+COMPOSE_FILE="$ROOT_DIR/docker-compose.exercise.yml"
+COMPOSE=(docker compose --project-name secure-learn-exercise -f "$COMPOSE_FILE")
 
 echo "============================================"
 echo "Stopping SOC-Lab Exercise"
@@ -28,17 +32,17 @@ mkdir -p "$REPORT_DIR"
 
 # Export Suricata alerts
 echo "Exporting Suricata alerts..."
-docker exec soc-lab-exercise-suricata cat /var/log/suricata/fast.log > "$REPORT_DIR/suricata_alerts.log" 2>/dev/null || true
+"${COMPOSE[@]}" exec -T suricata cat /var/log/suricata/fast.log > "$REPORT_DIR/suricata_alerts.log" 2>/dev/null || true
 
 # Export Fail2ban bans
 echo "Exporting Fail2ban bans..."
-docker exec soc-lab-exercise-fail2ban fail2ban-client status > "$REPORT_DIR/fail2ban_status.txt" 2>/dev/null || true
+"${COMPOSE[@]}" exec -T fail2ban fail2ban-client status > "$REPORT_DIR/fail2ban_status.txt" 2>/dev/null || true
 
 # Export application logs
 echo "Exporting application logs..."
-docker exec soc-lab-target-app cat /var/log/app/auth.log > "$REPORT_DIR/auth.log" 2>/dev/null || true
-docker exec soc-lab-target-app cat /var/log/app/access.log > "$REPORT_DIR/access.log" 2>/dev/null || true
-docker exec soc-lab-target-app cat /var/log/app/error.log > "$REPORT_DIR/error.log" 2>/dev/null || true
+"${COMPOSE[@]}" exec -T target_app cat /var/log/app/auth.log > "$REPORT_DIR/auth.log" 2>/dev/null || true
+"${COMPOSE[@]}" exec -T target_app cat /var/log/app/access.log > "$REPORT_DIR/access.log" 2>/dev/null || true
+"${COMPOSE[@]}" exec -T target_app cat /var/log/app/error.log > "$REPORT_DIR/error.log" 2>/dev/null || true
 
 # Generate summary
 echo "Generating summary..."
@@ -85,7 +89,7 @@ echo ""
 
 # Stop containers
 echo "Stopping containers..."
-docker compose -f docker-compose.exercise.yml down
+"${COMPOSE[@]}" down
 
 echo ""
 echo "============================================"
