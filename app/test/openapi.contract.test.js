@@ -17,7 +17,7 @@ test('OpenAPI contract documents the production-readiness endpoints', () => {
     '/health',
     '/health/ready',
   ]) {
-    assert.match(contract, new RegExp(`^  ${route.replace(/[{}]/g, '\\$&')}:`, 'm'));
+    assert.ok(contract.includes(`\n  ${route}:`), `OpenAPI path is missing: ${route}`);
   }
 
   assert.match(contract, /bearerAuth:/);
