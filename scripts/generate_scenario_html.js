@@ -2,11 +2,11 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const { randomUUID } = require('node:crypto');
 const { loadManifests } = require('./lib/curriculum');
 
 const root = path.resolve(__dirname, '..');
 const outDir = path.join(root, 'docs', 'scenario-guides');
-const assetDir = path.join(outDir, 'assets');
 const labManifests = new Map(
   loadManifests(root).map((manifest) => [manifest.id.toUpperCase(), manifest]),
 );
@@ -2223,7 +2223,12 @@ function rating(score) {
 function scenarioMode(scenario) {
   const scenarioNumber = Number.parseInt(scenario.id.slice(1), 10);
   const manifestMode = labManifests.get(scenario.id)?.mode;
-  if (manifestMode === 'host-assisted' || scenario.mode === 'host-assisted') {
+  const effectiveMode = resolveEffectiveMode({
+    manifestMode,
+    scenarioMode: scenario.mode,
+    scenarioNumber,
+  });
+  if (effectiveMode === 'host-assisted') {
     return {
       label: 'Linuxホスト補助演習',
       className: 'host-assisted',
@@ -2231,7 +2236,7 @@ function scenarioMode(scenario) {
     };
   }
 
-  if (manifestMode === 'operator-workflow' || scenario.mode === 'operator-workflow') {
+  if (effectiveMode === 'operator-workflow') {
     return {
       label: '運用ワークフロー演習',
       className: 'operator-workflow',
@@ -2239,7 +2244,7 @@ function scenarioMode(scenario) {
     };
   }
 
-  if (manifestMode === 'docker-lab' || (!manifestMode && scenarioNumber <= 13)) {
+  if (effectiveMode === 'docker-lab') {
     return {
       label: 'Docker実行型ラボ',
       className: 'runnable',
@@ -2252,6 +2257,10 @@ function scenarioMode(scenario) {
     className: 'guided',
     description: '設計レビュー、静的検証、証跡作成を行う教材です。専用の実クラウドや本番相当基盤は同梱していません。',
   };
+}
+
+function resolveEffectiveMode({ manifestMode, scenarioMode: staticMode, scenarioNumber }) {
+  return manifestMode ?? staticMode ?? (scenarioNumber <= 13 ? 'docker-lab' : 'design-exercise');
 }
 
 function manifestMetadata(scenario) {
@@ -2589,7 +2598,7 @@ function indexPage() {
   );
 }
 
-function writeCss() {
+function renderCss() {
   const css = `:root {
   color-scheme: light;
   --bg: #f5f7f9;
@@ -3209,17 +3218,138 @@ li + li { margin-top: 6px; }
 }
 `;
 
-  fs.writeFileSync(path.join(assetDir, 'scenario.css'), css);
+  return css;
+}
+
+function buildOutputs() {
+  const outputs = new Map([
+    ['assets/scenario.css', Buffer.from(renderCss())],
+    ['index.html', indexPage()],
+  ]);
+  for (const scenario of scenarios) {
+    outputs.set(`${scenario.slug}.html`, scenarioPage(scenario));
+  }
+  return outputs;
+}
+
+function safePublishOutputs({ root: repositoryRoot, outDir: outputDirectory, outputs, allowedPaths }) {
+  const rootReal = safeDirectory(repositoryRoot, 'repository root');
+  const outReal = safeContainedDirectory(outputDirectory, rootReal, 'output directory');
+  const assetsReal = outputs.has('assets/scenario.css')
+    ? safeContainedDirectory(path.join(outputDirectory, 'assets'), rootReal, 'asset directory')
+    : null;
+  const destinations = [];
+
+  // Validate every destination before creating any temporary file. This keeps
+  // a bad late entry from partially publishing an otherwise valid batch.
+  for (const [relativePath, content] of outputs) {
+    if (!allowedPaths.has(relativePath)) throw new Error(`output path is not allowed: ${relativePath}`);
+    const parts = relativePath.split('/');
+    const validShape = parts.length === 1 || (parts.length === 2 && parts[0] === 'assets');
+    if (!validShape || parts.some((part) => !/^[a-z0-9][a-z0-9.-]*$/i.test(part))) {
+      throw new Error(`output path must use a static basename: ${relativePath}`);
+    }
+    const parent = parts.length === 2 ? assetsReal : outReal;
+    const destination = path.join(parent, parts.at(-1));
+    if (!isWithin(rootReal, destination)) throw new Error('output destination escapes repository root');
+    const status = lstatIfPresent(destination);
+    if (status) {
+      if (status.isSymbolicLink()) throw new Error(`output destination is a symlink: ${relativePath}`);
+      if (!status.isFile()) throw new Error(`output destination must be a regular file: ${relativePath}`);
+    }
+    destinations.push({
+      relativePath,
+      destination,
+      parent,
+      content: Buffer.isBuffer(content) ? content : Buffer.from(content),
+    });
+  }
+
+  const staged = [];
+  try {
+    for (const item of destinations) {
+      const temporary = path.join(
+        item.parent,
+        `.${path.basename(item.destination)}.${process.pid}.${randomUUID()}.tmp`,
+      );
+      const flags = fs.constants.O_WRONLY | fs.constants.O_CREAT | fs.constants.O_EXCL
+        | (fs.constants.O_NOFOLLOW || 0);
+      const descriptor = fs.openSync(temporary, flags, 0o644);
+      try {
+        let offset = 0;
+        while (offset < item.content.length) {
+          offset += fs.writeSync(descriptor, item.content, offset, item.content.length - offset);
+        }
+        fs.fsyncSync(descriptor);
+      } finally {
+        fs.closeSync(descriptor);
+      }
+      staged.push({ ...item, temporary });
+    }
+
+    const syncedDirectories = new Set();
+    for (const item of staged) {
+      fs.renameSync(item.temporary, item.destination);
+      syncedDirectories.add(item.parent);
+    }
+    for (const directory of syncedDirectories) fsyncDirectory(directory);
+  } finally {
+    for (const item of staged) {
+      try {
+        fs.unlinkSync(item.temporary);
+      } catch (error) {
+        if (error.code !== 'ENOENT') throw error;
+      }
+    }
+  }
+}
+
+function lstatIfPresent(candidate) {
+  try {
+    return fs.lstatSync(candidate);
+  } catch (error) {
+    if (error.code === 'ENOENT') return null;
+    throw error;
+  }
+}
+
+function safeDirectory(directory, label) {
+  const status = fs.lstatSync(directory);
+  if (status.isSymbolicLink()) throw new Error(`${label} must not be a symlink`);
+  if (!status.isDirectory()) throw new Error(`${label} must be a directory`);
+  return fs.realpathSync(directory);
+}
+
+function safeContainedDirectory(directory, rootReal, label) {
+  const real = safeDirectory(directory, label);
+  if (!isWithin(rootReal, real)) throw new Error(`${label} escapes repository root`);
+  return real;
+}
+
+function isWithin(rootReal, candidate) {
+  return candidate === rootReal || candidate.startsWith(`${rootReal}${path.sep}`);
+}
+
+function fsyncDirectory(directory) {
+  const descriptor = fs.openSync(directory, fs.constants.O_RDONLY);
+  try {
+    fs.fsyncSync(descriptor);
+  } finally {
+    fs.closeSync(descriptor);
+  }
 }
 
 function main() {
-  fs.mkdirSync(assetDir, { recursive: true });
-  writeCss();
-  fs.writeFileSync(path.join(outDir, 'index.html'), indexPage());
-  for (const scenario of scenarios) {
-    fs.writeFileSync(path.join(outDir, `${scenario.slug}.html`), scenarioPage(scenario));
-  }
+  const outputs = buildOutputs();
+  safePublishOutputs({
+    root,
+    outDir,
+    outputs,
+    allowedPaths: new Set(outputs.keys()),
+  });
   console.log(`Generated ${scenarios.length + 1} HTML files in ${path.relative(root, outDir)}`);
 }
 
-main();
+module.exports = { resolveEffectiveMode, safePublishOutputs };
+
+if (require.main === module) main();
