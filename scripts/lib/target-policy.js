@@ -68,6 +68,9 @@ function validateSafety(safety) {
     const isExplicitLoopback = parsed.address === '127.0.0.1' && parsed.prefix === 32;
     if (!isPrivate && !isExplicitLoopback) throw new Error('invalid safety policy');
   }
+  if (safety.target_services.includes('localhost') && !safety.allowed_cidrs.includes('127.0.0.1/32')) {
+    throw new Error('invalid safety policy');
+  }
 }
 
 function assertAllowedTarget(target, safety) {

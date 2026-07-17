@@ -74,6 +74,7 @@ test('fails closed when the manifest safety policy is malformed or unsafe', () =
     { ...safety, allowed_cidrs: ['8.8.8.0/24'] },
     { ...safety, allowed_cidrs: ['169.254.0.0/16'] },
     { ...safety, allowed_cidrs: ['0.0.0.0/0'] },
+    { ...safety, target_services: ['localhost'] },
   ];
   for (const policy of policies) {
     assert.throws(() => assertAllowedTarget('app', policy), /invalid safety policy/);
