@@ -307,13 +307,19 @@ test('scenario evaluation reports the honest execution-format split and maturity
 });
 
 test('generated scenario guides retain public URLs while using corrected S7 and S8 semantics', () => {
+  const s5 = read('docs/scenario-guides/s5-file-tamper.html');
   const s7 = read('docs/scenario-guides/s7-lateral.html');
   const s8 = read('docs/scenario-guides/s8-arp.html');
 
+  assert.match(s5, /Impact - Data Manipulation \(T1565\)/);
   assert.match(s7, /Cross-Layer Incident/);
   assert.doesNotMatch(s7, /APT模擬|実際のAPT|Lateral Movement/i);
   assert.match(s8, /Remote System Discovery \(T1018\)/);
   assert.doesNotMatch(s8, /T1046|Network Service Discovery/i);
+  for (const guide of [s5, s7, s8]) {
+    assert.match(guide, /Manifest maturity/);
+    assert.match(guide, /Maturity coverageと判定根拠/);
+  }
 });
 
 test('scenario scripts do not report unverified success', () => {

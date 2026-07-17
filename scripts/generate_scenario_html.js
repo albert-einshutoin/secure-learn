@@ -8,7 +8,7 @@ const root = path.resolve(__dirname, '..');
 const outDir = path.join(root, 'docs', 'scenario-guides');
 const assetDir = path.join(outDir, 'assets');
 const labManifests = new Map(
-  loadManifests(path.join(root, 'curriculum', 'labs')).map((manifest) => [manifest.id.toUpperCase(), manifest]),
+  loadManifests(root).map((manifest) => [manifest.id.toUpperCase(), manifest]),
 );
 const mitreCatalog = JSON.parse(
   fs.readFileSync(path.join(root, 'curriculum', 'standards', 'mitre-attack-v19.json'), 'utf8'),
