@@ -708,7 +708,7 @@ Add product-readiness assertions that:
 - API6 is Sensitive Business Flows, API7 is SSRF, API8 is Security Misconfiguration.
 - API8 is not Injection.
 - S5 calls T1565 Data Manipulation / Impact.
-- S8 calls T1046 Discovery.
+- S8 calls T1018 Discovery.
 - S7 title is Cross-Layer Incident and public copy does not claim genuine APT or Lateral Movement.
 - scenario evaluation does not call all S1-S15 executable labs.
 
@@ -731,7 +731,7 @@ Apply these exact semantic changes:
 - API8 `Security Misconfiguration`.
 - Injection remains a supporting secure-coding topic, not API8:2023.
 - S5 `Impact - Data Manipulation (T1565)`.
-- S8 `Discovery - Network Service Discovery (T1046)`.
+- S8 `Discovery - Remote System Discovery (T1018)`; the exercise observes ARP/neighbor presence and does not claim service scanning.
 - S7 `Cross-Layer Incident`; explain it chains events against one trust zone and is not lateral movement.
 - Keep `s7_lateral.sh` as a compatibility filename, but print `Cross-Layer Incident` and remove `APT`/`Lateral Movement` success claims.
 - Scenario evaluation uses the same 11 Docker, 2 host-assisted, 2 workflow, 18 design split as README.

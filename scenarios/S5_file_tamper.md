@@ -7,7 +7,7 @@
 | シナリオID | S5 |
 | 攻撃名 | 重要ファイル改変 |
 | 主レイヤー | OS |
-| MITRE ATT&CK | Defense Evasion - File and Directory Modification (T1565) |
+| MITRE ATT&CK | Impact - Data Manipulation (T1565) |
 | 検知コンポーネント | Auditd |
 | 難易度 | 中級 |
 

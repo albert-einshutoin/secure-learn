@@ -2,10 +2,17 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const { loadManifests } = require('./lib/curriculum');
 
 const root = path.resolve(__dirname, '..');
 const outDir = path.join(root, 'docs', 'scenario-guides');
 const assetDir = path.join(outDir, 'assets');
+const labManifests = new Map(
+  loadManifests(path.join(root, 'curriculum', 'labs')).map((manifest) => [manifest.id.toUpperCase(), manifest]),
+);
+const mitreCatalog = JSON.parse(
+  fs.readFileSync(path.join(root, 'curriculum', 'standards', 'mitre-attack-v19.json'), 'utf8'),
+).techniques;
 
 // Scenario pages are generated from one data source so curriculum changes do
 // not leave stale HTML, navigation, or readiness scoring behind.
@@ -309,16 +316,16 @@ const scenarios = [
   {
     id: 'S7',
     slug: 's7-lateral',
-    title: '横断インシデント',
+    title: 'Cross-Layer Incident',
     layer: '全体',
     level: '上級',
     roles: ['Whitehat', 'SRE', 'Backend'],
     score: 4,
-    summary: '偵察、認証攻撃、SQLi試行、ファイル/権限イベントを一つのattack chainとして相関する。',
-    objective: '複数レイヤーの検知をtimeline化し、MTTD/MTTR、影響範囲、改善PRまでまとめる。',
+    summary: 'one trust zoneの偵察、認証試行、入力攻撃、負荷イベントを一つのevent chainとして相関する。',
+    objective: 'APTや別ホストへの侵入拡大を再現したとは主張せず、複数レイヤーの検知をtimeline化し、MTTD/MTTR、影響範囲、改善PRまでまとめる。',
     flow: [
-      ['Start', '/scripts/s7_lateral.shで段階的な攻撃チェーンを実行する。'],
-      ['Correlate', 'source.ip、timestamp、event.actionでSuricata/App/Fail2ban/Auditdを繋ぐ。'],
+      ['Start', '/scripts/s7_lateral.shで段階的なevent chainを実行する。'],
+      ['Correlate', 'source.ip、timestamp、event.actionでSuricata/App/Fail2banを繋ぐ。'],
       ['Contain', 'BANやサービス保護の判断を記録する。'],
       ['Eradicate', '成立した攻撃があるか、修正済みで拒否されたかを分ける。'],
       ['Improve', '検知ルール、backend test、runbookをPRとして提案する。'],
@@ -337,7 +344,7 @@ const scenarios = [
       ['Postmortem template', '検知、対応、恒久対策を第三者に伝える。'],
     ],
     evidence: [
-      'attack chainの開始/検知/対応時刻',
+      'event chainの開始/検知/対応時刻',
       '各phaseのログソースとKQL',
       '成功した攻撃と拒否された攻撃の区別',
       '改善PRのテストとrollback方針',
@@ -356,8 +363,8 @@ const scenarios = [
     level: '初級',
     roles: ['Whitehat', 'SRE'],
     score: 2,
-    summary: 'Docker bridge上のARP/neighbor cacheを観測し、L2の限界と証跡不足を説明する。',
-    objective: 'ARP spoofingは行わず、観測だけでL2事象がL3/L4到達性に与える影響を理解する。',
+    summary: 'Discovery - Remote System Discovery (T1018)としてDocker bridge上のARP/neighbor cacheを観測し、L2の限界と証跡不足を説明する。',
+    objective: 'ARP spoofingやservice scanは行わず、remote systemの存在観測だけでL2事象がL3/L4到達性に与える影響を理解する。',
     flow: [
       ['Prepare', 'Docker ComposeでKaliとtargetを同一bridge上に置く。'],
       ['Observe', 'ip neigh、arping、tcpdumpでneighbor cacheを確認する。'],
@@ -2215,7 +2222,8 @@ function rating(score) {
 
 function scenarioMode(scenario) {
   const scenarioNumber = Number.parseInt(scenario.id.slice(1), 10);
-  if (scenario.mode === 'host-assisted') {
+  const manifestMode = labManifests.get(scenario.id)?.mode;
+  if (manifestMode === 'host-assisted' || scenario.mode === 'host-assisted') {
     return {
       label: 'Linuxホスト補助演習',
       className: 'host-assisted',
@@ -2223,7 +2231,7 @@ function scenarioMode(scenario) {
     };
   }
 
-  if (scenario.mode === 'operator-workflow') {
+  if (manifestMode === 'operator-workflow' || scenario.mode === 'operator-workflow') {
     return {
       label: '運用ワークフロー演習',
       className: 'operator-workflow',
@@ -2231,9 +2239,9 @@ function scenarioMode(scenario) {
     };
   }
 
-  if (scenarioNumber <= 13) {
+  if (manifestMode === 'docker-lab' || (!manifestMode && scenarioNumber <= 13)) {
     return {
-      label: '実行型ラボ',
+      label: 'Docker実行型ラボ',
       className: 'runnable',
       description: '同梱Docker環境、攻撃スクリプト、検証スクリプトを使って再現と観測を実行します。',
     };
@@ -2244,6 +2252,30 @@ function scenarioMode(scenario) {
     className: 'guided',
     description: '設計レビュー、静的検証、証跡作成を行う教材です。専用の実クラウドや本番相当基盤は同梱していません。',
   };
+}
+
+function manifestMetadata(scenario) {
+  const manifest = labManifests.get(scenario.id);
+  if (!manifest) return '\n\n';
+
+  // Labels are derived from the validated catalogs so generated pages cannot
+  // silently drift from the manifest IDs that drive curriculum coverage.
+  const mappings = manifest.standards.mitre_attack.map((id) => {
+    const technique = mitreCatalog[id];
+    return `${technique.tactics.join(' / ')} - ${technique.name} (${id})`;
+  });
+
+  return `\n\n    <section class="grid two">
+      <article>
+        <h2>Manifest maturity</h2>
+        <p><strong>${escapeHtml(manifest.maturity)}</strong></p>
+        <p><a href="../curriculum/coverage.md">Maturity coverageと判定根拠</a></p>
+      </article>
+      <article>
+        <h2>MITRE ATT&amp;CK mapping</h2>
+        ${mappings.length > 0 ? list(mappings) : '<p>この演習にMITRE ATT&amp;CK technique mappingはありません。</p>'}
+      </article>
+    </section>\n\n`;
 }
 
 function relatedScenarios(scenario) {
@@ -2319,9 +2351,7 @@ function scenarioPage(scenario) {
         <h2>教材範囲の自己評価</h2>
         <p>${scenario.score >= 4 ? '複数の観点と証跡作成まで扱う発展教材です。点数は教材範囲の内部目安であり、技能や本番適合性の認定ではありません。' : '基礎概念と観測の土台を扱う教材です。点数は教材範囲の内部目安であり、技能や本番適合性の認定ではありません。'}</p>
       </article>
-    </section>
-
-    <section class="grid two">
+    </section>${manifestMetadata(scenario)}    <section class="grid two">
       <article>
         <h2>抽象的に何を学ぶか</h2>
         <p>${escapeHtml(scenarioConcept(scenario))}</p>

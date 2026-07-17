@@ -1,6 +1,6 @@
 #!/bin/bash
-# SOC-Lab Attack Script: S7 - Lateral Movement / Cross-Layer Attack
-# Purpose: Demonstrate full attack chain across multiple layers
+# SOC-Lab Attack Script: S7 - Cross-Layer Incident
+# Purpose: Correlate bounded events across layers within one local trust zone
 
 set -e
 
@@ -32,8 +32,8 @@ DELAY="${DELAY:-5}"
 secure_learn_validate_bounded_decimal DELAY "$DELAY" 0 10
 
 echo "============================================"
-echo "SOC-Lab Scenario S7: Lateral Movement"
-echo "Full Attack Chain Demonstration"
+echo "SOC-Lab Scenario S7: Cross-Layer Incident"
+echo "Bounded Event Chain Demonstration"
 echo "============================================"
 echo ""
 echo "Target: $TARGET ($TARGET_IP:$TARGET_PORT)"

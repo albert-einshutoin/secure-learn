@@ -7,7 +7,7 @@
 | シナリオID | S8 |
 | 攻撃名 | ARP/Neighbor Cache 観測 |
 | 主レイヤー | L2 |
-| MITRE ATT&CK | Reconnaissance - Network Service Discovery (T1046) |
+| MITRE ATT&CK | Discovery - Remote System Discovery (T1018) |
 | 検知コンポーネント | Linux neighbor cache, Suricata flow（補助） |
 | 難易度 | 初級 |
 
@@ -15,7 +15,7 @@
 
 ## 目的
 
-Docker bridge 上で ARP と neighbor cache を観測し、L2 の事象が L3/L4 以降の到達性にどう影響するかを理解します。実ネットワークでの ARP spoofing は第三者環境に影響するため、このラボでは観測と検知に限定します。
+Docker bridge 上で ARP と neighbor cache を観測し、同じ閉域にいるremote systemの存在と、L2 の事象が L3/L4 以降の到達性にどう影響するかを理解します。service scanは行わず、ARP/neighborの観測だけではserviceやportを列挙できない限界を明示します。実ネットワークでの ARP spoofing は第三者環境に影響するため、このラボでは観測と検知に限定します。
 
 ## 攻撃手順
 
@@ -43,4 +43,4 @@ docker exec -it soc-lab-kali /bin/bash
 ## 改善課題
 
 - 重要セグメントでは ARP だけに依存せず、スイッチの DHCP snooping / Dynamic ARP Inspection を検討する
-- Docker ラボで見えない物理スイッチ側の証跡を、実運用ならどの機器で取るか整理する
+- Docker ラボから物理スイッチ側は観測できないため、実運用ならどの機器で証跡を取るか整理する

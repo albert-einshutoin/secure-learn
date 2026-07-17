@@ -275,7 +275,8 @@ test('MITRE scenario mappings describe only behavior the exercises demonstrate',
 
   assert.match(s5, /Impact - Data Manipulation \(T1565\)/);
   assert.match(s8, /Discovery - Remote System Discovery \(T1018\)/);
-  assert.doesNotMatch(s8, /T1046|Network Service Discovery|service scan/i);
+  assert.doesNotMatch(s8, /T1046|Network Service Discovery/i);
+  assert.match(s8, /service scan[^\n]*(?:行わ|does not)/i);
   assert.match(s8, /ARP[^\n]*(?:neighbor|近隣)[^\n]*(?:観測|observation)/i);
   assert.match(s8, /(?:物理|physical)[^\n]*(?:switch|スイッチ)[^\n]*(?:見え|観測でき)/i);
 });
@@ -312,7 +313,7 @@ test('generated scenario guides retain public URLs while using corrected S7 and 
   assert.match(s7, /Cross-Layer Incident/);
   assert.doesNotMatch(s7, /APT模擬|実際のAPT|Lateral Movement/i);
   assert.match(s8, /Remote System Discovery \(T1018\)/);
-  assert.doesNotMatch(s8, /T1046|Network Service Discovery|service scan/i);
+  assert.doesNotMatch(s8, /T1046|Network Service Discovery/i);
 });
 
 test('scenario scripts do not report unverified success', () => {

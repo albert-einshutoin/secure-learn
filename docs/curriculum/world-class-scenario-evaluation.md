@@ -1,13 +1,17 @@
 # Scenario Evidence Evaluation
 
-Secure Learn は、実行型ラボ S1-S15 とガイド型設計演習 S16-S33 により、ホワイトハット、SRE、バックエンド、検知、Cloud/IaC、Supply Chain、Release Governance を順番に学ぶ構成です。S16-S33の専用実クラウド、実BGP、実Kubernetesクラスタ、商用EDRは同梱していません。
+Secure Learn は、Docker実行型ラボ、Linuxホスト補助演習、運用ワークフロー演習、ガイド型設計演習により、ホワイトハット、SRE、バックエンド、検知、Cloud/IaC、Supply Chain、Release Governance を順番に学ぶ構成です。専用実クラウド、実BGP、実Kubernetesクラスタ、商用EDRは同梱していません。
 
 重要な前提として、このリポジトリは安全なローカル/コンテナ教材です。教材内の点数やチェック結果は、技能、職位、本番適合性を認定しません。本物の業務熟達には、許可された実cloud account、production-like telemetry、組織のreview/incident processで追加訓練が必要です。
 
-| 実行形式 | 範囲 | このリポジトリで確認できること |
-|----------|------|--------------------------------|
-| 実行型ラボ | S1-S15 | 同梱コンテナ、攻撃/検証スクリプト、ログ、SIEM、回帰テストによる再現 |
-| ガイド型設計演習 | S16-S33 | 設計レビュー、静的検証、tabletop、証跡テンプレート作成 |
+| 実行形式 | 件数 | 範囲 | このリポジトリで確認できること |
+|----------|-----:|------|--------------------------------|
+| Docker実行型ラボ | 11 | S1-S4, S7-S13 | 同梱コンテナ、攻撃スクリプト、ログ、SIEMによる再現と観測 |
+| Linuxホスト補助演習 | 2 | S5-S6 | 使い捨てLinux VM上のAuditd演習。Dockerだけでは完了しない |
+| 運用ワークフロー演習 | 2 | S14-S15 | 複数シナリオの証跡をincident responseやcapstoneへ統合 |
+| ガイド型設計演習 | 18 | S16-S33 | 設計レビュー、静的検証、tabletop、証跡テンプレート作成 |
+
+各ラボの実行保証は形式名ではなくmanifestのmaturityで判定します。現在値と判定根拠は [Manifest maturity coverage](coverage.md) を参照してください。
 
 ## 評価軸
 

@@ -1,22 +1,23 @@
-# S7: 横断インシデント
+# S7: Cross-Layer Incident
 
 ## 概要
 
 | 項目 | 内容 |
 |------|------|
 | シナリオID | S7 |
-| 攻撃名 | 横断インシデント（APT模擬） |
+| 攻撃名 | Cross-Layer Incident |
 | 主レイヤー | 全レイヤー |
-| MITRE ATT&CK | 複合（Reconnaissance → Initial Access → Persistence） |
-| 検知コンポーネント | Suricata, Fail2ban, Auditd, SIEM |
+| MITRE ATT&CK | T1595 Reconnaissance / T1110 Credential Access / T1190 Initial Access |
+| 検知コンポーネント | Suricata, Fail2ban, Application logs, SIEM |
 | 難易度 | 上級 |
 
 ---
 
 ## 概要
 
-このシナリオでは、実際のAPT（Advanced Persistent Threat）攻撃を模擬し、
-複数のレイヤーにまたがる攻撃チェーンを実行します。
+このシナリオは、one trust zoneの同じローカル対象に対して、偵察、認証試行、入力攻撃、負荷イベントを順番に発生させ、複数レイヤーのログを一つの時系列へ結びます。This is not an APT or lateral movement exercise. 別ホストへの侵入拡大や永続化が成立したと主張せず、成立したイベントと拒否されたイベントを証跡で区別します。
+
+公開URLと既存利用者のコマンドを壊さないため、スクリプト名 `s7_lateral.sh` はcompatibility filenameとして維持しています。ファイル名は演習内容の分類を意味しません。
 
 ### 攻撃チェーン
 
@@ -43,16 +44,16 @@
                           │
                           ▼
 ┌─────────────────────────────────────────────────────────────┐
-│ Phase 4: Persistence Attempt (S5)                          │
-│   └─> File Tampering                                       │
-│       └─> Detected by: Auditd                              │
+│ Phase 4: Path Traversal Attempt                            │
+│   └─> Encoded file path requests                           │
+│       └─> Detected by: Suricata, NestJS App                │
 └─────────────────────────────────────────────────────────────┘
                           │
                           ▼
 ┌─────────────────────────────────────────────────────────────┐
-│ Phase 5: Privilege Escalation (S6)                         │
-│   └─> sudo exploitation                                    │
-│       └─> Detected by: Auditd                              │
+│ Phase 5: Bounded High-Rate Requests                        │
+│   └─> Local request burst                                  │
+│       └─> Detected by: NestJS App, Fail2ban                │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -102,12 +103,11 @@ hydra -l admin -P /wordlists/passwords.txt \
 sqlmap -u "http://172.23.0.20:3000/users?id=1" --batch --level=3
 ```
 
-#### Phase 4-5: Post-Exploitation
+#### Phase 4: Path Traversal Attempt
 
 ```bash
-# 使い捨てLinux VM上でのみ実行（Auditd対象）
-printf 'cross-layer-test\n' >> /tmp/secure-learn-audit-target
-sudo -n /usr/bin/id
+# 閉域の教材APIに対して、拒否される入力を送る
+curl -H 'Host: app' 'http://172.23.0.20:3000/files/../../../etc/passwd'
 ```
 
 ---
@@ -119,8 +119,8 @@ sudo -n /usr/bin/id
 | 1 | L3/L4 | Suricata | SCAN alerts |
 | 2 | L7 | auth.log, Fail2ban | login_failed, Ban |
 | 3 | L7 | Suricata, error.log | SQLI alerts |
-| 4 | OS | Auditd | passwd_changes |
-| 5 | OS | Auditd | privilege_escalation |
+| 4 | L7 | Suricata, error.log | path traversal attempt |
+| 5 | L7 | access.log, Fail2ban | bounded request burst, rate limit |
 
 ---
 
@@ -128,7 +128,7 @@ sudo -n /usr/bin/id
 
 | 判定項目 | 成功条件 | 検証方法 |
 |---------|---------|---------|
-| 複数レイヤー検知 | Suricata+Fail2ban+Auditdすべてにログ | 各ログファイル確認 |
+| 複数レイヤー検知 | Suricata+Fail2ban+Application logsに関連イベント | 各ログファイル確認 |
 | 時系列相関 | 同一IPの活動が追跡可能 | Kibana Timeline |
 | 攻撃フロー可視化 | 攻撃進行が説明可能 | SOCダッシュボード |
 | MTTD算出 | 各フェーズの検知時間測定 | タイムスタンプ比較 |
@@ -148,9 +148,8 @@ docker exec soc-lab-fail2ban fail2ban-client status
 docker exec soc-lab-app cat /var/log/app/auth.log | grep login_failed | wc -l
 docker exec soc-lab-app cat /var/log/app/error.log | grep sqli | wc -l
 
-# Auditd確認（ホスト上）
-sudo ausearch -k passwd_changes
-sudo ausearch -k privilege_escalation
+# 同じsource.ipと時間帯のイベントを検索
+docker exec soc-lab-app grep -E 'login_failed|sqli|path_traversal' /var/log/app/*.log
 ```
 
 ---
@@ -192,11 +191,11 @@ docker exec soc-lab-fail2ban fail2ban-client set nestjs-sqli banip <IP>
 docker exec soc-lab-fail2ban fail2ban-client set nestjs-dos banip <IP>
 ```
 
-### 5. 根絶
+### 5. 恒久対策
 
-- バックドアの削除
-- パスワードリセット
-- 設定ファイルの復元
+- 認証rate limitとlockoutの回帰テスト
+- SQLi/path traversalの入力検証と回帰テスト
+- 検知閾値、ログ項目、runbookの改善
 
 ### 6. 復旧
 
