@@ -20,6 +20,7 @@ npm-debug.log*
 # Lab runtime output
 reports/
 results/
+/release/
 *.log
 *.pcap
 *.pcapng

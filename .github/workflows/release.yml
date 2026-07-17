@@ -1,0 +1,85 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+  artifact-metadata: write
+
+jobs:
+  release:
+    name: Verify and publish release
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout tagged source
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        with:
+          fetch-depth: 0
+
+      - name: Verify tagged commit belongs to main
+        shell: bash
+        run: |
+          git fetch --no-tags origin main:refs/remotes/origin/main
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+
+      - name: Verify tag and product version
+        id: version
+        shell: bash
+        run: |
+          version="$(tr -d '[:space:]' < VERSION)"
+          test "$GITHUB_REF_NAME" = "v$version"
+          grep -q "## \[$version\]" CHANGELOG.md
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Run source quality gate
+        run: scripts/lab_quality_gate.sh
+
+      - name: Run fresh-stack E2E gate
+        run: scripts/fresh_stack_e2e.sh
+
+      - name: Build SBOM and Trivy evidence
+        run: scripts/release_artifacts.sh
+
+      - name: Capture image digests
+        id: images
+        shell: bash
+        run: |
+          echo "app=$(docker image inspect --format '{{.Id}}' secure-learn-app:${{ steps.version.outputs.version }})" >> "$GITHUB_OUTPUT"
+          echo "suricata=$(docker image inspect --format '{{.Id}}' secure-learn-suricata:${{ steps.version.outputs.version }})" >> "$GITHUB_OUTPUT"
+
+      - name: Attest application SBOM
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4
+        with:
+          subject-name: secure-learn-app:${{ steps.version.outputs.version }}
+          subject-digest: ${{ steps.images.outputs.app }}
+          sbom-path: release/secure-learn-app-${{ steps.version.outputs.version }}.spdx.json
+
+      - name: Attest Suricata SBOM
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4
+        with:
+          subject-name: secure-learn-suricata:${{ steps.version.outputs.version }}
+          subject-digest: ${{ steps.images.outputs.suricata }}
+          sbom-path: release/secure-learn-suricata-${{ steps.version.outputs.version }}.spdx.json
+
+      - name: Upload release evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: secure-learn-${{ steps.version.outputs.version }}-security-evidence
+          path: release
+          if-no-files-found: error
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" release/* \
+            --verify-tag \
+            --title "Secure Learn ${{ steps.version.outputs.version }}" \
+            --generate-notes \
+            --latest

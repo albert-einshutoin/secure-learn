@@ -127,6 +127,12 @@ RUN_CHAOS=1 scripts/incident_drill.sh
 
 # ローカル総合ゲート
 scripts/lab_quality_gate.sh
+
+# 起動済み環境を必須にしてruntime検証まで実行
+REQUIRE_RUNTIME=1 scripts/lab_quality_gate.sh
+
+# 空Volumeから起動、S3検知、SIEM投入まで検証（専用環境を自動削除）
+scripts/fresh_stack_e2e.sh
 ```
 
 ### フェーズ別 Learning Docker
@@ -284,6 +290,8 @@ docker compose -f docker-compose.yml -f docker-compose.alerting.yml up -d --buil
 ## ドキュメント
 
 - [セットアップガイド](docs/setup.md)
+- [変更履歴](CHANGELOG.md)
+- [リリースポリシー](docs/release-policy.md)
 - [SOCプレイブック](docs/soc-playbook.md)
 - [カリキュラム概要](docs/curriculum/overview.md)
 - [OSI学習マップ](docs/curriculum/osi-learning-map.md)

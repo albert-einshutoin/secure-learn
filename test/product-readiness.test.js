@@ -296,6 +296,21 @@ test('release contract includes version, changelog, SBOM, and vulnerability scan
   assert.match(workflow, /SBOM/i);
   assert.match(workflow, /Trivy/i);
   assert.match(workflow, /attest/i);
+  assert.match(workflow, /fetch-depth:\s*0/);
+  assert.match(workflow, /merge-base --is-ancestor/);
+});
+
+test('GitHub Actions dependencies are pinned to immutable commits', () => {
+  const workflowFiles = fs
+    .readdirSync(path.join(root, '.github/workflows'))
+    .filter((name) => name.endsWith('.yml'));
+
+  for (const file of workflowFiles) {
+    const uses = [...read(`.github/workflows/${file}`).matchAll(/^\s*uses:\s*([^\s#]+)/gm)];
+    for (const match of uses) {
+      assert.match(match[1], /@[a-f0-9]{40}$/, `${file}: ${match[1]}`);
+    }
+  }
 });
 
 test('example environment only advertises configuration consumed by Compose', () => {
