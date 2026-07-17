@@ -2,11 +2,13 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const { spawnSync } = require('node:child_process');
 const { loadManifests, loadStandards, validateManifest } = require('../scripts/lib/curriculum');
 const test = require('node:test');
 
 const root = path.resolve(__dirname, '..');
 const learnScript = path.join(root, 'scripts', 'learn');
+const coverageGenerator = path.join(root, 'scripts', 'generate_curriculum_coverage.js');
 
 function runLearn(args, options = {}) {
   return require('node:child_process').spawnSync(process.execPath, [learnScript, ...args], {
@@ -568,4 +570,121 @@ test('learner CLI rejects untrusted argv without reflecting it', () => {
     assert.equal(result.stderr, 'Invalid command input.\n');
     assert.doesNotMatch(result.stderr, /secret|\u001b|xxxx/);
   }
+});
+
+test('curriculum coverage is deterministic and reflects every manifest without overstatement', () => {
+  const firstRun = spawnSync(process.execPath, [coverageGenerator], {
+    cwd: os.tmpdir(),
+    encoding: 'utf8',
+  });
+  assert.equal(firstRun.status, 0, firstRun.stderr);
+  const reportPath = path.join(root, 'docs', 'curriculum', 'coverage.md');
+  const first = fs.readFileSync(reportPath);
+
+  const secondRun = spawnSync(process.execPath, [coverageGenerator], {
+    cwd: root,
+    encoding: 'utf8',
+  });
+  assert.equal(secondRun.status, 0, secondRun.stderr);
+  const second = fs.readFileSync(reportPath);
+  assert.deepEqual(second, first);
+
+  const report = second.toString('utf8');
+  assert.match(report, /^# Curriculum Runtime Coverage$/m);
+  assert.match(report, /\| documented \| 1 \|\n\| runnable \| 12 \|\n\| verified \| 0 \|\n\| external \| 2 \|/);
+  assert.match(report, /Documentation does not count as runtime verification\./);
+
+  const rows = report
+    .split('\n')
+    .filter((line) => /^\| s(?:[1-9]|1[0-5]) \|/.test(line));
+  assert.deepEqual(
+    rows.map((line) => line.match(/^\| (s(?:[1-9]|1[0-5])) \|/)[1]),
+    Array.from({ length: 15 }, (_, index) => `s${index + 1}`),
+  );
+});
+
+test('curriculum coverage check detects drift without mutating the tracked report', () => {
+  const reportPath = path.join(root, 'docs', 'curriculum', 'coverage.md');
+  const canonical = fs.readFileSync(reportPath);
+  const passing = spawnSync(process.execPath, [coverageGenerator, '--check'], {
+    cwd: os.tmpdir(),
+    encoding: 'utf8',
+  });
+  assert.equal(passing.status, 0, passing.stderr);
+  assert.deepEqual(fs.readFileSync(reportPath), canonical);
+
+  const drifted = Buffer.from('# stale coverage\n');
+  fs.writeFileSync(reportPath, drifted);
+  try {
+    const failing = spawnSync(process.execPath, [coverageGenerator, '--check'], {
+      cwd: os.tmpdir(),
+      encoding: 'utf8',
+    });
+    assert.equal(failing.status, 1);
+    assert.equal(failing.stdout, '');
+    assert.equal(
+      failing.stderr,
+      'Curriculum coverage is stale. Run node scripts/generate_curriculum_coverage.js and commit the result.\n',
+    );
+    assert.deepEqual(fs.readFileSync(reportPath), drifted);
+  } finally {
+    fs.writeFileSync(reportPath, canonical);
+  }
+});
+
+test('curriculum coverage generator rejects unknown arguments and unsafe output links', (t) => {
+  const unknown = spawnSync(process.execPath, [coverageGenerator, '--output', '/tmp/report'], {
+    cwd: os.tmpdir(),
+    encoding: 'utf8',
+  });
+  assert.equal(unknown.status, 2);
+  assert.equal(unknown.stdout, '');
+  assert.equal(unknown.stderr, 'Usage: node scripts/generate_curriculum_coverage.js [--check]\n');
+
+  const reportPath = path.join(root, 'docs', 'curriculum', 'coverage.md');
+  const canonical = fs.readFileSync(reportPath);
+  const target = path.join(os.tmpdir(), `secure-learn-coverage-target-${process.pid}-${Date.now()}`);
+  fs.writeFileSync(target, 'outside\n');
+  fs.unlinkSync(reportPath);
+  fs.symlinkSync(target, reportPath);
+  t.after(() => {
+    fs.rmSync(reportPath, { force: true });
+    fs.writeFileSync(reportPath, canonical);
+    fs.rmSync(target, { force: true });
+  });
+
+  const linked = spawnSync(process.execPath, [coverageGenerator], {
+    cwd: os.tmpdir(),
+    encoding: 'utf8',
+  });
+  assert.equal(linked.status, 1);
+  assert.equal(linked.stdout, '');
+  assert.equal(linked.stderr, 'Refusing to write curriculum coverage through an unsafe path.\n');
+  assert.equal(fs.readFileSync(target, 'utf8'), 'outside\n');
+});
+
+test('curriculum gates derive maturity only from manifests', (t) => {
+  const curriculumCheck = fs.readFileSync(path.join(root, 'scripts', 'curriculum_check.sh'), 'utf8');
+  const worldClass = fs.readFileSync(path.join(root, 'scripts', 'world_class_curriculum_check.sh'), 'utf8');
+  const handsOn = fs.readFileSync(path.join(root, 'scripts', 'world_class_hands_on_check.sh'), 'utf8');
+
+  assert.match(curriculumCheck, /generate_curriculum_coverage\.js" --check/);
+  assert.doesNotMatch(worldClass, /required_terms|missing required curriculum term/);
+  assert.match(worldClass, /curriculum_check\.sh/);
+  assert.match(handsOn, /loadManifests/);
+  assert.doesNotMatch(handsOn, /verified_count|present_count|documented_count|warn_count/);
+
+  const reportDir = fs.mkdtempSync(path.join(os.tmpdir(), 'secure-learn-hands-on-'));
+  t.after(() => fs.rmSync(reportDir, { recursive: true, force: true }));
+  const result = spawnSync(path.join(root, 'scripts', 'world_class_hands_on_check.sh'), ['linux'], {
+    cwd: os.tmpdir(),
+    encoding: 'utf8',
+    env: { ...process.env, REPORT_DIR: reportDir },
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /Curriculum maturity: documented=1 runnable=12 verified=0 external=2/);
+  assert.match(result.stdout, /Supporting material:/);
+  const report = fs.readFileSync(path.join(reportDir, 'summary.md'), 'utf8');
+  assert.match(report, /## Curriculum maturity\n\n- documented: 1\n- runnable: 12\n- verified: 0\n- external: 2/);
+  assert.match(report, /## Supporting material/);
 });
