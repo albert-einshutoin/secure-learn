@@ -156,7 +156,7 @@
           "type": "array",
           "items": {
             "type": "string",
-            "pattern": "^[^\\u0000-\\u001F\\u007F]*$"
+            "pattern": "^[^\\u0000-\\u001F\\u007F\\u0080-\\u009F]*$"
           }
         }
       }

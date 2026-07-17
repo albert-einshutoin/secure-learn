@@ -29,7 +29,7 @@ const EVIDENCE_FIELDS = ['required'];
 const ASSESSMENT_FIELDS = ['mode', 'verifier'];
 const EXECUTION_SPEC_FIELDS = ['path', 'args'];
 const SAFE_LOGICAL_PATH = /^(?!\/)(?!.*\/\/)(?!.*(?:^|\/)\.{1,2}(?:\/|$))[A-Za-z0-9._@+=,-]+(?:\/[A-Za-z0-9._@+=,-]+)*$/;
-const CONTROL_CHARACTER = /[\u0000-\u001F\u007F]/;
+const CONTROL_CHARACTER = /[\u0000-\u001F\u007F\u0080-\u009F]/;
 
 /**
  * Validate the maturity gates shared by every lab manifest.

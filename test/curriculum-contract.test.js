@@ -115,6 +115,12 @@ test('execution specs preserve argv boundaries without accepting unsafe paths or
     'workflow.attack.args must be an array of strings without control characters',
     'runnable lab requires workflow.attack',
   ]);
+
+  manifest.workflow.attack = { path: 'scripts/scenario_e2e_check.sh', args: ['bad\u009Barg'] };
+  assert.deepEqual(validateManifest(manifest), [
+    'workflow.attack.args must be an array of strings without control characters',
+    'runnable lab requires workflow.attack',
+  ]);
 });
 
 test('lab manifest validator rejects malformed fields, unknown keys, and unsafe paths', () => {
