@@ -100,6 +100,7 @@
         "properties": {
           "workflow": {
             "properties": {
+              "attack": { "$ref": "#/$defs/logicalPath" },
               "verify": { "$ref": "#/$defs/logicalPath" },
               "remediate": { "$ref": "#/$defs/logicalPath" },
               "regress": { "$ref": "#/$defs/logicalPath" }

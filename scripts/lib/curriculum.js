@@ -80,6 +80,9 @@ function validateManifest(manifest) {
   if (candidate.maturity === 'verified') {
     const workflow = candidate.workflow || {};
     const assessment = candidate.assessment || {};
+    if (!workflow.attack || !SAFE_LOGICAL_PATH.test(workflow.attack)) {
+      errors.push('verified lab requires workflow.attack');
+    }
     if (!workflow.verify) errors.push('verified lab requires workflow.verify');
     if (!workflow.remediate) errors.push('verified lab requires workflow.remediate');
     if (!workflow.regress) errors.push('verified lab requires workflow.regress');

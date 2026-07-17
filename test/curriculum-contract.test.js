@@ -78,6 +78,20 @@ test('verified lab manifests require their complete quality workflow', () => {
   ]);
 });
 
+test('verified lab manifests require a safe attack workflow path', () => {
+  const manifest = validManifest();
+  manifest.maturity = 'verified';
+  manifest.workflow.attack = null;
+  manifest.workflow.verify = 'verify/scripts/s1_verify.sh';
+  manifest.workflow.remediate = 'remediate/scripts/s1_remediate.sh';
+  manifest.workflow.regress = 'regress/scripts/s1_regress.sh';
+  manifest.assessment.verifier = 'assessment/scripts/s1_verify.sh';
+
+  assert.deepEqual(validateManifest(manifest), [
+    'verified lab requires workflow.attack',
+  ]);
+});
+
 test('lab manifest validator rejects malformed fields, unknown keys, and unsafe paths', () => {
   const manifest = validManifest();
   manifest.version = 0;
