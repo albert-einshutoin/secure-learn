@@ -68,6 +68,7 @@ test('fails closed when the manifest safety policy is malformed or unsafe', () =
   const policies = [
     null,
     { ...safety, external_network: true },
+    { ...safety, undocumented_override: true },
     { ...safety, target_services: ['app;id'] },
     { ...safety, allowed_cidrs: ['172.23.0.1/24'] },
     { ...safety, allowed_cidrs: ['8.8.8.0/24'] },

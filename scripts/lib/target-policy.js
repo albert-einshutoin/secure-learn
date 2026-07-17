@@ -47,6 +47,8 @@ function validateSafety(safety) {
     safety === null
     || typeof safety !== 'object'
     || Array.isArray(safety)
+    || Object.getPrototypeOf(safety) !== Object.prototype
+    || Object.keys(safety).some((key) => !['target_services', 'allowed_cidrs', 'external_network'].includes(key))
     || safety.external_network !== false
     || !Array.isArray(safety.target_services)
     || !Array.isArray(safety.allowed_cidrs)
