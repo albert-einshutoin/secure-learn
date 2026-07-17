@@ -21,6 +21,7 @@ services:
         ipv4_address: 172.23.0.30
     volumes:
       - ./attack/scripts:/scripts:ro
+      - ./scripts/lib/target_guard.sh:/secure-learn-target-guard.sh:ro
       - ./attack/wordlists:/wordlists:ro
       - attack_results:/results
     environment:
@@ -296,6 +297,7 @@ networks:
   # Application network - Kali to Suricata/App and App to DB
   app_net:
     driver: bridge
+    internal: true
     ipam:
       config:
         - subnet: 172.23.0.0/24

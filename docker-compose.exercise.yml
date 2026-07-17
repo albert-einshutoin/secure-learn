@@ -25,12 +25,16 @@ services:
         ipv4_address: 172.32.0.10
     volumes:
       - ./attack/scripts:/scripts:ro
+      - ./scripts/lib/target_guard.sh:/secure-learn-target-guard.sh:ro
       - ./attack/wordlists:/wordlists:ro
       - red_results:/results
     command: /bin/bash
     environment:
       - TEAM=RED
+      - SECURE_LEARN_TARGET_PROFILE=exercise
+      - TARGET=target-app
       - TARGET_IP=172.32.0.100
+      - TARGET_PORT=3000
 
   # ============================================
   # Blue Team Zone
@@ -316,6 +320,7 @@ networks:
   # Red Team network (isolated)
   red_team:
     driver: bridge
+    internal: true
     ipam:
       config:
         - subnet: 172.30.0.0/24
@@ -330,6 +335,7 @@ networks:
   # Shared target network (DMZ)
   shared_target:
     driver: bridge
+    internal: true
     ipam:
       config:
         - subnet: 172.32.0.0/24
