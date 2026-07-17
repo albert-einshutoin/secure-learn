@@ -11,6 +11,7 @@ TRIVY_IMAGE='aquasec/trivy:0.72.0@sha256:cffe3f5161a47a6823fbd23d985795b3ed72a4c
 SYFT_IMAGE='anchore/syft:v1.48.0@sha256:b4f1df79f97b817682d8b5ff941eb6bfe74f6172553a5e312c75bbc2eabc405c'
 APP_IMAGE="secure-learn-app:$VERSION"
 SURICATA_IMAGE="secure-learn-suricata:$VERSION"
+IPS_IMAGE="secure-learn-ips-iptables:$VERSION"
 
 [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
   echo "VERSION must use semantic x.y.z form: $VERSION" >&2
@@ -21,6 +22,7 @@ mkdir -p "$OUTPUT_DIR"
 
 docker build -t "$APP_IMAGE" "$ROOT_DIR/app"
 docker build -t "$SURICATA_IMAGE" "$ROOT_DIR/suricata"
+docker build -t "$IPS_IMAGE" "$ROOT_DIR/docker/ips-iptables"
 
 scan_image() {
   local image="$1"
@@ -49,8 +51,10 @@ generate_sbom() {
 
 scan_image "$APP_IMAGE" "$OUTPUT_DIR/secure-learn-app-$VERSION.trivy.json"
 scan_image "$SURICATA_IMAGE" "$OUTPUT_DIR/secure-learn-suricata-$VERSION.trivy.json"
+scan_image "$IPS_IMAGE" "$OUTPUT_DIR/secure-learn-ips-iptables-$VERSION.trivy.json"
 generate_sbom "$APP_IMAGE" "$OUTPUT_DIR/secure-learn-app-$VERSION.spdx.json"
 generate_sbom "$SURICATA_IMAGE" "$OUTPUT_DIR/secure-learn-suricata-$VERSION.spdx.json"
+generate_sbom "$IPS_IMAGE" "$OUTPUT_DIR/secure-learn-ips-iptables-$VERSION.spdx.json"
 
 (
   cd "$OUTPUT_DIR"

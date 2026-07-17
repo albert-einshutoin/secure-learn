@@ -225,6 +225,26 @@ jobs:
       - name: Scan release images and generate SBOMs
         run: scripts/release_artifacts.sh
 
+      - name: Verify IPS helper without network access
+        run: |
+          version="$(tr -d '[:space:]' < VERSION)"
+          docker run --rm --network none "secure-learn-ips-iptables:$version" iptables --version
+
+      # NET_ADMIN is required only inside this disposable, networkless namespace
+      # because the production helper owns its lab-local NFQUEUE rules.
+      - name: Smoke-test IPS NFQUEUE rule lifecycle
+        run: |
+          version="$(tr -d '[:space:]' < VERSION)"
+          docker run --rm --network none --cap-add NET_ADMIN \
+            "secure-learn-ips-iptables:$version" sh -euc '
+              chain=SECURE_LEARN_CI
+              cleanup() { iptables -F "$chain" 2>/dev/null || true; iptables -X "$chain" 2>/dev/null || true; }
+              trap cleanup EXIT
+              iptables -N "$chain"
+              iptables -A "$chain" -p tcp --dport 3000 -j NFQUEUE --queue-num 0
+              iptables -C "$chain" -p tcp --dport 3000 -j NFQUEUE --queue-num 0
+            '
+
       - name: Upload security evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
