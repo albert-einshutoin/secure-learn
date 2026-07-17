@@ -305,10 +305,10 @@ function ensureReceiptDirectory(repositoryRoot) {
 
 function writeVmReceiptAtomic(outputPath, receipt, options = {}) {
   const repositoryRoot = options.repositoryRoot || fs.realpathSync(path.resolve(__dirname, '../..'));
+  const fsImpl = options.fsImpl || fs;
   const { requested } = resolveReceiptPath(outputPath, repositoryRoot);
   validateReceiptContract(receipt, receipt && receipt.lab_id, options.now || new Date());
   ensureReceiptDirectory(repositoryRoot);
-  if (fs.existsSync(requested)) throw new Error('Linux VM receipt already exists.');
 
   const temporary = path.join(
     path.dirname(requested),
@@ -316,39 +316,45 @@ function writeVmReceiptAtomic(outputPath, receipt, options = {}) {
   );
   let descriptor;
   try {
-    descriptor = fs.openSync(
+    descriptor = fsImpl.openSync(
       temporary,
-      fs.constants.O_WRONLY | fs.constants.O_CREAT | fs.constants.O_EXCL | fs.constants.O_NOFOLLOW,
+      fsImpl.constants.O_WRONLY | fsImpl.constants.O_CREAT | fsImpl.constants.O_EXCL | fsImpl.constants.O_NOFOLLOW,
       0o600,
     );
     const payload = `${JSON.stringify(receipt, null, 2)}\n`;
     if (Buffer.byteLength(payload, 'utf8') > MAX_RECEIPT_BYTES) {
       throw new Error('Linux VM receipt is too large.');
     }
-    fs.fchmodSync(descriptor, 0o600);
-    fs.writeFileSync(descriptor, payload, 'utf8');
-    fs.fsyncSync(descriptor);
-    fs.closeSync(descriptor);
+    fsImpl.fchmodSync(descriptor, 0o600);
+    fsImpl.writeFileSync(descriptor, payload, 'utf8');
+    fsImpl.fsyncSync(descriptor);
+    fsImpl.closeSync(descriptor);
     descriptor = undefined;
-    // Node has no openat/renameat2-no-replace. Restricting output to a direct
-    // basename in this checked 0700 directory reduces the remaining race to
-    // the same trusted uid. Recheck immediately before the atomic rename.
-    assertSecureAncestry(fs.realpathSync(repositoryRoot), path.dirname(requested));
-    if (fs.existsSync(requested)) throw new Error('Linux VM receipt already exists.');
-    fs.renameSync(temporary, requested);
-    const published = fs.lstatSync(requested);
+    // Publishing by hard link is the only built-in no-clobber primitive here:
+    // EEXIST preserves a concurrently-created target. Unsupported filesystems
+    // fail closed; copy or rename fallbacks could overwrite learner evidence.
+    try {
+      fsImpl.linkSync(temporary, requested);
+    } catch (error) {
+      if (error && error.code === 'EEXIST') throw new Error('Linux VM receipt already exists.');
+      throw error;
+    }
+    const published = fsImpl.lstatSync(requested);
     if (!published.isFile() || published.isSymbolicLink() || (published.mode & 0o777) !== 0o600) {
       throw new Error('Linux VM receipt publication failed.');
     }
-    const directoryDescriptor = fs.openSync(path.dirname(requested), fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
+    const directoryDescriptor = fsImpl.openSync(
+      path.dirname(requested),
+      fsImpl.constants.O_RDONLY | fsImpl.constants.O_NOFOLLOW,
+    );
     try {
-      fs.fsyncSync(directoryDescriptor);
+      fsImpl.fsyncSync(directoryDescriptor);
     } finally {
-      fs.closeSync(directoryDescriptor);
+      fsImpl.closeSync(directoryDescriptor);
     }
   } finally {
-    if (descriptor !== undefined) fs.closeSync(descriptor);
-    fs.rmSync(temporary, { force: true });
+    if (descriptor !== undefined) fsImpl.closeSync(descriptor);
+    fsImpl.rmSync(temporary, { force: true });
   }
 }
 
