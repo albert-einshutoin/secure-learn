@@ -658,14 +658,10 @@ Create executable `scripts/curriculum_check.sh` that:
 ```bash
 node --test "$ROOT_DIR/test/curriculum-contract.test.js" "$ROOT_DIR/test/target-policy.test.js" "$ROOT_DIR/test/evidence-contract.test.js"
 node "$ROOT_DIR/scripts/learn" validate
-snapshot="$(mktemp)"
-cp "$ROOT_DIR/docs/curriculum/coverage.md" "$snapshot"
-node "$ROOT_DIR/scripts/generate_curriculum_coverage.js"
-cmp "$snapshot" "$ROOT_DIR/docs/curriculum/coverage.md"
-rm -f "$snapshot"
+node "$ROOT_DIR/scripts/generate_curriculum_coverage.js" --check
 ```
 
-Use a trap to remove the snapshot on failure.
+The check mode must compare expected and tracked bytes without modifying the working tree.
 
 - [ ] **Step 5: Retain compatibility without keyword-based maturity**
 

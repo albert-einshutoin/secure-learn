@@ -10,6 +10,8 @@ fail() {
   exit 1
 }
 
+"$ROOT_DIR/scripts/curriculum_check.sh"
+
 node --check "$ROOT_DIR/scripts/generate_scenario_html.js"
 node --check "$ROOT_DIR/scripts/generate_learning_phase_html.js"
 
@@ -24,42 +26,6 @@ PY
 
 scenario_count=$(find "$ROOT_DIR/docs/scenario-guides" -maxdepth 1 -type f -name 's*.html' | wc -l | tr -d ' ')
 [[ "$scenario_count" -ge 33 ]] || fail "expected at least 33 scenario guides, found $scenario_count"
-
-required_terms=(
-  'cgroups'
-  'seccomp'
-  'eBPF'
-  'SYN backlog'
-  'mTLS'
-  'BGP'
-  'QUIC'
-  'Helm'
-  'Admission Controller'
-  'AWS IAM'
-  'KMS'
-  'Terraform'
-  'OPA'
-  'burn-rate'
-  'OpenTelemetry'
-  'Kafka'
-  'Temporal'
-  'schema migration'
-  'SSRF'
-  'BOLA'
-  'SBOM'
-  'SAST'
-  'Sigma'
-  'YARA'
-  'Sysmon'
-  'flamegraph'
-  'feature flag'
-  'CVE'
-  'CVSS'
-)
-
-for term in "${required_terms[@]}"; do
-  grep -R -F -q "$term" "$ROOT_DIR/learning/phases.json" "$ROOT_DIR/scripts/generate_scenario_html.js" "$ROOT_DIR/docs" || fail "missing required curriculum term: $term"
-done
 
 for file in "$ROOT_DIR"/docs/scenario-guides/s*.html "$ROOT_DIR"/docs/learning-phases/p*.html; do
   grep -q '抽象的に何を学ぶか' "$file" || fail "$(basename "$file") missing abstract explanation"

@@ -7,13 +7,30 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TOPIC="${1:-all}"
 REPORT_DIR="${REPORT_DIR:-$ROOT_DIR/reports/world_class_hands_on_$(date +%Y%m%d_%H%M%S)}"
 REPORT_FILE="$REPORT_DIR/summary.md"
+NODE_BIN="$(command -v node)"
 
 mkdir -p "$REPORT_DIR"
 
-verified_count=0
-present_count=0
-documented_count=0
-warn_count=0
+support_verified=0
+support_present=0
+support_documented=0
+support_warn=0
+
+maturity_line="$("$NODE_BIN" - "$ROOT_DIR" <<'NODE'
+const path = require('node:path');
+const root = path.resolve(process.argv[2]);
+const { loadManifests } = require(path.join(root, 'scripts', 'lib', 'curriculum'));
+const counts = { documented: 0, runnable: 0, verified: 0, external: 0 };
+for (const manifest of loadManifests(root)) counts[manifest.maturity] += 1;
+process.stdout.write([
+  counts.documented,
+  counts.runnable,
+  counts.verified,
+  counts.external,
+].join('\t'));
+NODE
+)"
+IFS=$'\t' read -r maturity_documented maturity_runnable maturity_verified maturity_external <<< "$maturity_line"
 
 record() {
   local status="$1"
@@ -21,10 +38,10 @@ record() {
   local detail="$3"
 
   case "$status" in
-    VERIFIED) verified_count=$((verified_count + 1)) ;;
-    PRESENT) present_count=$((present_count + 1)) ;;
-    DOCUMENTED) documented_count=$((documented_count + 1)) ;;
-    WARN) warn_count=$((warn_count + 1)) ;;
+    VERIFIED) support_verified=$((support_verified + 1)) ;;
+    PRESENT) support_present=$((support_present + 1)) ;;
+    DOCUMENTED) support_documented=$((support_documented + 1)) ;;
+    WARN) support_warn=$((support_warn + 1)) ;;
   esac
 
   printf '| %s | %s | %s |\n' "$status" "$topic" "$detail" >> "$REPORT_FILE"
@@ -209,22 +226,36 @@ run_topic() {
   echo
   echo "- Date: $(date -Iseconds)"
   echo "- Topic: $TOPIC"
+  echo
+  echo "## Curriculum maturity"
+  echo
+  echo "- documented: $maturity_documented"
+  echo "- runnable: $maturity_runnable"
+  echo "- verified: $maturity_verified"
+  echo "- external: $maturity_external"
+  echo
+  echo "Maturity is derived only from validated lab manifests."
+  echo
+  echo "## Supporting material"
+  echo
+  echo "The checks below inventory supporting files, prose, and commands. They do not change curriculum maturity."
 } > "$REPORT_FILE"
 
 run_topic "$TOPIC"
 
 {
   echo
-  echo "## Summary"
+  echo "## Supporting material summary"
   echo
-  echo "- VERIFIED: $verified_count"
-  echo "- PRESENT: $present_count"
-  echo "- DOCUMENTED: $documented_count"
-  echo "- WARN: $warn_count"
+  echo "- VERIFIED: $support_verified"
+  echo "- PRESENT: $support_present"
+  echo "- DOCUMENTED: $support_documented"
+  echo "- WARN: $support_warn"
   echo
   echo "VERIFIED means a command ran successfully. PRESENT and DOCUMENTED do not prove runtime behavior or production mastery."
 } >> "$REPORT_FILE"
 
 echo
-echo "Summary: VERIFIED=$verified_count PRESENT=$present_count DOCUMENTED=$documented_count WARN=$warn_count"
+echo "Curriculum maturity: documented=$maturity_documented runnable=$maturity_runnable verified=$maturity_verified external=$maturity_external"
+echo "Supporting material: VERIFIED=$support_verified PRESENT=$support_present DOCUMENTED=$support_documented WARN=$support_warn"
 echo "Report written to: $REPORT_FILE"

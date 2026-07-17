@@ -9,6 +9,7 @@ const test = require('node:test');
 const root = path.resolve(__dirname, '..');
 const learnScript = path.join(root, 'scripts', 'learn');
 const coverageGenerator = path.join(root, 'scripts', 'generate_curriculum_coverage.js');
+const { renderCoverage } = require('../scripts/generate_curriculum_coverage');
 
 function runLearn(args, options = {}) {
   return require('node:child_process').spawnSync(process.execPath, [learnScript, ...args], {
@@ -601,6 +602,15 @@ test('curriculum coverage is deterministic and reflects every manifest without o
     rows.map((line) => line.match(/^\| (s(?:[1-9]|1[0-5])) \|/)[1]),
     Array.from({ length: 15 }, (_, index) => `s${index + 1}`),
   );
+});
+
+test('curriculum coverage escapes manifest values before placing them in Markdown cells', () => {
+  const manifest = validManifest();
+  manifest.title = 'Title | <unsafe>\nnext line';
+  const report = renderCoverage([manifest]);
+
+  assert.match(report, /Title &#124; &lt;unsafe&gt; next line/);
+  assert.doesNotMatch(report, /\| Title \| <unsafe>/);
 });
 
 test('curriculum coverage check detects drift without mutating the tracked report', () => {
