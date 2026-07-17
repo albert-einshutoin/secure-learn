@@ -16,8 +16,13 @@ services:
       context: ./docker/ips-iptables
     image: secure-learn-ips-iptables:local
     container_name: soc-lab-ips-iptables
+    cap_drop:
+      - ALL
     cap_add:
       - NET_ADMIN
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
     network_mode: "service:suricata"
     command: >
       sh -c "

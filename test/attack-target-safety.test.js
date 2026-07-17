@@ -329,9 +329,22 @@ test('attack networks are internal even when Docker Compose is unavailable', () 
 test('IPS helper installs iptables at build time and never fetches packages at runtime', () => {
   const compose = fs.readFileSync(path.join(root, 'docker-compose.ips.yml'), 'utf8');
   const dockerfile = fs.readFileSync(path.join(root, 'docker/ips-iptables/Dockerfile'), 'utf8');
+  const helperMatch = compose.match(/^  ips-iptables:\n((?: {4}.*\n|\s*\n)*)/m);
 
   assert.match(compose, /ips-iptables:\n\s+build:\n\s+context: \.\/docker\/ips-iptables/);
   assert.doesNotMatch(compose, /apk add/);
+  assert.ok(helperMatch, 'missing ips-iptables service');
+  const helper = helperMatch[1];
+  assert.match(helper, /^    cap_drop:\n      - ALL\n(?=    \S)/m);
+  assert.match(helper, /^    cap_add:\n      - NET_ADMIN\n(?=    \S)/m);
+  assert.match(helper, /^    security_opt:\n      - no-new-privileges:true\n(?=    \S)/m);
+  assert.match(helper, /^    read_only: true$/m);
+  for (const directive of ['cap_drop', 'cap_add', 'security_opt', 'read_only']) {
+    assert.equal((helper.match(new RegExp(`^    ${directive}:`, 'gm')) || []).length, 1);
+  }
+  assert.ok(helper.indexOf('    cap_drop:') < helper.indexOf('    cap_add:'));
+  assert.ok(helper.indexOf('    cap_add:') < helper.indexOf('    security_opt:'));
+  assert.ok(helper.indexOf('    security_opt:') < helper.indexOf('    read_only:'));
   assert.match(dockerfile, /^FROM alpine:3\.22@sha256:14358309a308569c32bdc37e2e0e9694be33a9d99e68afb0f5ff33cc1f695dce$/m);
   assert.match(dockerfile, /^RUN apk add --no-cache iptables=1\.8\.11-r1$/m);
 });
@@ -368,11 +381,20 @@ test('shared IPS verifier uses fixed Docker argv and rejects unsafe image refere
   const accepted = runScript('scripts/verify_ips_helper.sh', fake, {}, [image]);
   assert.equal(accepted.status, 0, accepted.stderr);
   const calls = fs.readFileSync(fake.marker, 'utf8');
-  assert.equal((calls.match(/^<call>$/gm) || []).length, 2);
-  assert.match(calls, /--network\nnone\nsecure-learn-ips-iptables:1\.0\.0\niptables\n--version/);
-  assert.match(calls, /--network\nnone\n--cap-add\nNET_ADMIN\nsecure-learn-ips-iptables:1\.0\.0\nsh\n-euc/);
-  assert.match(calls, /NFQUEUE/);
-  assert.match(calls, /iptables -C/);
+  const dockerCalls = calls.split('<call>\n').filter(Boolean);
+  assert.equal(dockerCalls.length, 2);
+  assert.equal(
+    dockerCalls[0].trimEnd(),
+    'run\n--rm\n--network\nnone\n--cap-drop\nALL\n--security-opt\nno-new-privileges:true\n--read-only\nsecure-learn-ips-iptables:1.0.0\niptables\n--version',
+  );
+  assert.match(
+    dockerCalls[1],
+    /^run\n--rm\n--network\nnone\n--cap-drop\nALL\n--cap-add\nNET_ADMIN\n--security-opt\nno-new-privileges:true\n--read-only\nsecure-learn-ips-iptables:1\.0\.0\nsh\n-euc\n/,
+  );
+  assert.equal((dockerCalls[1].match(/^--cap-drop$/gm) || []).length, 1);
+  assert.equal((dockerCalls[1].match(/^--cap-add$/gm) || []).length, 1);
+  assert.match(dockerCalls[1], /NFQUEUE/);
+  assert.match(dockerCalls[1], /iptables -C/);
 
   for (const malicious of ['-evil', 'image;id', '$(id)', 'https://example.com/image', 'UPPER/repo:tag', 'repo tag']) {
     fs.rmSync(fake.marker, { force: true });

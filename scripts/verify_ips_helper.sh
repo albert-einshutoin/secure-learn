@@ -16,11 +16,20 @@ if [[ "$image" == -* || ! "$image" =~ $image_pattern ]]; then
   exit 2
 fi
 
-docker run --rm --network none "$image" iptables --version
+docker run --rm --network none \
+  --cap-drop ALL \
+  --security-opt no-new-privileges:true \
+  --read-only \
+  "$image" iptables --version
 
 # NET_ADMIN is limited to a disposable, networkless namespace because the
 # production helper owns only the lab-local firewall and NFQUEUE lifecycle.
-docker run --rm --network none --cap-add NET_ADMIN "$image" sh -euc '
+docker run --rm --network none \
+  --cap-drop ALL \
+  --cap-add NET_ADMIN \
+  --security-opt no-new-privileges:true \
+  --read-only \
+  "$image" sh -euc '
   chain=SECURE_LEARN_VERIFY
   cleanup() {
     iptables -F "$chain" 2>/dev/null || true
