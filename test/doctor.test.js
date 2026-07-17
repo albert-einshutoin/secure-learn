@@ -120,3 +120,22 @@ test('doctor dependency injection cannot be activated by product environment var
   }), /not ready/);
   assert.equal(checks, 1);
 });
+
+test('Linux doctor binds the receipt to the lab and reports its operator-attested assurance', () => {
+  const manifest = {
+    id: 's5',
+    platforms: { required: ['linux-vm'] },
+    safety: { target_services: [], allowed_cidrs: [], external_network: false },
+  };
+  let receiptCall;
+  const output = doctorManifest(manifest, {
+    platform: 'linux',
+    repositoryRoot: root,
+    env: { SECURE_LEARN_VM_RECEIPT: 'evidence/vm-receipts/s5.json' },
+    validateReceipt: (...args) => { receiptCall = args; },
+  });
+  assert.equal(receiptCall[0], 'evidence/vm-receipts/s5.json');
+  assert.equal(receiptCall[1].expectedLabId, 's5');
+  assert.equal(receiptCall[1].repositoryRoot, root);
+  assert.match(output, /^Platform ready: linux-vm \(operator-attested local VM receipt\)\n/);
+});

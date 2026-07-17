@@ -6,6 +6,7 @@ const test = require('node:test');
 
 const {
   createVmReceipt,
+  readIdentityFile,
   validateVmReceipt,
   writeVmReceiptAtomic,
 } = require('../scripts/lib/vm-receipt');
@@ -27,6 +28,10 @@ function validReceipt(overrides = {}) {
     nonce: '1'.repeat(64),
     machine_id_sha256: HASH_A,
     boot_id_sha256: HASH_B,
+    assurance: 'operator-attested-local-vm',
+    adapter_marker_sha256: 'c'.repeat(64),
+    provisioning_nonce: 'd'.repeat(64),
+    virtualization_provider: 'qemu-kvm',
     ...overrides,
   };
 }
@@ -113,6 +118,10 @@ test('rejects unknown fields, wrong lab, invalid time windows, identifiers, and 
     [validReceipt({ nonce: 'x'.repeat(64) }), /nonce/],
     [validReceipt({ machine_id_sha256: 'a'.repeat(63) }), /machine/],
     [validReceipt({ boot_id_sha256: 'B'.repeat(64) }), /boot/],
+    [validReceipt({ assurance: 'cryptographic-attestation' }), /unsupported contract/],
+    [validReceipt({ adapter_marker_sha256: 'c'.repeat(63) }), /adapter marker/],
+    [validReceipt({ provisioning_nonce: 'D'.repeat(64) }), /provisioning nonce/],
+    [validReceipt({ virtualization_provider: 'aws' }), /virtualization provider/],
   ];
 
   for (const [receipt, error] of cases) {
@@ -139,6 +148,10 @@ test('issuer creates a Linux-only, lab-bound receipt without external commands',
     now: () => NOW,
     randomBytes: () => Buffer.alloc(32, 0xcd),
     readIdentity: (source) => source.includes('machine-id') ? Buffer.from('machine-id-001\n') : Buffer.from('boot-id-001\n'),
+    validateAdapter: () => ({
+      marker: { provisioning_nonce: 'e'.repeat(64), virtualization_provider: 'qemu-kvm' },
+      markerSha256: 'f'.repeat(64),
+    }),
   });
   assert.equal(receipt.lab_id, 's6');
   assert.equal(receipt.issued_at, NOW.toISOString());
@@ -146,6 +159,8 @@ test('issuer creates a Linux-only, lab-bound receipt without external commands',
   assert.equal(receipt.nonce, 'cd'.repeat(32));
   assert.match(receipt.machine_id_sha256, /^[0-9a-f]{64}$/);
   assert.match(receipt.boot_id_sha256, /^[0-9a-f]{64}$/);
+  assert.equal(receipt.assurance, 'operator-attested-local-vm');
+  assert.equal(receipt.adapter_marker_sha256, 'f'.repeat(64));
 
   assert.throws(() => createVmReceipt({ labId: 's5', snapshotId: 'snapshot-001' }, {
     platform: 'darwin',
@@ -163,6 +178,73 @@ test('issuer writes a private receipt atomically without replacing an existing r
     fs.readdirSync(path.dirname(output)).filter((name) => name.includes('.tmp-')),
     [],
   );
+});
+
+test('identity reader consumes size-zero procfs content from one bounded descriptor', () => {
+  const content = Buffer.from('boot-id-001\n');
+  let offset = 0;
+  let closes = 0;
+  const fsImpl = {
+    constants: { O_RDONLY: 0, O_NOFOLLOW: 0x100 },
+    openSync: () => 17,
+    fstatSync: () => ({ isFile: () => true, size: 0 }),
+    readSync: (_fd, buffer, bufferOffset, length) => {
+      const count = Math.min(length, content.length - offset);
+      if (count === 0) return 0;
+      content.copy(buffer, bufferOffset, offset, offset + count);
+      offset += count;
+      return count;
+    },
+    closeSync: () => { closes += 1; },
+  };
+  assert.deepEqual(readIdentityFile('/proc/fake-boot-id', { fsImpl }), content);
+  assert.equal(closes, 1);
+});
+
+test('identity reader rejects empty and over-limit streams even when stat size is zero', () => {
+  function fakeFs(byteCount) {
+    let remaining = byteCount;
+    return {
+      constants: { O_RDONLY: 0, O_NOFOLLOW: 0x100 },
+      openSync: () => 18,
+      fstatSync: () => ({ isFile: () => true, size: 0 }),
+      readSync: (_fd, buffer, offset, length) => {
+        const count = Math.min(length, remaining);
+        buffer.fill(0x61, offset, offset + count);
+        remaining -= count;
+        return count;
+      },
+      closeSync: () => {},
+    };
+  }
+  assert.throws(() => readIdentityFile('/proc/empty', { fsImpl: fakeFs(0) }), /identity source/);
+  assert.throws(() => readIdentityFile('/proc/large', { fsImpl: fakeFs(4 * 1024 + 1) }), /identity source/);
+});
+
+test('real Linux procfs boot ID can be read despite reporting zero size', { skip: process.platform !== 'linux' }, () => {
+  assert.match(readIdentityFile('/proc/sys/kernel/random/boot_id').toString('utf8').trim(), /^[0-9a-f-]{36}$/);
+});
+
+test('receipt output accepts only a direct JSON basename in the trusted directory', (t) => {
+  const tempRoot = makeRoot(t);
+  const outside = path.join(tempRoot, 'outside.json');
+  const externalDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'secure-learn-receipt-external-'));
+  const externalTarget = path.join(externalDirectory, 'receipt.json');
+  fs.symlinkSync(externalDirectory, path.join(tempRoot, 'evidence', 'vm-receipts', 'nested'));
+  t.after(() => fs.rmSync(externalDirectory, { recursive: true, force: true }));
+  for (const output of [
+    'evidence/vm-receipts/nested/receipt.json',
+    'evidence/vm-receipts/../outside.json',
+    'evidence/vm-receipts/bad\\name.json',
+    'evidence/vm-receipts/not-json.txt',
+  ]) {
+    assert.throws(() => writeVmReceiptAtomic(output, validReceipt(), {
+      repositoryRoot: tempRoot,
+      now: NOW,
+    }), /direct JSON file|trusted receipt/);
+  }
+  assert.equal(fs.existsSync(outside), false);
+  assert.equal(fs.existsSync(externalTarget), false);
 });
 
 test('receipt issuer is executable, dependency-free, and keeps generated receipts ignored', () => {

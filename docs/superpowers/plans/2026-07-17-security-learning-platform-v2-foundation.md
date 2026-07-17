@@ -412,11 +412,15 @@ git commit -m "feat(curriculum): inventory legacy labs honestly"
 - Create: `scripts/lib/target-policy.js`
 - Create: `scripts/lib/doctor.js`
 - Create: `scripts/lib/vm-receipt.js`
+- Create: `scripts/lib/vm-adapter.js`
 - Create: `test/target-policy.test.js`
 - Create: `test/doctor.test.js`
 - Create: `test/vm-receipt.test.js`
 - Create: `scripts/learn`
 - Create: `scripts/issue-vm-receipt`
+- Create: `scripts/provision-vm-adapter`
+- Create: `curriculum/schema/vm-adapter-marker.schema.json`
+- Create: `docs/vm-adapter.md`
 - Modify: `.gitignore`
 
 - [ ] **Step 1: Write failing safety tests**
@@ -475,7 +479,26 @@ Create executable `scripts/learn` in Node.js. Implement:
 
 Use `spawnSync` with fixed executable candidates, argument arrays, a sanitized environment, bounded output and timeout; never use `shell: true`. Product code must not contain a readiness bypass. Tests inject process dependencies into the doctor module instead.
 
-The VM receipt is a local disposable-VM readiness receipt, not cryptographic attestation. `scripts/issue-vm-receipt <s5|s6> <snapshot-id> [receipt-path]` issues it inside Linux only from `/etc/machine-id`, the current boot ID, a cryptographic nonce, and a maximum four-hour validity window. Stored receipts live only below ignored `evidence/vm-receipts/`, use mode `0600`, and are opened with `O_NOFOLLOW` through one checked descriptor. The validator rejects unknown fields, another lab or VM boot, unsafe ancestry, symlinks, stale/future timestamps, oversized input, and non-canonical identifiers.
+The VM receipt is an operator-attested local disposable-VM readiness receipt,
+not cryptographic attestation. First run
+`sudo scripts/provision-vm-adapter <snapshot-id> --acknowledge-disposable-snapshot`
+inside a supported local VM. Provisioning is
+Linux/root-only, rejects containers, bare metal, and cloud-provider evidence,
+and writes the root-owned fixed marker
+`/etc/secure-learn/vm-adapter.json`. The acknowledgement is not proof that a
+hypervisor snapshot API was called; a root operator can forge this non-cryptographic
+local safety control.
+
+`scripts/issue-vm-receipt <s5|s6> <snapshot-id> [receipt-name.json]` verifies
+the marker, current local virtualization evidence, snapshot label, and marker
+age before issuing from `/etc/machine-id`, the current boot ID, a cryptographic
+nonce, and a maximum four-hour validity window. Stored receipts are direct JSON
+children of ignored `evidence/vm-receipts/`, use mode `0600`, and are opened
+with `O_NOFOLLOW` through one checked descriptor. The validator rejects unknown
+fields, another lab or VM boot, unsafe ancestry, symlinks, stale/future
+timestamps, oversized input, and non-canonical identifiers. Procfs identity
+files are bounded by bytes actually read because their reported size may be
+zero.
 
 - [ ] **Step 5: Add CLI contract tests**
 
@@ -486,10 +509,11 @@ Append to `test/curriculum-contract.test.js` using `spawnSync(process.execPath, 
 Run:
 
 ```bash
-chmod +x scripts/learn scripts/issue-vm-receipt
-node --test test/curriculum-contract.test.js test/target-policy.test.js test/doctor.test.js test/vm-receipt.test.js
+chmod +x scripts/learn scripts/issue-vm-receipt scripts/provision-vm-adapter
+node --test test/curriculum-contract.test.js test/target-policy.test.js test/doctor.test.js test/vm-receipt.test.js test/vm-adapter.test.js
 node --check scripts/learn
 node --check scripts/issue-vm-receipt
+node --check scripts/provision-vm-adapter
 ```
 
 Expected: all tests pass.
