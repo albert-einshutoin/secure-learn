@@ -19,6 +19,29 @@ const STAGES = [
   'cleanup',
 ];
 
+const BASE_SAFETY = Object.freeze({
+  target_services: Object.freeze(['app']),
+  allowed_cidrs: Object.freeze(['172.23.0.0/24']),
+  external_network: false,
+});
+const INCIDENT_SAFETY = Object.freeze({
+  target_services: Object.freeze(['localhost']),
+  allowed_cidrs: Object.freeze(['127.0.0.1/32']),
+  external_network: false,
+});
+
+function context(overrides = {}) {
+  return { safety: BASE_SAFETY, ...overrides };
+}
+
+function createReceipt(input, trustedContext = context()) {
+  return createEvidence(input, trustedContext);
+}
+
+function verifyReceipt(receipt, trustedContext = context()) {
+  return verifyEvidence(receipt, trustedContext);
+}
+
 function passingResults() {
   return Object.fromEntries(STAGES.map((stage) => [stage, true]));
 }
@@ -111,13 +134,13 @@ test('creates deterministic evidence hashes without hashing the hash field', () 
   const input = validInput({
     results: { ...passingResults(), control: false, regression: false },
   });
-  const first = createEvidence(input);
-  const second = createEvidence(input);
+  const first = createReceipt(input);
+  const second = createReceipt(input);
 
   assert.equal(first.sha256, second.sha256);
   assert.match(first.sha256, /^[a-f0-9]{64}$/);
   assert.equal(first.outcome, 'control');
-  assert.match(createEvidence(validInput({ target: 'app' })).sha256, /^[a-f0-9]{64}$/);
+  assert.match(createReceipt(validInput({ target: 'app' })).sha256, /^[a-f0-9]{64}$/);
 
   const { sha256, ...body } = first;
   const recreated = createHash('sha256').update(JSON.stringify(sortForHash(body))).digest('hex');
@@ -125,17 +148,53 @@ test('creates deterministic evidence hashes without hashing the hash field', () 
 });
 
 test('sorts result keys deterministically while preserving meaningful changes', () => {
-  const first = createEvidence(validInput());
-  const reordered = createEvidence(validInput({ results: Object.fromEntries(Object.entries(passingResults()).reverse()) }));
-  const changedTarget = createEvidence(validInput({ target: 'api' }));
+  const first = createReceipt(validInput());
+  const reordered = createReceipt(validInput({ results: Object.fromEntries(Object.entries(passingResults()).reverse()) }));
+  const changedTarget = createReceipt(validInput({ target: '172.23.0.20' }));
   assert.equal(first.sha256, reordered.sha256);
   assert.notEqual(first.sha256, changedTarget.sha256);
+});
+
+test('requires trusted manifest safety and hashes its canonical independent snapshot', () => {
+  assert.throws(() => createEvidence(validInput()), /context/);
+  assert.throws(() => createEvidence(validInput(), {}), /safety must be an own context field/);
+  assert.throws(
+    () => createEvidence(validInput(), { safety: { ...BASE_SAFETY, external_network: true } }),
+    /invalid safety policy/,
+  );
+  assert.throws(
+    () => createEvidence(validInput(), { safety: { ...BASE_SAFETY, allowed_cidrs: ['0.0.0.0/0'] } }),
+    /invalid safety policy/,
+  );
+
+  const firstSafety = {
+    target_services: ['target-api', 'app'],
+    allowed_cidrs: ['192.168.10.0/24', '172.23.0.0/24'],
+    external_network: false,
+  };
+  const secondSafety = {
+    target_services: [...firstSafety.target_services].reverse(),
+    allowed_cidrs: [...firstSafety.allowed_cidrs].reverse(),
+    external_network: false,
+  };
+  const first = createEvidence(validInput(), { safety: firstSafety });
+  const reordered = createEvidence(validInput(), { safety: secondSafety });
+  assert.equal(first.sha256, reordered.sha256);
+  assert.deepEqual(first.target_policy, {
+    allowed_cidrs: ['172.23.0.0/24', '192.168.10.0/24'],
+    external_network: false,
+    target_services: ['app', 'target-api'],
+  });
+  assert.equal(Object.isFrozen(first.target_policy), true);
+  assert.equal(Object.isFrozen(first.target_policy.allowed_cidrs), true);
+  firstSafety.target_services[0] = 'changed';
+  assert.deepEqual(first.target_policy.target_services, ['app', 'target-api']);
 });
 
 test('does not mutate or retain references and deeply freezes the receipt', () => {
   const input = validInput();
   const original = structuredClone(input);
-  const evidence = createEvidence(input);
+  const evidence = createReceipt(input);
   assert.deepEqual(input, original);
 
   input.results.attack = false;
@@ -147,42 +206,45 @@ test('does not mutate or retain references and deeply freezes the receipt', () =
   assert.equal(evidence.results.attack, true);
 });
 
-test('restricts target to an explicit local service or canonical IPv4 descriptor', () => {
-  for (const target of ['app', 'localhost', 'secure-learn-api', 'app.internal', '172.23.0.20']) {
-    assert.equal(createEvidence(validInput({ target })).target, target);
+test('binds targets to the trusted manifest safety boundary', () => {
+  for (const target of ['app', '172.23.0.20']) {
+    assert.equal(createReceipt(validInput({ target })).target, target);
   }
   for (const target of ['', ' app', 'app ', 'APP', '-app', 'app-', 'http://app', 'user@app', 'app/path',
     'app;id', '127.1', '0177.0.0.1', '2130706433', '0x7f000001', '0x7f.0.0.1',
-    '256.1.1.1', 'Cafe\u0301']) {
-    assert.throws(() => createEvidence(validInput({ target })), /target/);
+    '256.1.1.1', 'Cafe\u0301', '8.8.8.8', '1.1.1.1', '169.254.169.254', '224.0.0.1',
+    '0.0.0.0', 'evil.attacker.com', 'localhost', '127.0.0.1']) {
+    assert.throws(() => createReceipt(validInput({ target })), /target|prohibited/);
   }
+  assert.equal(createReceipt(validInput({ target: 'localhost' }), { safety: INCIDENT_SAFETY }).target, 'localhost');
+  assert.equal(createReceipt(validInput({ target: '127.0.0.1' }), { safety: INCIDENT_SAFETY }).target, '127.0.0.1');
 });
 
 test('rejects unsupported target types and unknown schema fields without secret guessing', () => {
   for (const target of [undefined, Number.NaN, Infinity, -0, 1n, () => {}, Symbol('x')]) {
-    assert.throws(() => createEvidence(validInput({ target })), /target/);
+    assert.throws(() => createReceipt(validInput({ target })), /target/);
   }
-  assert.throws(() => createEvidence(validInput({ target: {} })), /target/);
-  assert.throws(() => createEvidence({ ...validInput(), api_token: 'do-not-store' }), /unknown evidence field: api_token/);
+  assert.throws(() => createReceipt(validInput({ target: {} })), /target/);
+  assert.throws(() => createReceipt({ ...validInput(), api_token: 'do-not-store' }), /unknown evidence field: api_token/);
 });
 
 test('validates strict root fields, canonical timestamps, and bounded duration', () => {
-  assert.throws(() => createEvidence(validInput({ lab: '' })), /lab/);
-  assert.throws(() => createEvidence(validInput({ manifest_version: 0 })), /manifest_version/);
-  assert.throws(() => createEvidence(validInput({ platform: 'Docker Desktop' })), /platform/);
-  assert.throws(() => createEvidence(validInput({ started_at: '2026-07-17T09:00:00+09:00' })), /canonical UTC/);
-  assert.throws(() => createEvidence(validInput({ started_at: '2026-02-30T00:00:00Z' })), /canonical UTC/);
-  assert.throws(() => createEvidence(validInput({ ended_at: '2026-07-16T23:59:59Z' })), /ended_at must not precede started_at/);
-  assert.throws(() => createEvidence(validInput({ ended_at: '2026-07-19T00:00:01Z' })), /duration/);
-  assert.throws(() => createEvidence({ ...validInput(), sha256: 'injected' }), /unknown evidence field: sha256/);
-  assert.throws(() => createEvidence({ ...validInput(), outcome: 'verified' }), /unknown evidence field: outcome/);
-  assert.throws(() => createEvidence({ ...validInput(), note: 'x\ncontrol' }), /unknown evidence field: note/);
+  assert.throws(() => createReceipt(validInput({ lab: '' })), /lab/);
+  assert.throws(() => createReceipt(validInput({ manifest_version: 0 })), /manifest_version/);
+  assert.throws(() => createReceipt(validInput({ platform: 'Docker Desktop' })), /platform/);
+  assert.throws(() => createReceipt(validInput({ started_at: '2026-07-17T09:00:00+09:00' })), /canonical UTC/);
+  assert.throws(() => createReceipt(validInput({ started_at: '2026-02-30T00:00:00Z' })), /canonical UTC/);
+  assert.throws(() => createReceipt(validInput({ ended_at: '2026-07-16T23:59:59Z' })), /ended_at must not precede started_at/);
+  assert.throws(() => createReceipt(validInput({ ended_at: '2026-07-19T00:00:01Z' })), /duration/);
+  assert.throws(() => createReceipt({ ...validInput(), sha256: 'injected' }), /unknown evidence field: sha256/);
+  assert.throws(() => createReceipt({ ...validInput(), outcome: 'verified' }), /unknown evidence field: outcome/);
+  assert.throws(() => createReceipt({ ...validInput(), note: 'x\ncontrol' }), /unknown evidence field: note/);
 });
 
 test('requires every field to be an own property and accepts null-prototype records', () => {
   const pollutedPrototype = { polluted: true };
   const input = Object.assign(Object.create(pollutedPrototype), validInput());
-  assert.throws(() => createEvidence(input), /evidence input must be a plain object/);
+  assert.throws(() => createReceipt(input), /evidence input must be a plain object/);
 
   for (const stage of STAGES) {
     Object.prototype[stage] = true;
@@ -200,7 +262,7 @@ test('requires every field to be an own property and accepts null-prototype reco
     try {
       const inheritedRoot = validInput();
       delete inheritedRoot[field];
-      assert.throws(() => createEvidence(inheritedRoot), new RegExp(`${field} must be an own evidence field`));
+      assert.throws(() => createReceipt(inheritedRoot), new RegExp(`${field} must be an own evidence field`));
     } finally {
       delete Object.prototype[field];
     }
@@ -208,52 +270,68 @@ test('requires every field to be an own property and accepts null-prototype reco
 
   const nullResults = Object.assign(Object.create(null), passingResults());
   const nullInput = Object.assign(Object.create(null), validInput({ results: nullResults }));
-  assert.equal(createEvidence(nullInput).outcome, 'verified');
+  assert.equal(createReceipt(nullInput).outcome, 'verified');
 });
 
 test('verifies canonical receipts and returns false for integrity tampering', () => {
-  const evidence = createEvidence(validInput());
-  assert.equal(verifyEvidence(evidence), true);
+  const evidence = createReceipt(validInput());
+  assert.equal(verifyReceipt(evidence), true);
 
   for (const change of [
     { outcome: 'control' },
     { sha256: `${evidence.sha256.slice(0, 63)}${evidence.sha256.endsWith('0') ? '1' : '0'}` },
-    { target: 'api' },
+    { target: '172.23.0.20' },
     { results: { ...evidence.results, attack: false } },
   ]) {
-    assert.equal(verifyEvidence({ ...structuredClone(evidence), ...change }), false);
+    assert.equal(verifyReceipt({ ...structuredClone(evidence), ...change }), false);
   }
 });
 
+test('rejects trusted-policy mismatch even if an embedded permissive policy is rehashed', () => {
+  const evidence = structuredClone(createReceipt(validInput()));
+  const wrongLabSafety = {
+    target_services: ['target-api'],
+    allowed_cidrs: ['172.24.0.0/24'],
+    external_network: false,
+  };
+  assert.equal(verifyEvidence(evidence, { safety: wrongLabSafety }), false);
+
+  evidence.target_policy.allowed_cidrs.push('10.0.0.0/8');
+  evidence.target_policy.allowed_cidrs.sort();
+  const { sha256, ...body } = evidence;
+  evidence.sha256 = createHash('sha256').update(JSON.stringify(sortForHash(body))).digest('hex');
+  assert.equal(verifyReceipt(evidence), false);
+});
+
 test('rejects malformed receipt shapes before integrity comparison', () => {
-  const evidence = structuredClone(createEvidence(validInput()));
+  const evidence = structuredClone(createReceipt(validInput()));
   for (const [field, inheritedValue] of Object.entries(evidence)) {
     Object.prototype[field] = inheritedValue;
     try {
       const missingOwnField = { ...evidence };
       delete missingOwnField[field];
-      assert.throws(() => verifyEvidence(missingOwnField), new RegExp(`${field} must be an own evidence field`));
+      assert.throws(() => verifyReceipt(missingOwnField), new RegExp(`${field} must be an own evidence field`));
     } finally {
       delete Object.prototype[field];
     }
   }
-  assert.throws(() => verifyEvidence({ ...evidence, sha256: 'not-a-hash' }), /sha256/);
-  assert.throws(() => verifyEvidence({ ...evidence, extra: true }), /unknown evidence field: extra/);
-  assert.throws(() => verifyEvidence(null), /evidence must be a plain object/);
+  assert.throws(() => verifyReceipt({ ...evidence, sha256: 'not-a-hash' }), /sha256/);
+  assert.throws(() => verifyReceipt({ ...evidence, extra: true }), /unknown evidence field: extra/);
+  assert.throws(() => verifyReceipt(null), /evidence must be a plain object/);
 });
 
 test('bounds creation and verification against an injectable valid clock', () => {
   const now = Date.parse('2026-07-17T00:10:00Z');
   const input = validInput({ ended_at: '2026-07-17T00:15:00Z' });
-  const boundary = createEvidence(input, { clock: () => now });
-  assert.equal(verifyEvidence(boundary, { clock: () => now }), true);
-  assert.equal(verifyEvidence(boundary, { clock: () => Date.parse('2027-07-17T00:00:00Z') }), true);
+  const boundary = createReceipt(input, context({ now: () => now }));
+  assert.equal(verifyReceipt(boundary, context({ now: () => now })), true);
+  assert.equal(verifyReceipt(boundary, context({ now: () => Date.parse('2027-07-17T00:00:00Z') })), true);
 
   assert.throws(
-    () => createEvidence(validInput({ ended_at: '2026-07-17T00:15:00.001Z' }), { clock: () => now }),
+    () => createReceipt(validInput({ ended_at: '2026-07-17T00:15:00.001Z' }), context({ now: () => now })),
     /future/,
   );
-  assert.throws(() => verifyEvidence(boundary, { clock: () => Date.parse('2026-07-17T00:09:59Z') }), /future/);
-  assert.throws(() => createEvidence(validInput(), { clock: () => Number.NaN }), /clock/);
-  assert.throws(() => createEvidence(validInput(), { clock: 'now' }), /clock/);
+  assert.throws(() => verifyReceipt(boundary, context({ now: () => Date.parse('2026-07-17T00:09:59Z') })), /future/);
+  assert.throws(() => createReceipt(validInput(), context({ now: () => Number.NaN })), /now/);
+  assert.throws(() => createReceipt(validInput(), context({ now: 'now' })), /now/);
 });
