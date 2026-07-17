@@ -3,7 +3,24 @@
 
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SCRIPT_PATH="${BASH_SOURCE[0]}"
+SCRIPT_DIR="${SCRIPT_PATH%/*}"
+if [[ "$SCRIPT_DIR" == "$SCRIPT_PATH" ]]; then
+  SCRIPT_DIR=.
+fi
+ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd -P)"
+source "$ROOT_DIR/scripts/lib/target_guard.sh"
+
+APP_BASE_URL="${APP_BASE_URL:-http://127.0.0.1:3000}"
+APP_HEALTH_URL="${APP_HEALTH_URL:-${APP_BASE_URL}/health}"
+ELASTICSEARCH_URL="${ELASTICSEARCH_URL:-http://127.0.0.1:9200}"
+KIBANA_URL="${KIBANA_URL:-http://127.0.0.1:5601}"
+
+secure_learn_validate_exact_loopback_endpoint APP_BASE_URL "$APP_BASE_URL" "http://127.0.0.1:3000"
+secure_learn_validate_exact_loopback_endpoint APP_HEALTH_URL "$APP_HEALTH_URL" "http://127.0.0.1:3000/health"
+secure_learn_validate_exact_loopback_endpoint ELASTICSEARCH_URL "$ELASTICSEARCH_URL" "http://127.0.0.1:9200"
+secure_learn_validate_exact_loopback_endpoint KIBANA_URL "$KIBANA_URL" "http://127.0.0.1:5601"
+
 REQUIRE_RUNTIME="${REQUIRE_RUNTIME:-0}"
 
 verify_generator_idempotency() {
@@ -86,8 +103,6 @@ git -C "$ROOT_DIR" diff --check
 
 echo
 echo "[10/10] Optional runtime smoke"
-APP_BASE_URL="${APP_BASE_URL:-http://localhost:3000}"
-APP_HEALTH_URL="${APP_HEALTH_URL:-${APP_BASE_URL%/}/health}"
 if curl -fsS "$APP_HEALTH_URL" >/dev/null 2>&1; then
   APP_URL="$APP_HEALTH_URL" "$ROOT_DIR/scripts/sre_smoke.sh"
   BASE_URL="$APP_BASE_URL" "$ROOT_DIR/scripts/backend_hands_on_tests.sh"
@@ -100,8 +115,8 @@ else
   echo "App is not running at $APP_HEALTH_URL; skipping SRE smoke."
 fi
 
-if curl -fsS "${ELASTICSEARCH_URL:-http://127.0.0.1:9200}/_cluster/health" >/dev/null 2>&1 \
-  && curl -fsS "${KIBANA_URL:-http://127.0.0.1:5601}/api/status" >/dev/null 2>&1; then
+if curl -fsS "$ELASTICSEARCH_URL/_cluster/health" >/dev/null 2>&1 \
+  && curl -fsS "$KIBANA_URL/api/status" >/dev/null 2>&1; then
   "$ROOT_DIR/scripts/siem_e2e_check.sh"
 else
   if [[ "$REQUIRE_RUNTIME" == "1" ]]; then

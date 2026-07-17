@@ -65,8 +65,16 @@ secure_learn_validate_bounded_decimal() {
 }
 
 secure_learn_validate_loopback_base_url() {
-    if [[ "$1" != "http://127.0.0.1:3000" ]]; then
-        echo "ERROR: BASE_URL must be the loopback-only Secure Learn endpoint http://127.0.0.1:3000." >&2
+    secure_learn_validate_exact_loopback_endpoint BASE_URL "$1" "http://127.0.0.1:3000"
+}
+
+secure_learn_validate_exact_loopback_endpoint() {
+    local name="$1"
+    local value="$2"
+    local expected="$3"
+
+    if [[ "$value" != "$expected" ]]; then
+        echo "ERROR: $name must be the canonical loopback endpoint $expected." >&2
         return 64
     fi
 }
