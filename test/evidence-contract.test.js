@@ -67,6 +67,29 @@ test('keeps every failure stage separate and uses the documented first-failure o
   assert.equal(classifyOutcome({ ...passingResults(), cleanup: false }), 'cleanup');
 });
 
+test('keeps the plan examples explicit without treating omitted stages as success', () => {
+  assert.equal(classifyOutcome({
+    environment: true, safety: true, startup: true, attack: true, telemetry: true,
+    pipeline: true, control: true, regression: true, evidence: true, cleanup: true,
+  }), 'verified');
+  assert.equal(classifyOutcome({
+    environment: true, safety: true, startup: true, attack: true, telemetry: false,
+    pipeline: false, control: true, regression: true, evidence: true, cleanup: true,
+  }), 'telemetry');
+  assert.equal(classifyOutcome({
+    environment: true, safety: true, startup: true, attack: true, telemetry: true,
+    pipeline: true, control: false, regression: true, evidence: true, cleanup: true,
+  }), 'control');
+  assert.equal(classifyOutcome({
+    environment: true, safety: true, startup: true, attack: true, telemetry: true,
+    pipeline: true, control: true, regression: true, evidence: true, cleanup: false,
+  }), 'cleanup');
+
+  assert.throws(() => classifyOutcome({
+    attack: true, telemetry: true, pipeline: true, control: true, regression: true, cleanup: true,
+  }), /environment must be a boolean/);
+});
+
 test('fails closed for missing, non-boolean, or unknown outcome fields', () => {
   assert.throws(() => classifyOutcome({ ...passingResults(), attack: 1 }), /attack must be a boolean/);
   assert.throws(() => classifyOutcome({ ...passingResults(), attack: undefined }), /attack must be a boolean/);

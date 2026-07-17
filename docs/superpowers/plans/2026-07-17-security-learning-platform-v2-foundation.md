@@ -551,17 +551,17 @@ const test = require('node:test');
 const { classifyOutcome, createEvidence } = require('../scripts/lib/evidence');
 
 test('keeps attack, telemetry, pipeline, control, regression, and cleanup separate', () => {
-  assert.equal(classifyOutcome({ attack: true, telemetry: true, pipeline: true, control: true, regression: true, cleanup: true }), 'verified');
-  assert.equal(classifyOutcome({ attack: true, telemetry: false, pipeline: false, control: true, regression: true, cleanup: true }), 'telemetry');
-  assert.equal(classifyOutcome({ attack: true, telemetry: true, pipeline: true, control: false, regression: true, cleanup: true }), 'control');
-  assert.equal(classifyOutcome({ attack: true, telemetry: true, pipeline: true, control: true, regression: true, cleanup: false }), 'cleanup');
+  assert.equal(classifyOutcome({ environment: true, safety: true, startup: true, attack: true, telemetry: true, pipeline: true, control: true, regression: true, evidence: true, cleanup: true }), 'verified');
+  assert.equal(classifyOutcome({ environment: true, safety: true, startup: true, attack: true, telemetry: false, pipeline: false, control: true, regression: true, evidence: true, cleanup: true }), 'telemetry');
+  assert.equal(classifyOutcome({ environment: true, safety: true, startup: true, attack: true, telemetry: true, pipeline: true, control: false, regression: true, evidence: true, cleanup: true }), 'control');
+  assert.equal(classifyOutcome({ environment: true, safety: true, startup: true, attack: true, telemetry: true, pipeline: true, control: true, regression: true, evidence: true, cleanup: false }), 'cleanup');
 });
 
 test('creates deterministic evidence hashes without hashing the hash field', () => {
   const input = {
     lab: 's1', manifest_version: 1, platform: 'docker-desktop',
     started_at: '2026-07-17T00:00:00Z', ended_at: '2026-07-17T00:01:00Z',
-    target: 'app', results: { attack: true, telemetry: true, pipeline: true, control: false, regression: false, cleanup: true },
+    target: 'app', results: { environment: true, safety: true, startup: true, attack: true, telemetry: true, pipeline: true, control: false, regression: false, evidence: false, cleanup: true },
   };
   const first = createEvidence(input);
   const second = createEvidence(input);
@@ -570,6 +570,8 @@ test('creates deterministic evidence hashes without hashing the hash field', () 
   assert.equal(first.outcome, 'control');
 });
 ```
+
+All ten stage values are required booleans. A missing stage is unverified evidence, so it must fail closed instead of being interpreted as a successful check.
 
 - [ ] **Step 2: Verify module-not-found failure**
 
