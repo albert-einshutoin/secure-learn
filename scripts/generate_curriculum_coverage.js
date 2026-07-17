@@ -12,6 +12,7 @@ const MATURITY_ORDER = Object.freeze(['documented', 'runnable', 'verified', 'ext
 const USAGE = 'Usage: node scripts/generate_curriculum_coverage.js [--check]';
 const STALE = 'Curriculum coverage is stale. Run node scripts/generate_curriculum_coverage.js and commit the result.';
 const UNSAFE_PATH = 'Refusing to write curriculum coverage through an unsafe path.';
+const WRITE_FAILED = 'Unable to write curriculum coverage safely. Check repository permissions and free space.';
 
 function escapeCell(value) {
   return String(value)
@@ -130,8 +131,8 @@ function main(argv = process.argv.slice(2)) {
   try {
     writeCoverageAtomically(OUTPUT, expected);
     return 0;
-  } catch {
-    process.stderr.write(UNSAFE_PATH + '\n');
+  } catch (error) {
+    process.stderr.write((error.message === UNSAFE_PATH ? UNSAFE_PATH : WRITE_FAILED) + '\n');
     return 1;
   }
 }

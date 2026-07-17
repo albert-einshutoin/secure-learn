@@ -7,9 +7,14 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TOPIC="${1:-all}"
 REPORT_DIR="${REPORT_DIR:-$ROOT_DIR/reports/world_class_hands_on_$(date +%Y%m%d_%H%M%S)}"
 REPORT_FILE="$REPORT_DIR/summary.md"
-NODE_BIN="$(command -v node)"
+NODE_BIN="$(command -v node || true)"
 
 mkdir -p "$REPORT_DIR"
+
+[[ -x "$NODE_BIN" ]] || {
+  echo "world-class hands-on check failed: node is unavailable" >&2
+  exit 1
+}
 
 support_verified=0
 support_present=0

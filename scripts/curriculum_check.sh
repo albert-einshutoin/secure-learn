@@ -4,7 +4,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-NODE_BIN="$(command -v node)"
+NODE_BIN="$(command -v node || true)"
 
 [[ -x "$NODE_BIN" ]] || {
   echo "curriculum check failed: node is unavailable" >&2
