@@ -65,6 +65,7 @@ echo "============================================"
 
 # Run Hydra attack
 echo "Running Hydra..."
+hydra_status=0
 hydra -l "$USERNAME" \
     -P "$WORDLIST" \
     -s "$TARGET_PORT" \
@@ -72,7 +73,11 @@ hydra -l "$USERNAME" \
     -V \
     "$TARGET" \
     http-post-form "/auth/login:username=^USER^&password=^PASS^:Invalid" \
-    > "$OUTPUT_FILE" 2>&1 || true
+    > "$OUTPUT_FILE" 2>&1 || hydra_status=$?
+
+# A remediated target normally makes Hydra exit without finding credentials.
+# Preserve that expected status as evidence instead of silently discarding it.
+echo "Hydra exit status: $hydra_status" >> "$OUTPUT_FILE"
 
 # Show results
 echo ""
@@ -92,7 +97,7 @@ echo "Checking if attack IP is banned..."
 banned_check=$(curl -s --connect-timeout 5 "http://$TARGET:$TARGET_PORT/auth/login" 2>&1 || echo "CONNECTION_REFUSED")
 
 if echo "$banned_check" | grep -q "CONNECTION_REFUSED\|timeout\|Connection refused"; then
-    echo "  [✓] BANNED: Connection refused (Fail2ban working)"
+    echo "  [PASS] Connection refused after repeated attempts"
 else
     echo "  [!] NOT BANNED: Still able to connect"
 fi
@@ -114,9 +119,8 @@ echo "3. Kibana:"
 echo "   - Search: event.action:login_failed"
 echo "   - Search: event.module:fail2ban AND event.action:ban"
 echo ""
-echo "Success Criteria:"
-echo "  [✓] auth.log shows login_failed events"
-echo "  [✓] Fail2ban bans the attacking IP"
-echo "  [✓] Connection is refused after ban"
-echo "  [✓] Events visible in Kibana"
-
+echo "Verification still required:"
+echo "  [ ] auth.log shows login_failed events"
+echo "  [ ] Suricata records authentication attack telemetry"
+echo "  [ ] Events are indexed in Elasticsearch"
+echo "Run on the host: scripts/scenario_e2e_check.sh S2"

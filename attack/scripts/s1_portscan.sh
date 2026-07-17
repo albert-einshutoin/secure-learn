@@ -29,7 +29,10 @@ run_scan() {
     echo "[$scan_name] Running: $scan_type"
     echo "  Output: $output_file"
     
-    eval "$scan_type" > "$output_file" 2>&1 || true
+    if ! eval "$scan_type" > "$output_file" 2>&1; then
+        echo "  ERROR: scan failed; see $output_file" >&2
+        return 1
+    fi
     
     echo "  Done."
     echo ""
@@ -69,8 +72,8 @@ echo "2. Kibana:"
 echo "   - Open http://localhost:5601"
 echo "   - Search: event.module:suricata AND rule.name:*SCAN*"
 echo ""
-echo "Success Criteria:"
-echo "  [✓] Suricata detects SCAN alerts"
-echo "  [✓] source.ip is correctly identified"
-echo "  [✓] Events visible in Kibana"
-
+echo "Verification still required:"
+echo "  [ ] Suricata detects SCAN alerts"
+echo "  [ ] source.ip is correctly identified"
+echo "  [ ] Events are indexed in Elasticsearch"
+echo "Run on the host: scripts/scenario_e2e_check.sh S1"

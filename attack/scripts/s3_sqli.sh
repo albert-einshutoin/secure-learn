@@ -78,13 +78,18 @@ echo "============================================"
 
 # Run sqlmap
 echo "Running sqlmap (batch mode)..."
+sqlmap_status=0
 sqlmap -u "http://$TARGET:$TARGET_PORT/users?id=1" \
     --batch \
     --level=3 \
     --risk=2 \
     --technique=BEUSTQ \
     --output-dir="$OUTPUT_DIR/sqlmap" \
-    > "$OUTPUT_FILE" 2>&1 || true
+    > "$OUTPUT_FILE" 2>&1 || sqlmap_status=$?
+
+# Not finding an injectable parameter is the expected result for the remediated
+# API. Keep the exit status in the evidence file and verify telemetry separately.
+echo "sqlmap exit status: $sqlmap_status" >> "$OUTPUT_FILE"
 
 echo ""
 echo "sqlmap output (last 30 lines):"
@@ -134,8 +139,8 @@ echo "3. Kibana:"
 echo "   - Search: event.action:sqli_attempt"
 echo "   - Search: rule.name:*SQLI*"
 echo ""
-echo "Success Criteria:"
-echo "  [✓] Suricata detects SQLI alerts"
-echo "  [✓] Application logs SQLi attempts"
-echo "  [✓] Fail2ban may ban the IP (if threshold reached)"
-echo "  [✓] Events visible in Kibana"
+echo "Verification still required:"
+echo "  [ ] Suricata detects SQLI alerts"
+echo "  [ ] Application logs SQLi attempts"
+echo "  [ ] Events are indexed in Elasticsearch"
+echo "Run on the host: scripts/scenario_e2e_check.sh S3"

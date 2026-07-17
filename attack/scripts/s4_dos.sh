@@ -61,9 +61,9 @@ for i in $(seq 1 $REQUESTS); do
     response=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 "http://$TARGET:$TARGET_PORT/" 2>/dev/null || echo "000")
     
     case $response in
-        200) ((success_count++)) ;;
-        429) ((rate_limited++)) ;;
-        *) ((fail_count++)) ;;
+        200) ((success_count += 1)) ;;
+        429) ((rate_limited += 1)) ;;
+        *) ((fail_count += 1)) ;;
     esac
     
     # Progress indicator
@@ -129,8 +129,8 @@ final_response=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 "http://$TA
 
 case $final_response in
     200) echo "  Status: Normal (200 OK)" ;;
-    429) echo "  [✓] Rate limited (429 Too Many Requests)" ;;
-    000) echo "  [✓] Banned/Blocked (Connection refused)" ;;
+    429) echo "  [PASS] Rate limited (429 Too Many Requests)" ;;
+    000) echo "  [PASS] Banned/Blocked (Connection refused)" ;;
     *) echo "  Status: HTTP $final_response" ;;
 esac
 
@@ -154,9 +154,8 @@ echo "4. Kibana:"
 echo "   - Search: rule.name:*DOS*"
 echo "   - Dashboard: Attack-Timeline"
 echo ""
-echo "Success Criteria:"
-echo "  [✓] Rate limiting (HTTP 429) observed"
-echo "  [✓] Suricata detects DOS alerts"
-echo "  [✓] Fail2ban may ban the IP"
-echo "  [✓] Events visible in Kibana"
-
+echo "Verification still required:"
+echo "  [ ] Rate limiting or service protection is observed"
+echo "  [ ] Suricata detects DOS alerts"
+echo "  [ ] Events are indexed in Elasticsearch"
+echo "Run on the host: scripts/scenario_e2e_check.sh S4"

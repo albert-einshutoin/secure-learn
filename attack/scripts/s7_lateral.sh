@@ -207,9 +207,9 @@ for i in $(seq 1 50); do
         "http://$TARGET:$TARGET_PORT/" 2>/dev/null || echo "000")
     
     case $response in
-        200) ((success++)) ;;
-        429) ((rate_limited++)) ;;
-        *) ((failed++)) ;;
+        200) ((success += 1)) ;;
+        429) ((rate_limited += 1)) ;;
+        *) ((failed += 1)) ;;
     esac
 done
 
@@ -286,8 +286,8 @@ echo "4. Open Kibana:"
 echo "   http://localhost:5601"
 echo "   Query: source.ip:<your_ip>"
 echo ""
-echo "Success Criteria:"
-echo "  [✓] Multiple detection sources triggered"
-echo "  [✓] Attack timeline visible in Kibana"
-echo "  [✓] Correlation by source.ip possible"
-echo "  [✓] MTTD/MTTR can be calculated"
+echo "Verification still required:"
+echo "  [ ] Multiple detection sources were triggered"
+echo "  [ ] Events are indexed and correlatable by source.ip"
+echo "  [ ] MTTD/MTTR can be calculated from recorded timestamps"
+echo "Run on the host: scripts/scenario_e2e_check.sh S7"
