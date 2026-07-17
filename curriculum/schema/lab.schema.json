@@ -141,7 +141,7 @@
     "nonEmptyStringArray": {
       "allOf": [
         { "$ref": "#/$defs/stringArray" },
-        { "minItems": 1 }
+        { "type": "array", "minItems": 1 }
       ]
     },
     "logicalPath": {

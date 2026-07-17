@@ -121,12 +121,11 @@ test('attack scripts treat target command substitutions as inert rejected data',
 });
 
 test('S11 rejects unsafe or excessive load values without evaluating payloads', (t) => {
-  const unsafeValues = ['0', '-1', '51', '1.5', '$(touch "$PAYLOAD_MARKER")'];
+  const unsafeValues = ['0', '-1', '51', '1.5'];
   for (const value of unsafeValues) {
     const fake = makeFakePath(t);
     const payloadMarker = path.join(fake.directory, 'payload-executed');
     const result = runScript('attack/scripts/s11_l5_session_stress.sh', fake, {
-      PAYLOAD_MARKER: payloadMarker,
       SESSIONS: value,
     });
     assert.notEqual(result.status, 0, `S11 accepted SESSIONS=${value}`);
@@ -134,16 +133,91 @@ test('S11 rejects unsafe or excessive load values without evaluating payloads', 
     assert.equal(fs.existsSync(fake.marker), false, `S11 invoked a tool for SESSIONS=${value}`);
   }
 
-  for (const value of ['0', '-1', '16', '1.5', '$(touch "$PAYLOAD_MARKER")']) {
+  for (const value of ['0', '-1', '16', '1.5']) {
     const fake = makeFakePath(t);
     const payloadMarker = path.join(fake.directory, 'payload-executed');
     const result = runScript('attack/scripts/s11_l5_session_stress.sh', fake, {
-      PAYLOAD_MARKER: payloadMarker,
       HOLD_SECONDS: value,
     });
     assert.notEqual(result.status, 0, `S11 accepted HOLD_SECONDS=${value}`);
     assert.equal(fs.existsSync(payloadMarker), false, `S11 evaluated HOLD_SECONDS=${value}`);
     assert.equal(fs.existsSync(fake.marker), false, `S11 invoked a tool for HOLD_SECONDS=${value}`);
+  }
+});
+
+test('arithmetic payload detection uses shell builtins and catches pre-validation evaluation', (t) => {
+  for (const parameter of ['SESSIONS', 'HOLD_SECONDS']) {
+    const fake = makeFakePath(t);
+    const payloadMarker = path.join(fake.directory, `${parameter.toLowerCase()}-payload-executed`);
+    const payload = `x[$(printf owned > ${payloadMarker})]`;
+    const result = runScript('attack/scripts/s11_l5_session_stress.sh', fake, { [parameter]: payload });
+    assert.notEqual(result.status, 0, `S11 accepted an arithmetic payload in ${parameter}`);
+    assert.equal(fs.existsSync(payloadMarker), false, `S11 evaluated ${parameter} before validating it`);
+    assert.equal(fs.existsSync(fake.marker), false, `S11 invoked an external tool for ${parameter}`);
+  }
+});
+
+test('bounded attack parameters are rejected before tools or output files', (t) => {
+  const cases = [
+    ['attack/scripts/s4_dos.sh', { CONCURRENT: '51' }],
+    ['attack/scripts/s4_dos.sh', { CONCURRENT: '1.5' }],
+    ['attack/scripts/s4_dos.sh', { REQUESTS: '501' }],
+    ['attack/scripts/s4_dos.sh', { REQUESTS: '-1' }],
+    ['attack/scripts/s7_lateral.sh', { DELAY: '11' }],
+    ['attack/scripts/s7_lateral.sh', { DELAY: '1.5' }],
+    ['attack/scripts/s8_l2_arp_observe.sh', { BURST: '21' }],
+    ['attack/scripts/s8_l2_arp_observe.sh', { BURST: 'many' }],
+    ['attack/scripts/s9_l3_icmp_recon.sh', { PING_COUNT: '21' }],
+    ['attack/scripts/s9_l3_icmp_recon.sh', { PING_COUNT: '-1' }],
+    ['attack/scripts/s10_l4_tcp_state.sh', { SCAN_PORTS: '1-65535' }],
+    ['attack/scripts/s13_l7_dns_observe.sh', { COUNT: '21' }],
+    ['attack/scripts/s13_l7_dns_observe.sh', { COUNT: '1.5' }],
+  ];
+
+  for (const [relativePath, overrides] of cases) {
+    const fake = makeFakePath(t);
+    const result = runScript(relativePath, fake, overrides);
+    assert.notEqual(result.status, 0, `${relativePath} accepted ${JSON.stringify(overrides)}`);
+    assert.equal(fs.existsSync(fake.marker), false, `${relativePath} invoked a tool for ${JSON.stringify(overrides)}`);
+    assert.equal(fs.existsSync(path.join(fake.directory, 'results')), false, `${relativePath} created output for invalid input`);
+  }
+});
+
+test('S14 validates load and chaos controls before invoking children or creating reports', (t) => {
+  const cases = [
+    { REQUESTS: '501' },
+    { REQUESTS: '1.5' },
+    { CONCURRENCY: '51' },
+    { CONCURRENCY: '-1' },
+    { SLO_MS: '10001' },
+    { RUN_CHAOS: 'yes' },
+  ];
+  for (const overrides of cases) {
+    const fake = makeFakePath(t);
+    const reportDir = path.join(fake.directory, 'incident-report');
+    const result = runScript('scripts/incident_drill.sh', fake, { REPORT_DIR: reportDir, ...overrides });
+    assert.notEqual(result.status, 0, `S14 accepted ${JSON.stringify(overrides)}`);
+    assert.equal(fs.existsSync(reportDir), false);
+    assert.equal(fs.existsSync(fake.marker), false);
+  }
+});
+
+test('direct S14 child runners enforce the same loopback and bounded-load contract', (t) => {
+  const cases = [
+    ['scripts/load_hands_on_tests.sh', { BASE_URL: 'https://example.com' }],
+    ['scripts/load_hands_on_tests.sh', { REQUESTS: '501' }],
+    ['scripts/load_hands_on_tests.sh', { CONCURRENCY: '51' }],
+    ['scripts/load_hands_on_tests.sh', { SLO_MS: '10001' }],
+    ['scripts/backend_hands_on_tests.sh', { BASE_URL: 'file:///tmp/lab' }],
+    ['scripts/chaos_hands_on_tests.sh', { BASE_URL: 'http://user@127.0.0.1:3000' }],
+  ];
+  for (const [relativePath, overrides] of cases) {
+    const fake = makeFakePath(t);
+    const reportDir = path.join(fake.directory, 'child-report');
+    const result = runScript(relativePath, fake, { REPORT_DIR: reportDir, ...overrides });
+    assert.notEqual(result.status, 0, `${relativePath} accepted ${JSON.stringify(overrides)}`);
+    assert.equal(fs.existsSync(reportDir), false);
+    assert.equal(fs.existsSync(fake.marker), false);
   }
 });
 
@@ -160,11 +234,17 @@ test('S14 rejects non-loopback URLs before reports, child scripts, or Docker can
 
 test('S14 fixes its endpoint and Compose project to repository-controlled locations', () => {
   const source = fs.readFileSync(path.join(root, 'scripts/incident_drill.sh'), 'utf8');
+  const chaosSource = fs.readFileSync(path.join(root, 'scripts/chaos_hands_on_tests.sh'), 'utf8');
+  const manifest = JSON.parse(fs.readFileSync(path.join(root, 'curriculum/labs/s14.json'), 'utf8'));
 
   assert.match(source, /BASE_URL="\$\{BASE_URL:-http:\/\/127\.0\.0\.1:3000\}"/);
   assert.match(source, /unset COMPOSE_PROJECT_DIR/);
   assert.doesNotMatch(source, /\$\{COMPOSE_PROJECT_DIR:-/);
   assert.match(source, /ROOT_DIR="\$\(cd "\$SCRIPT_DIR\/\.\." && pwd -P\)"/);
+  assert.match(chaosSource, /unset COMPOSE_PROJECT_DIR/);
+  assert.doesNotMatch(chaosSource, /\$\{COMPOSE_PROJECT_DIR:-/);
+  assert.deepEqual(manifest.safety.target_services, ['localhost']);
+  assert.deepEqual(manifest.safety.allowed_cidrs, ['127.0.0.1/32']);
 });
 
 test('attack connections use the validated IP while service identity stays separate', () => {
@@ -191,6 +271,16 @@ test('attack networks are internal even when Docker Compose is unavailable', () 
   assert.match(exercise, /^ {6}- TARGET=target-app$/m);
 });
 
+test('IPS helper installs iptables at build time and never fetches packages at runtime', () => {
+  const compose = fs.readFileSync(path.join(root, 'docker-compose.ips.yml'), 'utf8');
+  const dockerfile = fs.readFileSync(path.join(root, 'docker/ips-iptables/Dockerfile'), 'utf8');
+
+  assert.match(compose, /ips-iptables:\n\s+build:\n\s+context: \.\/docker\/ips-iptables/);
+  assert.doesNotMatch(compose, /apk add/);
+  assert.match(dockerfile, /^FROM alpine:3\.22$/m);
+  assert.match(dockerfile, /^RUN apk add --no-cache iptables$/m);
+});
+
 test('Docker Compose accepts the contained network configuration when available', (t) => {
   const available = spawnSync('docker', ['compose', 'version'], { cwd: root, encoding: 'utf8' });
   if (available.status !== 0) {
@@ -198,11 +288,16 @@ test('Docker Compose accepts the contained network configuration when available'
     return;
   }
 
-  for (const composeFile of ['docker-compose.yml', 'docker-compose.exercise.yml']) {
-    const result = spawnSync('docker', ['compose', '-f', composeFile, 'config', '--quiet'], {
+  const configurations = [
+    ['-f', 'docker-compose.yml'],
+    ['-f', 'docker-compose.exercise.yml'],
+    ['-f', 'docker-compose.yml', '-f', 'docker-compose.ips.yml'],
+  ];
+  for (const composeArgs of configurations) {
+    const result = spawnSync('docker', ['compose', ...composeArgs, 'config', '--quiet'], {
       cwd: root,
       encoding: 'utf8',
     });
-    assert.equal(result.status, 0, `${composeFile}: ${result.stderr}`);
+    assert.equal(result.status, 0, `${composeArgs.join(' ')}: ${result.stderr}`);
   }
 });

@@ -368,7 +368,7 @@ test('legacy manifests preserve platform, evidence, and safe workflow boundaries
       assert.deepEqual(manifest.safety.allowed_cidrs, []);
     } else if (manifest.id === 's14') {
       assert.deepEqual(manifest.safety.target_services, ['localhost']);
-      assert.deepEqual(manifest.safety.allowed_cidrs, ['127.0.0.0/8']);
+      assert.deepEqual(manifest.safety.allowed_cidrs, ['127.0.0.1/32']);
     } else if (manifest.id !== 's15') {
       assert.deepEqual(manifest.safety.target_services, ['app']);
       assert.deepEqual(manifest.safety.allowed_cidrs, ['172.23.0.0/24']);
@@ -423,4 +423,6 @@ test('manifest schema conditionals retain object type constraints for portable v
   assert.equal(runnableWorkflow.type, 'object');
   assert.equal(verifiedWorkflow.type, 'object');
   assert.equal(verifiedAssessment.type, 'object');
+  assert.equal(schema.$defs.nonEmptyStringArray.allOf[1].type, 'array');
+  assert.equal(schema.$defs.nonEmptyStringArray.allOf[1].minItems, 1);
 });
