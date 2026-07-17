@@ -23,6 +23,7 @@ const STAGES = [
 
 const manifests = loadManifests(path.resolve(__dirname, '..'));
 const S1_MANIFEST = manifests.find((manifest) => manifest.id === 's1');
+const S5_MANIFEST = manifests.find((manifest) => manifest.id === 's5');
 const S14_MANIFEST = manifests.find((manifest) => manifest.id === 's14');
 
 function context(overrides = {}) {
@@ -240,6 +241,28 @@ test('binds targets to the trusted manifest safety boundary', () => {
     () => createReceipt(validInput({ lab: 's14', target: 'localhost' }), context()),
     /manifest id must match evidence lab/,
   );
+});
+
+test('binds platform to the trusted manifest platform contract', () => {
+  assert.equal(createReceipt(validInput({ platform: 'docker-desktop' })).platform, 'docker-desktop');
+  for (const platform of ['windows', 'cloud', 'local-linux-vm', 'linux-vm']) {
+    assert.throws(() => createReceipt(validInput({ platform })), /platform must be declared by trusted manifest/);
+  }
+
+  assert.throws(
+    () => createEvidence(validInput({ lab: 's5', platform: 'linux-vm' }), { manifest: S5_MANIFEST }),
+    /prohibited target/,
+  );
+  assert.throws(
+    () => createEvidence(validInput({ lab: 's5', platform: 'docker-desktop' }), { manifest: S5_MANIFEST }),
+    /platform must be declared by trusted manifest/,
+  );
+
+  const tampered = structuredClone(createReceipt(validInput()));
+  tampered.platform = 'cloud';
+  const { sha256, ...body } = tampered;
+  tampered.sha256 = createHash('sha256').update(JSON.stringify(sortForHash(body))).digest('hex');
+  assert.throws(() => verifyReceipt(tampered), /platform must be declared by trusted manifest/);
 });
 
 test('rejects unsupported target types and unknown schema fields without secret guessing', () => {

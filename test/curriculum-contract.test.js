@@ -161,6 +161,60 @@ test('lab manifest validator rejects malformed fields, unknown keys, and unsafe 
   ]);
 });
 
+test('manifest ownership cannot be satisfied by polluted prototypes', () => {
+  Object.prototype.mode = 'docker-lab';
+  Object.prototype.attack = { path: 'attack/scripts/s1_portscan.sh', args: [] };
+  Object.prototype.mitre_attack = ['T1595'];
+  try {
+    const missingMode = validManifest();
+    delete missingMode.mode;
+    assert.deepEqual(validateManifest(missingMode), ['missing required field: mode']);
+
+    const missingAttack = validManifest();
+    delete missingAttack.workflow.attack;
+    assert.ok(validateManifest(missingAttack).includes('missing required field: workflow.attack'));
+
+    const missingStandard = validManifest();
+    delete missingStandard.standards.mitre_attack;
+    assert.ok(validateManifest(missingStandard).includes('missing required field: standards.mitre_attack'));
+  } finally {
+    delete Object.prototype.mode;
+    delete Object.prototype.attack;
+    delete Object.prototype.mitre_attack;
+  }
+});
+
+test('manifest ownership rejects accessors, symbols, non-enumerable fields, and sparse arrays without getters', () => {
+  let getterCalled = false;
+  const accessor = validManifest();
+  Object.defineProperty(accessor.workflow, 'attack', {
+    enumerable: true,
+    get() {
+      getterCalled = true;
+      return { path: 'attack/scripts/s1_portscan.sh', args: [] };
+    },
+  });
+  assert.deepEqual(validateManifest(accessor), ['workflow.attack must be an enumerable data property']);
+  assert.equal(getterCalled, false);
+
+  const symbol = validManifest();
+  symbol.platforms[Symbol('hidden')] = true;
+  assert.deepEqual(validateManifest(symbol), ['platforms must not contain symbol properties']);
+
+  const nonEnumerable = validManifest();
+  Object.defineProperty(nonEnumerable.safety, 'external_network', { value: false, enumerable: false });
+  assert.deepEqual(validateManifest(nonEnumerable), ['safety.external_network must be an enumerable data property']);
+
+  const sparse = validManifest();
+  sparse.platforms.required = new Array(1);
+  Object.prototype[0] = 'docker-desktop';
+  try {
+    assert.deepEqual(validateManifest(sparse), ['platforms.required must be a dense own array']);
+  } finally {
+    delete Object.prototype[0];
+  }
+});
+
 test('loadManifests validates files, ignores non-JSON files, and preserves safe diagnostics', (t) => {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'secure-learn-curriculum-'));
   const labs = path.join(tempRoot, 'curriculum', 'labs');
@@ -184,6 +238,7 @@ test('loadManifests validates files, ignores non-JSON files, and preserves safe 
   const descriptor = Object.getOwnPropertyDescriptor(manifests[0], 'sourcePath');
   assert.equal(descriptor.enumerable, false);
   assert.equal(descriptor.writable, false);
+  assert.deepEqual(validateManifest(manifests[0]), []);
   manifests[0].sourcePath = 'changed';
   assert.notEqual(manifests[0].sourcePath, 'changed');
 });
