@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="偵察、認証攻撃、SQLi試行、ファイル/権限イベントを一つのattack chainとして相関する。">
-  <title>S7 横断インシデント - Secure Learn</title>
+  <meta name="description" content="one trust zoneの偵察、認証試行、入力攻撃、負荷イベントを一つのevent chainとして相関する。">
+  <title>S7 Cross-Layer Incident - Secure Learn</title>
   <link rel="stylesheet" href="assets/scenario.css">
 </head>
 <body>
@@ -16,10 +16,10 @@
   <main id="main-content" tabindex="-1">
     <section class="scenario-head">
       <p class="eyebrow">S7 / 全体 / 上級</p>
-      <h1>横断インシデント</h1>
-      <p class="lead">偵察、認証攻撃、SQLi試行、ファイル/権限イベントを一つのattack chainとして相関する。</p>
+      <h1>Cross-Layer Incident</h1>
+      <p class="lead">one trust zoneの偵察、認証試行、入力攻撃、負荷イベントを一つのevent chainとして相関する。</p>
       <div class="meta-row">
-        <span class="pill mode-runnable">実行型ラボ</span>
+        <span class="pill mode-runnable">Docker実行型ラボ</span>
         <span class="score score-4">4/5 発展</span>
         <span class="pill">Whitehat</span><span class="pill">SRE</span><span class="pill">Backend</span>
       </div>
@@ -28,7 +28,7 @@
     <section class="grid two">
       <article>
         <h2>実行形式</h2>
-        <p><strong>実行型ラボ</strong></p>
+        <p><strong>Docker実行型ラボ</strong></p>
         <p>同梱Docker環境、攻撃スクリプト、検証スクリプトを使って再現と観測を実行します。</p>
       </article>
       <article>
@@ -40,18 +40,18 @@
     <section class="grid two">
       <article>
         <h2>抽象的に何を学ぶか</h2>
-        <p>横断インシデントは、単発の攻撃手順ではなく、複数レイヤーの検知をtimeline化し、MTTD/MTTR、影響範囲、改善PRまでまとめる。</p>
+        <p>Cross-Layer Incidentは、単発の攻撃手順ではなく、APTや別ホストへの侵入拡大を再現したとは主張せず、複数レイヤーの検知をtimeline化し、MTTD/MTTR、影響範囲、改善PRまでまとめる。</p>
       </article>
       <article>
         <h2>具体例</h2>
-        <ul><li>Start: /scripts/s7_lateral.shで段階的な攻撃チェーンを実行する。</li><li>Correlate: source.ip、timestamp、event.actionでSuricata/App/Fail2ban/Auditdを繋ぐ。</li><li>Contain: BANやサービス保護の判断を記録する。</li></ul>
+        <ul><li>Start: /scripts/s7_lateral.shで段階的なevent chainを実行する。</li><li>Correlate: source.ip、timestamp、event.actionでSuricata/App/Fail2banを繋ぐ。</li><li>Contain: BANやサービス保護の判断を記録する。</li></ul>
       </article>
     </section>
 
     <section>
       <h2>読み方</h2>
       <div class="track-grid">
-        <article class="track-card beginner"><h3>初学者の見方</h3><ul><li>最初に「抽象的に何を学ぶか」と「目的」を読み、何を守る演習かを言葉にする。</li><li>事前準備と安全境界を確認してから、実行コマンドを上から順に一つずつ実行する。</li><li>合格証跡の先頭項目「attack chainの開始/検知/対応時刻」を残し、ログまたはHTTP結果と対応付ける。</li></ul></article>
+        <article class="track-card beginner"><h3>初学者の見方</h3><ul><li>最初に「抽象的に何を学ぶか」と「目的」を読み、何を守る演習かを言葉にする。</li><li>事前準備と安全境界を確認してから、実行コマンドを上から順に一つずつ実行する。</li><li>合格証跡の先頭項目「event chainの開始/検知/対応時刻」を残し、ログまたはHTTP結果と対応付ける。</li></ul></article>
         <article class="track-card experienced"><h3>経験者の深掘り</h3><ul><li>攻撃/障害の再現だけで止めず、検知漏れ、誤検知、本番移行時の追加統制を洗い出す。</li><li>ツール活用と観測ポイントを読み、どの信号が意思決定に使えるかを評価する。</li><li>発展課題の先頭項目「MITRE ATT&amp;CK navigator風のcoverage mapを追加する。」をPRレビュー観点へ落とす。</li></ul></article>
         <article class="track-card review"><h3>レビューで見ること</h3><ul><li>第三者が再現できるように、対象、時刻、payload、検索条件、判断理由を揃える。</li><li>Whitehat/SRE/Backendの観点で、誰がownerになり、どこでrollbackするかを決める。</li><li>セルフレビューの回答をincident reportまたはremediation PRの本文へ転記する。</li></ul></article>
       </div>
@@ -78,7 +78,7 @@
       </div><div class="diagram-node" role="listitem">
         <span class="node-label">5</span>
         <strong>証跡化</strong>
-        <p>合格証跡としてattack chainの開始/検知/対応時刻を残す。</p>
+        <p>合格証跡としてevent chainの開始/検知/対応時刻を残す。</p>
       </div><div class="diagram-node" role="listitem">
         <span class="node-label">6</span>
         <strong>深掘り</strong>
@@ -95,7 +95,7 @@
       </div><div class="visual-node target" role="listitem">
         <span class="visual-label">Target</span>
         <strong>Local lab service</strong>
-        <p>全体で横断インシデントを安全に扱う。</p>
+        <p>全体でCross-Layer Incidentを安全に扱う。</p>
       </div><div class="visual-node control" role="listitem">
         <span class="visual-label">Control</span>
         <strong>安全境界</strong>
@@ -107,7 +107,7 @@
       </div><div class="visual-node evidence" role="listitem">
         <span class="visual-label">Evidence</span>
         <strong>残す証跡</strong>
-        <p>attack chainの開始/検知/対応時刻</p>
+        <p>event chainの開始/検知/対応時刻</p>
       </div><div class="visual-node improve" role="listitem">
         <span class="visual-label">Improve</span>
         <strong>経験者の深掘り</strong>
@@ -241,7 +241,7 @@
     <section class="grid two">
       <article>
         <h2>目的</h2>
-        <p>複数レイヤーの検知をtimeline化し、MTTD/MTTR、影響範囲、改善PRまでまとめる。</p>
+        <p>APTや別ホストへの侵入拡大を再現したとは主張せず、複数レイヤーの検知をtimeline化し、MTTD/MTTR、影響範囲、改善PRまでまとめる。</p>
       </article>
       <article>
         <h2>本番環境との差分</h2>
@@ -256,13 +256,13 @@
       </article>
       <article>
         <h2>安全境界</h2>
-        <ul><li>第三者環境、公共IP、許可のないcloud accountには実行しない。</li><li>payload、scan、負荷はHTMLに書かれたローカル対象へ限定する。</li><li>攻撃payloadは教材内の明示されたendpoint、file、containerだけに向ける。</li></ul>
+        <ul><li>第三者環境、公共IP、許可のないcloud accountには実行しない。</li><li>payload、scan、負荷はHTMLに書かれたローカル対象へ限定する。</li><li>負荷値は小さく始め、SLO悪化を確認したらすぐ停止できる状態で実行する。</li></ul>
       </article>
     </section>
 
     <section>
       <h2>Hands-on Flow</h2>
-      <ol class="flow"><li><span>Start</span><p>/scripts/s7_lateral.shで段階的な攻撃チェーンを実行する。</p></li><li><span>Correlate</span><p>source.ip、timestamp、event.actionでSuricata/App/Fail2ban/Auditdを繋ぐ。</p></li><li><span>Contain</span><p>BANやサービス保護の判断を記録する。</p></li><li><span>Eradicate</span><p>成立した攻撃があるか、修正済みで拒否されたかを分ける。</p></li><li><span>Improve</span><p>検知ルール、backend test、runbookをPRとして提案する。</p></li></ol>
+      <ol class="flow"><li><span>Start</span><p>/scripts/s7_lateral.shで段階的なevent chainを実行する。</p></li><li><span>Correlate</span><p>source.ip、timestamp、event.actionでSuricata/App/Fail2banを繋ぐ。</p></li><li><span>Contain</span><p>BANやサービス保護の判断を記録する。</p></li><li><span>Eradicate</span><p>成立した攻撃があるか、修正済みで拒否されたかを分ける。</p></li><li><span>Improve</span><p>検知ルール、backend test、runbookをPRとして提案する。</p></li></ol>
     </section>
 
     <section class="grid two">
@@ -276,7 +276,7 @@ scripts/incident_drill.sh</code></pre>
       </article>
       <article>
         <h2>合格証跡</h2>
-        <ul><li>attack chainの開始/検知/対応時刻</li><li>各phaseのログソースとKQL</li><li>成功した攻撃と拒否された攻撃の区別</li><li>改善PRのテストとrollback方針</li></ul>
+        <ul><li>event chainの開始/検知/対応時刻</li><li>各phaseのログソースとKQL</li><li>成功した攻撃と拒否された攻撃の区別</li><li>改善PRのテストとrollback方針</li></ul>
       </article>
     </section>
 
@@ -288,7 +288,7 @@ scripts/incident_drill.sh</code></pre>
     <section class="grid three">
       <article>
         <h2>観測ポイント</h2>
-        <ul><li>実行コマンドの開始時刻、対象、終了時刻を記録する。</li><li>HTTP status、アプリログ、検知ログ、メトリクスのどれで成功/失敗を証明するかを決める。</li><li>合格証跡として「attack chainの開始/検知/対応時刻」を第三者が追える形で残す。</li></ul>
+        <ul><li>実行コマンドの開始時刻、対象、終了時刻を記録する。</li><li>HTTP status、アプリログ、検知ログ、メトリクスのどれで成功/失敗を証明するかを決める。</li><li>合格証跡として「event chainの開始/検知/対応時刻」を第三者が追える形で残す。</li></ul>
       </article>
       <article>
         <h2>よくある失敗</h2>
@@ -296,7 +296,7 @@ scripts/incident_drill.sh</code></pre>
       </article>
       <article>
         <h2>セルフレビュー</h2>
-        <ul><li>横断インシデントで守りたい資産と失敗条件を一文で説明できるか。</li><li>どのログ、テスト、メトリクスが判断根拠かを第三者が追えるか。</li><li>本番導入時の追加統制、owner、rollback条件を言えるか。</li></ul>
+        <ul><li>Cross-Layer Incidentで守りたい資産と失敗条件を一文で説明できるか。</li><li>どのログ、テスト、メトリクスが判断根拠かを第三者が追えるか。</li><li>本番導入時の追加統制、owner、rollback条件を言えるか。</li></ul>
       </article>
     </section>
 

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Docker bridge上のARP/neighbor cacheを観測し、L2の限界と証跡不足を説明する。">
+  <meta name="description" content="Discovery - Remote System Discovery (T1018)としてDocker bridge上のARP/neighbor cacheを観測し、L2の限界と証跡不足を説明する。">
   <title>S8 L2 ARP観測 - Secure Learn</title>
   <link rel="stylesheet" href="assets/scenario.css">
 </head>
@@ -17,9 +17,9 @@
     <section class="scenario-head">
       <p class="eyebrow">S8 / L2 / 初級</p>
       <h1>L2 ARP観測</h1>
-      <p class="lead">Docker bridge上のARP/neighbor cacheを観測し、L2の限界と証跡不足を説明する。</p>
+      <p class="lead">Discovery - Remote System Discovery (T1018)としてDocker bridge上のARP/neighbor cacheを観測し、L2の限界と証跡不足を説明する。</p>
       <div class="meta-row">
-        <span class="pill mode-runnable">実行型ラボ</span>
+        <span class="pill mode-runnable">Docker実行型ラボ</span>
         <span class="score score-2">2/5 基礎</span>
         <span class="pill">Whitehat</span><span class="pill">SRE</span>
       </div>
@@ -28,7 +28,7 @@
     <section class="grid two">
       <article>
         <h2>実行形式</h2>
-        <p><strong>実行型ラボ</strong></p>
+        <p><strong>Docker実行型ラボ</strong></p>
         <p>同梱Docker環境、攻撃スクリプト、検証スクリプトを使って再現と観測を実行します。</p>
       </article>
       <article>
@@ -40,7 +40,7 @@
     <section class="grid two">
       <article>
         <h2>抽象的に何を学ぶか</h2>
-        <p>L2 ARP観測は、単発の攻撃手順ではなく、ARP spoofingは行わず、観測だけでL2事象がL3/L4到達性に与える影響を理解する。</p>
+        <p>L2 ARP観測は、単発の攻撃手順ではなく、ARP spoofingやservice scanは行わず、remote systemの存在観測だけでL2事象がL3/L4到達性に与える影響を理解する。</p>
       </article>
       <article>
         <h2>具体例</h2>
@@ -241,7 +241,7 @@
     <section class="grid two">
       <article>
         <h2>目的</h2>
-        <p>ARP spoofingは行わず、観測だけでL2事象がL3/L4到達性に与える影響を理解する。</p>
+        <p>ARP spoofingやservice scanは行わず、remote systemの存在観測だけでL2事象がL3/L4到達性に与える影響を理解する。</p>
       </article>
       <article>
         <h2>本番環境との差分</h2>
@@ -313,7 +313,7 @@ arping -c 3 app</code></pre>
 
     <section>
       <h2>関連シナリオ</h2>
-      <div class="links"><a href="s7-lateral.html">S7 横断インシデント</a><a href="s9-icmp.html">S9 L3 ICMP到達性・偵察</a><a href="s1-portscan.html">S1 ポートスキャン</a><a href="s2-bruteforce.html">S2 APIブルートフォース</a></div>
+      <div class="links"><a href="s7-lateral.html">S7 Cross-Layer Incident</a><a href="s9-icmp.html">S9 L3 ICMP到達性・偵察</a><a href="s1-portscan.html">S1 ポートスキャン</a><a href="s2-bruteforce.html">S2 APIブルートフォース</a></div>
     </section>
 
   </main>
