@@ -28,14 +28,8 @@ OUTPUT_DIR="${OUTPUT_DIR:-/results}"
 
 # These small hard limits keep the observation useful while preventing a typo
 # or hostile environment value from turning a laptop lab into a load generator.
-if [[ ! "$SESSIONS" =~ ^[0-9]+$ || ${#SESSIONS} -gt 2 ]] || ((10#$SESSIONS < 1 || 10#$SESSIONS > 50)); then
-    echo "ERROR: SESSIONS must be a decimal integer from 1 through 50." >&2
-    exit 64
-fi
-if [[ ! "$HOLD_SECONDS" =~ ^[0-9]+$ || ${#HOLD_SECONDS} -gt 2 ]] || ((10#$HOLD_SECONDS < 1 || 10#$HOLD_SECONDS > 15)); then
-    echo "ERROR: HOLD_SECONDS must be a decimal integer from 1 through 15." >&2
-    exit 64
-fi
+secure_learn_validate_bounded_decimal SESSIONS "$SESSIONS" 1 50
+secure_learn_validate_bounded_decimal HOLD_SECONDS "$HOLD_SECONDS" 1 15
 
 mkdir -p "$OUTPUT_DIR"
 OUTPUT_FILE="$OUTPUT_DIR/s11_l5_session_stress_$(date +%Y%m%d_%H%M%S).txt"

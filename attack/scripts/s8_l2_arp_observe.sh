@@ -25,6 +25,8 @@ secure_learn_validate_target
 OUTPUT_DIR="${OUTPUT_DIR:-/results}"
 BURST="${BURST:-8}"
 
+secure_learn_validate_bounded_decimal BURST "$BURST" 1 20
+
 mkdir -p "$OUTPUT_DIR"
 OUTPUT_FILE="$OUTPUT_DIR/s8_l2_arp_observe_$(date +%Y%m%d_%H%M%S).txt"
 

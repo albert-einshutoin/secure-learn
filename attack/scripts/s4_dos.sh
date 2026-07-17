@@ -30,6 +30,9 @@ CONCURRENT="${CONCURRENT:-50}"
 REQUESTS="${REQUESTS:-500}"
 OUTPUT_DIR="/results"
 
+secure_learn_validate_bounded_decimal CONCURRENT "$CONCURRENT" 1 50
+secure_learn_validate_bounded_decimal REQUESTS "$REQUESTS" 1 500
+
 echo "============================================"
 echo "SOC-Lab Scenario S4: DoS Attack"
 echo "============================================"

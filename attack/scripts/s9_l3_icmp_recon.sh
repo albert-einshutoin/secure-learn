@@ -25,6 +25,8 @@ secure_learn_validate_target
 OUTPUT_DIR="${OUTPUT_DIR:-/results}"
 PING_COUNT="${PING_COUNT:-6}"
 
+secure_learn_validate_bounded_decimal PING_COUNT "$PING_COUNT" 1 20
+
 mkdir -p "$OUTPUT_DIR"
 OUTPUT_FILE="$OUTPUT_DIR/s9_l3_icmp_recon_$(date +%Y%m%d_%H%M%S).txt"
 

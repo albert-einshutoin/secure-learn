@@ -25,6 +25,8 @@ secure_learn_validate_target
 COUNT="${COUNT:-12}"
 OUTPUT_DIR="${OUTPUT_DIR:-/results}"
 
+secure_learn_validate_bounded_decimal COUNT "$COUNT" 1 20
+
 resolved_target_ip="$(getent ahostsv4 "$TARGET" | awk 'NR == 1 { print $1; exit }')"
 if [[ "$resolved_target_ip" != "$TARGET_IP" ]]; then
     echo "ERROR: $TARGET resolved outside its enumerated target profile." >&2

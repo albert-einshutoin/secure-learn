@@ -29,6 +29,8 @@ TARGET_PORT="${TARGET_PORT:-3000}"
 OUTPUT_DIR="/results"
 DELAY="${DELAY:-5}"
 
+secure_learn_validate_bounded_decimal DELAY "$DELAY" 0 10
+
 echo "============================================"
 echo "SOC-Lab Scenario S7: Lateral Movement"
 echo "Full Attack Chain Demonstration"

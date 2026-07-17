@@ -25,6 +25,11 @@ secure_learn_validate_target
 SCAN_PORTS="${SCAN_PORTS:-1-128,3000}"
 OUTPUT_DIR="${OUTPUT_DIR:-/results}"
 
+if [[ "$SCAN_PORTS" != "1-128,3000" ]]; then
+    echo "ERROR: SCAN_PORTS must remain inside the bounded lab port set 1-128,3000." >&2
+    exit 64
+fi
+
 mkdir -p "$OUTPUT_DIR"
 OUTPUT_FILE="$OUTPUT_DIR/s10_l4_tcp_state_$(date +%Y%m%d_%H%M%S).txt"
 

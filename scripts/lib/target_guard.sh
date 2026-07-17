@@ -42,3 +42,31 @@ secure_learn_validate_target() {
     TARGET_PORT="$expected_port"
     export TARGET TARGET_IP TARGET_PORT
 }
+
+# Validate text before any arithmetic expansion. Bash arithmetic recursively
+# evaluates variable contents, so rejecting non-decimal data first prevents an
+# environment value from becoming executable syntax.
+secure_learn_validate_bounded_decimal() {
+    local name="$1"
+    local value="$2"
+    local minimum="$3"
+    local maximum="$4"
+    local decimal
+
+    if [[ ! "$value" =~ ^[0-9]+$ || ${#value} -gt 10 ]]; then
+        echo "ERROR: $name must be a decimal integer from $minimum through $maximum." >&2
+        return 64
+    fi
+    decimal=$((10#$value))
+    if ((decimal < minimum || decimal > maximum)); then
+        echo "ERROR: $name must be a decimal integer from $minimum through $maximum." >&2
+        return 64
+    fi
+}
+
+secure_learn_validate_loopback_base_url() {
+    if [[ "$1" != "http://127.0.0.1:3000" ]]; then
+        echo "ERROR: BASE_URL must be the loopback-only Secure Learn endpoint http://127.0.0.1:3000." >&2
+        return 64
+    fi
+}
