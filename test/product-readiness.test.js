@@ -269,6 +269,18 @@ test('OWASP API 2023 curriculum uses the canonical API6 through API8 semantics',
   assert.match(track, /Injection[^\n]*supporting secure-coding topic/i);
 });
 
+test('generated public benchmark copy describes the OWASP API 2023 categories accurately', () => {
+  const generator = read('scripts/generate_scenario_html.js');
+  const index = read('docs/scenario-guides/index.html');
+
+  for (const copy of [generator, index]) {
+    assert.match(copy, /API6[^\n<]*Sensitive Business Flows/i);
+    assert.match(copy, /API7[^\n<]*Server Side Request Forgery/i);
+    assert.match(copy, /API8[^\n<]*Security Misconfiguration/i);
+    assert.doesNotMatch(copy, /resource consumption、injectionの抜け漏れ確認/);
+  }
+});
+
 test('MITRE scenario mappings describe only behavior the exercises demonstrate', () => {
   const s5 = read('scenarios/S5_file_tamper.md');
   const s8 = read('scenarios/S8_l2_arp_observe.md');
@@ -293,6 +305,25 @@ test('S7 is presented as a cross-layer event chain within one trust zone', () =>
   assert.match(generator, /id: 'S7',[\s\S]*?title: 'Cross-Layer Incident'/);
   assert.doesNotMatch(script, /APT|Lateral Movement/i);
   assert.match(script, /Cross-Layer Incident/);
+  assert.match(script, /Event Chain Report/);
+  assert.doesNotMatch(script, /Open ports discovered|Attack Chain Complete|S5 Related|\| Completed \||Valid credentials found|Successful:/i);
+  assert.doesNotMatch(script, /(?:echo|printf)[^\n]*(?:password|token|credential|\$pass)|REPORT_FILE[^\n]*(?:password|token|credential|\$pass)/i);
+});
+
+test('public evaluation language is self-assessment rather than certification', () => {
+  const checklist = read('docs/templates/evaluation-checklist.md');
+  const publicCopy = [
+    read('README.md'),
+    read('scenarios/S15_capstone.md'),
+    read('scripts/generate_scenario_html.js'),
+    read('docs/scenario-guides/s15-capstone.html'),
+  ].join('\n');
+
+  assert.match(checklist, /教材内セルフ評価レベル/);
+  assert.match(checklist, /外部資格|技能や職位/);
+  assert.doesNotMatch(checklist, /認定レベル|初級認定|中級認定|上級認定|ホワイトハット\/SRE修了/);
+  assert.match(publicCopy, /S15[^\n<|]*統合キャップストーン/);
+  assert.doesNotMatch(publicCopy, /ホワイトハット\/SRE\s*修了課題/);
 });
 
 test('scenario evaluation reports the honest execution-format split and maturity source', () => {
