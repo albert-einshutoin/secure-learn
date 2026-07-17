@@ -23,6 +23,7 @@ mkdir -p "$OUTPUT_DIR"
 docker build -t "$APP_IMAGE" "$ROOT_DIR/app"
 docker build -t "$SURICATA_IMAGE" "$ROOT_DIR/suricata"
 docker build -t "$IPS_IMAGE" "$ROOT_DIR/docker/ips-iptables"
+"$ROOT_DIR/scripts/verify_ips_helper.sh" "$IPS_IMAGE"
 
 scan_image() {
   local image="$1"
