@@ -1,0 +1,53 @@
+{
+  "id": "s15",
+  "version": 1,
+  "title": "Integrated Capstone",
+  "track": "governance",
+  "mode": "operator-workflow",
+  "maturity": "documented",
+  "platforms": {
+    "required": [
+      "docker-desktop"
+    ],
+    "optional": []
+  },
+  "standards": {
+    "mitre_attack": [
+      "T1595",
+      "T1190",
+      "T1499"
+    ],
+    "owasp_api": [],
+    "cwe": [],
+    "nist_csf": [
+      "GV.OV",
+      "RS.AN",
+      "RC.RP"
+    ]
+  },
+  "prerequisites": [
+    "s7",
+    "s13",
+    "s14"
+  ],
+  "safety": {
+    "target_services": [],
+    "allowed_cidrs": [],
+    "external_network": false
+  },
+  "workflow": {
+    "attack": null,
+    "verify": null,
+    "remediate": null,
+    "regress": null
+  },
+  "evidence": {
+    "required": [
+      "capstone-report"
+    ]
+  },
+  "assessment": {
+    "mode": "guided-only",
+    "verifier": null
+  }
+}

@@ -1,0 +1,63 @@
+{
+  "id": "s14",
+  "version": 1,
+  "title": "SRE Incident Response",
+  "track": "sre",
+  "mode": "operator-workflow",
+  "maturity": "runnable",
+  "platforms": {
+    "required": [
+      "docker-desktop"
+    ],
+    "optional": []
+  },
+  "standards": {
+    "mitre_attack": [
+      "T1499"
+    ],
+    "owasp_api": [
+      "API4:2023"
+    ],
+    "cwe": [
+      "CWE-400"
+    ],
+    "nist_csf": [
+      "DE.CM",
+      "RS.MA",
+      "RS.AN",
+      "RC.RP"
+    ]
+  },
+  "prerequisites": [
+    "s4",
+    "s7",
+    "s11"
+  ],
+  "safety": {
+    "target_services": [
+      "app"
+    ],
+    "allowed_cidrs": [
+      "172.23.0.0/24"
+    ],
+    "external_network": false
+  },
+  "workflow": {
+    "attack": {
+      "path": "scripts/incident_drill.sh",
+      "args": []
+    },
+    "verify": null,
+    "remediate": null,
+    "regress": null
+  },
+  "evidence": {
+    "required": [
+      "attack-result"
+    ]
+  },
+  "assessment": {
+    "mode": "guided-only",
+    "verifier": null
+  }
+}

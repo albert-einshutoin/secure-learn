@@ -1,0 +1,64 @@
+{
+  "id": "s4",
+  "version": 1,
+  "title": "HTTP Denial of Service",
+  "track": "soc",
+  "mode": "docker-lab",
+  "maturity": "runnable",
+  "platforms": {
+    "required": [
+      "docker-desktop"
+    ],
+    "optional": []
+  },
+  "standards": {
+    "mitre_attack": [
+      "T1499"
+    ],
+    "owasp_api": [
+      "API4:2023"
+    ],
+    "cwe": [
+      "CWE-400"
+    ],
+    "nist_csf": [
+      "PR.IR",
+      "DE.CM"
+    ]
+  },
+  "prerequisites": [],
+  "safety": {
+    "target_services": [
+      "app"
+    ],
+    "allowed_cidrs": [
+      "172.23.0.0/24"
+    ],
+    "external_network": false
+  },
+  "workflow": {
+    "attack": {
+      "path": "attack/scripts/s4_dos.sh",
+      "args": []
+    },
+    "verify": {
+      "path": "scripts/scenario_e2e_check.sh",
+      "args": [
+        "S4"
+      ]
+    },
+    "remediate": null,
+    "regress": null
+  },
+  "evidence": {
+    "required": [
+      "attack-result",
+      "application-or-network-event",
+      "elasticsearch-event"
+    ]
+  },
+  "assessment": {
+    "mode": "guided-only",
+    "verifier": null
+  }
+}

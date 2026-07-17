@@ -1,0 +1,51 @@
+{
+  "id": "s5",
+  "version": 1,
+  "title": "Important File Tampering",
+  "track": "dfir",
+  "mode": "host-assisted",
+  "maturity": "external",
+  "platforms": {
+    "required": [
+      "linux-vm"
+    ],
+    "optional": []
+  },
+  "standards": {
+    "mitre_attack": [
+      "T1565"
+    ],
+    "owasp_api": [],
+    "cwe": [],
+    "nist_csf": [
+      "PR.DS",
+      "DE.CM"
+    ]
+  },
+  "prerequisites": [],
+  "safety": {
+    "target_services": [],
+    "allowed_cidrs": [],
+    "external_network": false
+  },
+  "workflow": {
+    "attack": {
+      "path": "attack/scripts/s5_file_tamper.sh",
+      "args": []
+    },
+    "verify": null,
+    "remediate": null,
+    "regress": null
+  },
+  "evidence": {
+    "required": [
+      "vm-receipt",
+      "audit-event",
+      "cleanup-result"
+    ]
+  },
+  "assessment": {
+    "mode": "guided-only",
+    "verifier": null
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "id": "s8",
+  "version": 1,
+  "title": "ARP Observation",
+  "track": "foundation",
+  "mode": "docker-lab",
+  "maturity": "runnable",
+  "platforms": {
+    "required": [
+      "docker-desktop"
+    ],
+    "optional": []
+  },
+  "standards": {
+    "mitre_attack": [
+      "T1046"
+    ],
+    "owasp_api": [],
+    "cwe": [],
+    "nist_csf": [
+      "DE.CM"
+    ]
+  },
+  "prerequisites": [
+    "s1"
+  ],
+  "safety": {
+    "target_services": [
+      "app"
+    ],
+    "allowed_cidrs": [
+      "172.23.0.0/24"
+    ],
+    "external_network": false
+  },
+  "workflow": {
+    "attack": {
+      "path": "attack/scripts/s8_l2_arp_observe.sh",
+      "args": []
+    },
+    "verify": null,
+    "remediate": null,
+    "regress": null
+  },
+  "evidence": {
+    "required": [
+      "attack-result"
+    ]
+  },
+  "assessment": {
+    "mode": "guided-only",
+    "verifier": null
+  }
+}

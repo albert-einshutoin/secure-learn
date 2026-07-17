@@ -262,3 +262,123 @@ test('MITRE ATT&CK Enterprise v19 catalog preserves its supported tactic and tec
     ],
   );
 });
+
+test('legacy inventory has exactly one manifest for S1-S15', () => {
+  const manifests = loadManifests(root);
+
+  assert.deepEqual(
+    manifests.map(({ id }) => id),
+    Array.from({ length: 15 }, (_, index) => `s${index + 1}`),
+  );
+  assert.ok(manifests.every((manifest) => validateManifest(manifest).length === 0));
+});
+
+test('legacy inventory records its execution and maturity without overstatement', () => {
+  const manifests = loadManifests(root);
+  const expected = [
+    ['s1', 'Port Scan', 'soc', 'docker-lab', 'runnable', ['T1595'], 'attack/scripts/s1_portscan.sh', ['scripts/scenario_e2e_check.sh', ['S1']]],
+    ['s2', 'API Brute Force', 'appsec', 'docker-lab', 'runnable', ['T1110'], 'attack/scripts/s2_bruteforce.sh', ['scripts/scenario_e2e_check.sh', ['S2']]],
+    ['s3', 'SQL Injection Attempt', 'appsec', 'docker-lab', 'runnable', ['T1190'], 'attack/scripts/s3_sqli.sh', ['scripts/scenario_e2e_check.sh', ['S3']]],
+    ['s4', 'HTTP Denial of Service', 'soc', 'docker-lab', 'runnable', ['T1499'], 'attack/scripts/s4_dos.sh', ['scripts/scenario_e2e_check.sh', ['S4']]],
+    ['s5', 'Important File Tampering', 'dfir', 'host-assisted', 'external', ['T1565'], 'attack/scripts/s5_file_tamper.sh', null],
+    ['s6', 'Sudo Activity Detection', 'dfir', 'host-assisted', 'external', ['T1548.003'], 'attack/scripts/s6_privesc.sh', null],
+    ['s7', 'Cross-Layer Incident', 'soc', 'docker-lab', 'runnable', ['T1595', 'T1110', 'T1190'], 'attack/scripts/s7_lateral.sh', ['scripts/scenario_e2e_check.sh', ['S7']]],
+    ['s8', 'ARP Observation', 'foundation', 'docker-lab', 'runnable', ['T1046'], 'attack/scripts/s8_l2_arp_observe.sh', null],
+    ['s9', 'ICMP Reconnaissance', 'foundation', 'docker-lab', 'runnable', ['T1595'], 'attack/scripts/s9_l3_icmp_recon.sh', null],
+    ['s10', 'TCP State Observation', 'foundation', 'docker-lab', 'runnable', ['T1595'], 'attack/scripts/s10_l4_tcp_state.sh', null],
+    ['s11', 'Session Pressure', 'foundation', 'docker-lab', 'runnable', ['T1499'], 'attack/scripts/s11_l5_session_stress.sh', null],
+    ['s12', 'TLS Visibility Boundary', 'foundation', 'docker-lab', 'runnable', ['T1040', 'T1573'], 'attack/scripts/s12_l6_tls_boundary.sh', null],
+    ['s13', 'DNS Service Discovery', 'foundation', 'docker-lab', 'runnable', ['T1018'], 'attack/scripts/s13_l7_dns_observe.sh', null],
+    ['s14', 'SRE Incident Response', 'sre', 'operator-workflow', 'runnable', ['T1499'], 'scripts/incident_drill.sh', null],
+    ['s15', 'Integrated Capstone', 'governance', 'operator-workflow', 'documented', ['T1595', 'T1190', 'T1499'], null, null],
+  ];
+
+  assert.deepEqual(
+    manifests.map((manifest) => [
+      manifest.id,
+      manifest.title,
+      manifest.track,
+      manifest.mode,
+      manifest.maturity,
+      manifest.standards.mitre_attack,
+      manifest.workflow.attack?.path ?? null,
+      manifest.workflow.verify
+        ? [manifest.workflow.verify.path, manifest.workflow.verify.args]
+        : null,
+    ]),
+    expected,
+  );
+  assert.equal(manifests.some(({ maturity }) => maturity === 'verified'), false);
+  assert.deepEqual(
+    manifests.filter(({ maturity }) => maturity === 'external').map(({ id }) => id),
+    ['s5', 's6'],
+  );
+});
+
+test('legacy manifest standard references exist in the pinned catalogs', () => {
+  const manifests = loadManifests(root);
+  const standards = loadStandards(root);
+
+  for (const manifest of manifests) {
+    for (const id of manifest.standards.mitre_attack) {
+      assert.ok(standards.mitreAttackIds.has(id), `${manifest.id} references unknown MITRE ATT&CK technique ${id}`);
+    }
+    for (const id of manifest.standards.owasp_api) {
+      assert.ok(standards.owaspApiIds.has(id), `${manifest.id} references unknown OWASP API category ${id}`);
+    }
+  }
+});
+
+test('legacy manifests preserve platform, evidence, and safe workflow boundaries', () => {
+  const manifests = loadManifests(root);
+  const hostAssisted = new Set(['s5', 's6']);
+  const endToEndChecked = new Set(['s1', 's2', 's3', 's4', 's7']);
+
+  assert.deepEqual(
+    manifests.filter(({ maturity }) => maturity === 'runnable').map(({ id }) => id),
+    ['s1', 's2', 's3', 's4', 's7', 's8', 's9', 's10', 's11', 's12', 's13', 's14'],
+  );
+  assert.deepEqual(manifests.filter(({ maturity }) => maturity === 'external').map(({ id }) => id), ['s5', 's6']);
+  assert.deepEqual(manifests.filter(({ maturity }) => maturity === 'documented').map(({ id }) => id), ['s15']);
+
+  for (const manifest of manifests) {
+    assert.deepEqual(manifest.platforms, {
+      required: [hostAssisted.has(manifest.id) ? 'linux-vm' : 'docker-desktop'],
+      optional: [],
+    });
+    assert.equal(manifest.version, 1);
+    assert.equal(manifest.safety.external_network, false);
+    assert.equal(manifest.workflow.remediate, null);
+    assert.equal(manifest.workflow.regress, null);
+    assert.equal(manifest.assessment.verifier, null);
+
+    if (manifest.maturity === 'runnable') {
+      assert.ok(manifest.workflow.attack, `${manifest.id} must declare an attack execution spec`);
+      assert.ok(manifest.evidence.required.includes('attack-result'));
+    }
+    if (endToEndChecked.has(manifest.id)) {
+      assert.ok(manifest.evidence.required.includes('application-or-network-event'));
+      assert.ok(manifest.evidence.required.includes('elasticsearch-event'));
+    }
+    if (hostAssisted.has(manifest.id)) {
+      assert.deepEqual(manifest.evidence.required, ['vm-receipt', 'audit-event', 'cleanup-result']);
+      assert.deepEqual(manifest.safety.target_services, []);
+      assert.deepEqual(manifest.safety.allowed_cidrs, []);
+    } else if (manifest.id !== 's15') {
+      assert.deepEqual(manifest.safety.target_services, ['app']);
+      assert.deepEqual(manifest.safety.allowed_cidrs, ['172.23.0.0/24']);
+    }
+  }
+});
+
+test('legacy manifest prerequisites refer only to earlier labs without cycles', () => {
+  const manifests = loadManifests(root);
+  const position = new Map(manifests.map(({ id }, index) => [id, index]));
+
+  for (const manifest of manifests) {
+    for (const prerequisite of manifest.prerequisites) {
+      assert.ok(position.has(prerequisite), `${manifest.id} references unknown prerequisite ${prerequisite}`);
+      assert.ok(position.get(prerequisite) < position.get(manifest.id), `${manifest.id} prerequisite ${prerequisite} must appear earlier`);
+    }
+  }
+});

@@ -1,0 +1,54 @@
+{
+  "id": "s10",
+  "version": 1,
+  "title": "TCP State Observation",
+  "track": "foundation",
+  "mode": "docker-lab",
+  "maturity": "runnable",
+  "platforms": {
+    "required": [
+      "docker-desktop"
+    ],
+    "optional": []
+  },
+  "standards": {
+    "mitre_attack": [
+      "T1595"
+    ],
+    "owasp_api": [],
+    "cwe": [],
+    "nist_csf": [
+      "DE.CM"
+    ]
+  },
+  "prerequisites": [
+    "s9"
+  ],
+  "safety": {
+    "target_services": [
+      "app"
+    ],
+    "allowed_cidrs": [
+      "172.23.0.0/24"
+    ],
+    "external_network": false
+  },
+  "workflow": {
+    "attack": {
+      "path": "attack/scripts/s10_l4_tcp_state.sh",
+      "args": []
+    },
+    "verify": null,
+    "remediate": null,
+    "regress": null
+  },
+  "evidence": {
+    "required": [
+      "attack-result"
+    ]
+  },
+  "assessment": {
+    "mode": "guided-only",
+    "verifier": null
+  }
+}

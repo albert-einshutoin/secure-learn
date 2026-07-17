@@ -1,0 +1,53 @@
+{
+  "id": "s6",
+  "version": 1,
+  "title": "Sudo Activity Detection",
+  "track": "dfir",
+  "mode": "host-assisted",
+  "maturity": "external",
+  "platforms": {
+    "required": [
+      "linux-vm"
+    ],
+    "optional": []
+  },
+  "standards": {
+    "mitre_attack": [
+      "T1548.003"
+    ],
+    "owasp_api": [],
+    "cwe": [
+      "CWE-250"
+    ],
+    "nist_csf": [
+      "PR.AA",
+      "DE.CM"
+    ]
+  },
+  "prerequisites": [],
+  "safety": {
+    "target_services": [],
+    "allowed_cidrs": [],
+    "external_network": false
+  },
+  "workflow": {
+    "attack": {
+      "path": "attack/scripts/s6_privesc.sh",
+      "args": []
+    },
+    "verify": null,
+    "remediate": null,
+    "regress": null
+  },
+  "evidence": {
+    "required": [
+      "vm-receipt",
+      "audit-event",
+      "cleanup-result"
+    ]
+  },
+  "assessment": {
+    "mode": "guided-only",
+    "verifier": null
+  }
+}

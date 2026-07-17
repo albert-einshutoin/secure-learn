@@ -1,0 +1,64 @@
+{
+  "id": "s2",
+  "version": 1,
+  "title": "API Brute Force",
+  "track": "appsec",
+  "mode": "docker-lab",
+  "maturity": "runnable",
+  "platforms": {
+    "required": [
+      "docker-desktop"
+    ],
+    "optional": []
+  },
+  "standards": {
+    "mitre_attack": [
+      "T1110"
+    ],
+    "owasp_api": [
+      "API2:2023"
+    ],
+    "cwe": [
+      "CWE-307"
+    ],
+    "nist_csf": [
+      "PR.AA",
+      "DE.CM"
+    ]
+  },
+  "prerequisites": [],
+  "safety": {
+    "target_services": [
+      "app"
+    ],
+    "allowed_cidrs": [
+      "172.23.0.0/24"
+    ],
+    "external_network": false
+  },
+  "workflow": {
+    "attack": {
+      "path": "attack/scripts/s2_bruteforce.sh",
+      "args": []
+    },
+    "verify": {
+      "path": "scripts/scenario_e2e_check.sh",
+      "args": [
+        "S2"
+      ]
+    },
+    "remediate": null,
+    "regress": null
+  },
+  "evidence": {
+    "required": [
+      "attack-result",
+      "application-or-network-event",
+      "elasticsearch-event"
+    ]
+  },
+  "assessment": {
+    "mode": "guided-only",
+    "verifier": null
+  }
+}

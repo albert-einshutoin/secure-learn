@@ -1,0 +1,62 @@
+{
+  "id": "s3",
+  "version": 1,
+  "title": "SQL Injection Attempt",
+  "track": "appsec",
+  "mode": "docker-lab",
+  "maturity": "runnable",
+  "platforms": {
+    "required": [
+      "docker-desktop"
+    ],
+    "optional": []
+  },
+  "standards": {
+    "mitre_attack": [
+      "T1190"
+    ],
+    "owasp_api": [],
+    "cwe": [
+      "CWE-89"
+    ],
+    "nist_csf": [
+      "PR.DS",
+      "DE.CM"
+    ]
+  },
+  "prerequisites": [],
+  "safety": {
+    "target_services": [
+      "app"
+    ],
+    "allowed_cidrs": [
+      "172.23.0.0/24"
+    ],
+    "external_network": false
+  },
+  "workflow": {
+    "attack": {
+      "path": "attack/scripts/s3_sqli.sh",
+      "args": []
+    },
+    "verify": {
+      "path": "scripts/scenario_e2e_check.sh",
+      "args": [
+        "S3"
+      ]
+    },
+    "remediate": null,
+    "regress": null
+  },
+  "evidence": {
+    "required": [
+      "attack-result",
+      "application-or-network-event",
+      "elasticsearch-event"
+    ]
+  },
+  "assessment": {
+    "mode": "guided-only",
+    "verifier": null
+  }
+}

@@ -1,0 +1,72 @@
+{
+  "id": "s7",
+  "version": 1,
+  "title": "Cross-Layer Incident",
+  "track": "soc",
+  "mode": "docker-lab",
+  "maturity": "runnable",
+  "platforms": {
+    "required": [
+      "docker-desktop"
+    ],
+    "optional": []
+  },
+  "standards": {
+    "mitre_attack": [
+      "T1595",
+      "T1110",
+      "T1190"
+    ],
+    "owasp_api": [
+      "API2:2023"
+    ],
+    "cwe": [
+      "CWE-307",
+      "CWE-89",
+      "CWE-22"
+    ],
+    "nist_csf": [
+      "DE.CM",
+      "RS.AN"
+    ]
+  },
+  "prerequisites": [
+    "s1",
+    "s2",
+    "s3"
+  ],
+  "safety": {
+    "target_services": [
+      "app"
+    ],
+    "allowed_cidrs": [
+      "172.23.0.0/24"
+    ],
+    "external_network": false
+  },
+  "workflow": {
+    "attack": {
+      "path": "attack/scripts/s7_lateral.sh",
+      "args": []
+    },
+    "verify": {
+      "path": "scripts/scenario_e2e_check.sh",
+      "args": [
+        "S7"
+      ]
+    },
+    "remediate": null,
+    "regress": null
+  },
+  "evidence": {
+    "required": [
+      "attack-result",
+      "application-or-network-event",
+      "elasticsearch-event"
+    ]
+  },
+  "assessment": {
+    "mode": "guided-only",
+    "verifier": null
+  }
+}

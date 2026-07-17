@@ -1,0 +1,56 @@
+{
+  "id": "s12",
+  "version": 1,
+  "title": "TLS Visibility Boundary",
+  "track": "foundation",
+  "mode": "docker-lab",
+  "maturity": "runnable",
+  "platforms": {
+    "required": [
+      "docker-desktop"
+    ],
+    "optional": []
+  },
+  "standards": {
+    "mitre_attack": [
+      "T1040",
+      "T1573"
+    ],
+    "owasp_api": [],
+    "cwe": [],
+    "nist_csf": [
+      "PR.DS",
+      "DE.CM"
+    ]
+  },
+  "prerequisites": [
+    "s11"
+  ],
+  "safety": {
+    "target_services": [
+      "app"
+    ],
+    "allowed_cidrs": [
+      "172.23.0.0/24"
+    ],
+    "external_network": false
+  },
+  "workflow": {
+    "attack": {
+      "path": "attack/scripts/s12_l6_tls_boundary.sh",
+      "args": []
+    },
+    "verify": null,
+    "remediate": null,
+    "regress": null
+  },
+  "evidence": {
+    "required": [
+      "attack-result"
+    ]
+  },
+  "assessment": {
+    "mode": "guided-only",
+    "verifier": null
+  }
+}
