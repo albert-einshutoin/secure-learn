@@ -41,8 +41,8 @@ function makeFakePath(t) {
   return { directory, marker };
 }
 
-function runScript(relativePath, fake, overrides = {}) {
-  return spawnSync(bash, [path.join(root, relativePath)], {
+function runScript(relativePath, fake, overrides = {}, args = []) {
+  return spawnSync(bash, [path.join(root, relativePath), ...args], {
     cwd: root,
     encoding: 'utf8',
     env: {
@@ -338,15 +338,48 @@ test('IPS helper installs iptables at build time and never fetches packages at r
 
 test('CI and release evidence cover the privileged IPS helper image', () => {
   const ci = fs.readFileSync(path.join(root, '.github/workflows/ci.yml'), 'utf8');
+  const releaseWorkflow = fs.readFileSync(path.join(root, '.github/workflows/release.yml'), 'utf8');
   const releaseArtifacts = fs.readFileSync(path.join(root, 'scripts/release_artifacts.sh'), 'utf8');
+  const releasePolicy = fs.readFileSync(path.join(root, 'docs/release-policy.md'), 'utf8');
 
-  assert.match(ci, /secure-learn-ips-iptables/);
-  assert.match(ci, /--network none/);
-  assert.match(ci, /--cap-add NET_ADMIN/);
-  assert.match(ci, /NFQUEUE/);
+  assert.match(ci, /scripts\/release_artifacts\.sh/);
+  assert.doesNotMatch(ci, /docker run --rm --network none "secure-learn-ips-iptables/);
   assert.match(releaseArtifacts, /IPS_IMAGE="secure-learn-ips-iptables:\$VERSION"/);
+  assert.match(releaseArtifacts, /"\$ROOT_DIR\/scripts\/verify_ips_helper\.sh" "\$IPS_IMAGE"/);
   assert.match(releaseArtifacts, /secure-learn-ips-iptables-\$VERSION\.trivy\.json/);
   assert.match(releaseArtifacts, /secure-learn-ips-iptables-\$VERSION\.spdx\.json/);
+  assert.match(releaseWorkflow, /scripts\/release_artifacts\.sh/);
+  assert.match(releaseWorkflow, /ips=.*secure-learn-ips-iptables:/);
+  assert.match(releaseWorkflow, /subject-name: secure-learn-ips-iptables:/);
+  assert.match(releaseWorkflow, /sbom-path: release\/secure-learn-ips-iptables-\$\{\{ steps\.version\.outputs\.version \}\}\.spdx\.json/);
+  assert.match(releasePolicy, /three images/i);
+  assert.match(releasePolicy, /networkless.*NFQUEUE/i);
+  assert.match(releasePolicy, /three.*SBOM/i);
+  assert.match(releasePolicy, /three.*attestation/i);
+});
+
+test('shared IPS verifier uses fixed Docker argv and rejects unsafe image references', (t) => {
+  const fake = makeFakePath(t);
+  const docker = path.join(fake.directory, 'docker');
+  fs.writeFileSync(docker, '#!/bin/sh\nprintf "<call>\\n" >> "$TOOL_MARKER"\nprintf "%s\\n" "$@" >> "$TOOL_MARKER"\n');
+  fs.chmodSync(docker, 0o755);
+
+  const image = 'secure-learn-ips-iptables:1.0.0';
+  const accepted = runScript('scripts/verify_ips_helper.sh', fake, {}, [image]);
+  assert.equal(accepted.status, 0, accepted.stderr);
+  const calls = fs.readFileSync(fake.marker, 'utf8');
+  assert.equal((calls.match(/^<call>$/gm) || []).length, 2);
+  assert.match(calls, /--network\nnone\nsecure-learn-ips-iptables:1\.0\.0\niptables\n--version/);
+  assert.match(calls, /--network\nnone\n--cap-add\nNET_ADMIN\nsecure-learn-ips-iptables:1\.0\.0\nsh\n-euc/);
+  assert.match(calls, /NFQUEUE/);
+  assert.match(calls, /iptables -C/);
+
+  for (const malicious of ['-evil', 'image;id', '$(id)', 'https://example.com/image', 'UPPER/repo:tag', 'repo tag']) {
+    fs.rmSync(fake.marker, { force: true });
+    const rejected = runScript('scripts/verify_ips_helper.sh', fake, {}, [malicious]);
+    assert.notEqual(rejected.status, 0, `accepted ${malicious}`);
+    assert.equal(fs.existsSync(fake.marker), false, `invoked docker for ${malicious}`);
+  }
 });
 
 test('Docker Compose accepts the contained network configuration when available', (t) => {
