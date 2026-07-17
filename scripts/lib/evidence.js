@@ -290,6 +290,10 @@ function assertManifestBinding(body, manifest) {
   if (body.manifest_version !== manifest.version) {
     throw new TypeError('manifest version must match evidence manifest_version');
   }
+  const declaredPlatforms = [...manifest.platforms.required, ...manifest.platforms.optional];
+  if (!declaredPlatforms.includes(body.platform)) {
+    throw new TypeError('platform must be declared by trusted manifest');
+  }
 }
 
 function hashBody(body) {

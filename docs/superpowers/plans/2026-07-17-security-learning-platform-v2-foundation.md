@@ -281,7 +281,7 @@ const REQUIRED_FIELDS = [
 function validateManifest(manifest) {
   const errors = [];
   for (const field of REQUIRED_FIELDS) {
-    if (!(field in manifest)) errors.push(`missing required field: ${field}`);
+    if (!Object.hasOwn(manifest, field)) errors.push(`missing required field: ${field}`);
   }
   if (errors.length) return errors;
   if (!MATURITIES.has(manifest.maturity)) {
@@ -304,6 +304,8 @@ function validateManifest(manifest) {
 }
 ```
 
+Before semantic validation, recursively inspect property descriptors without invoking getters. Required object fields must be own enumerable data properties; arrays must contain dense own indices with no accessors, symbols, inherited values, holes, or custom properties. Reject magic prototype keys and bound traversal depth/size. The only non-enumerable exception is the loader-owned root `sourcePath`, which must be an immutable string descriptor and is never serialized.
+
 `loadManifests(root)` reads only `curriculum/labs/*.json`, attaches a non-enumerable source path for diagnostics, rejects duplicate IDs, and sorts numeric `s` IDs before named future labs. `loadStandards(root)` returns sets of valid OWASP and MITRE IDs.
 
 - [ ] **Step 5: Run all contract tests and commit**
@@ -316,7 +318,7 @@ node --check scripts/lib/curriculum.js
 git diff --check
 ```
 
-Expected: 12 tests pass.
+Expected: the complete curriculum contract suite passes.
 
 Commit:
 
@@ -580,7 +582,7 @@ test('creates deterministic evidence hashes without hashing the hash field', () 
 All ten stage values are required booleans. A missing stage is unverified evidence, so it must fail closed instead of being interpreted as a successful check.
 The input and result fields must be exact own properties; inherited values never satisfy the contract. Plain records with either the normal `Object.prototype` or a null prototype are accepted.
 `target` is a trimmed lowercase local service label or canonical dotted-decimal IPv4 string, rather than arbitrary metadata. It must also be allowed by the trusted manifest's `safety` policy. This explicit descriptor avoids pretending that heuristic secret scanning can make arbitrary evidence safe.
-`createEvidence(input, { manifest, now? })` and `verifyEvidence(receipt, { manifest, now? })` require trusted context. The complete manifest must pass `validateManifest`; passing a detached safety object is forbidden. Its `id` and `version` must exactly match the evidence `lab` and `manifest_version`. `now` is an optional millisecond clock function for deterministic tests. Both reject evidence ending more than five minutes in the future, while historical evidence remains verifiable when the caller supplies the corresponding trusted historical manifest version. A malformed receipt throws `TypeError`; a structurally valid receipt whose outcome, body, policy, or lowercase SHA-256 was altered returns `false`.
+`createEvidence(input, { manifest, now? })` and `verifyEvidence(receipt, { manifest, now? })` require trusted context. The complete manifest must pass `validateManifest`; passing a detached safety object is forbidden. Its `id` and `version` must exactly match the evidence `lab` and `manifest_version`, and the evidence `platform` must be an exact member of `manifest.platforms.required` or `manifest.platforms.optional`. `now` is an optional millisecond clock function for deterministic tests. Both reject evidence ending more than five minutes in the future, while historical evidence remains verifiable when the caller supplies the corresponding trusted historical manifest version. A malformed receipt throws `TypeError`; a structurally valid receipt whose outcome, body, policy, or lowercase SHA-256 was altered returns `false`.
 The receipt contains a `target_policy` snapshot derived only from `manifest.safety` in its hash. Service and CIDR arrays are copied and sorted by code point without mutating the manifest, so manifest order does not change the hash. Verification requires this embedded canonical snapshot to match the independently supplied trusted manifest; a permissive embedded policy cannot authorize itself.
 
 - [ ] **Step 2: Verify module-not-found failure**
