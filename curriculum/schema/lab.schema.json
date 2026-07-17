@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://secure-learn.dev/schema/lab.schema.json",
+  "title": "Secure Learn lab manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "version",
+    "title",
+    "track",
+    "mode",
+    "maturity",
+    "platforms",
+    "standards",
+    "prerequisites",
+    "safety",
+    "workflow",
+    "evidence",
+    "assessment"
+  ],
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "version": { "type": "integer", "minimum": 1 },
+    "title": { "type": "string", "minLength": 1 },
+    "track": { "type": "string", "minLength": 1 },
+    "mode": {
+      "type": "string",
+      "enum": ["docker-lab", "host-assisted", "operator-workflow", "design-exercise"]
+    },
+    "maturity": {
+      "type": "string",
+      "enum": ["documented", "runnable", "verified", "external"]
+    },
+    "platforms": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["required", "optional"],
+      "properties": {
+        "required": { "$ref": "#/$defs/stringArray" },
+        "optional": { "$ref": "#/$defs/stringArray" }
+      }
+    },
+    "standards": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mitre_attack", "owasp_api", "cwe", "nist_csf"],
+      "properties": {
+        "mitre_attack": { "$ref": "#/$defs/stringArray" },
+        "owasp_api": { "$ref": "#/$defs/stringArray" },
+        "cwe": { "$ref": "#/$defs/stringArray" },
+        "nist_csf": { "$ref": "#/$defs/stringArray" }
+      }
+    },
+    "prerequisites": { "$ref": "#/$defs/stringArray" },
+    "safety": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["target_services", "allowed_cidrs", "external_network"],
+      "properties": {
+        "target_services": { "$ref": "#/$defs/stringArray" },
+        "allowed_cidrs": { "$ref": "#/$defs/stringArray" },
+        "external_network": { "const": false }
+      }
+    },
+    "workflow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["attack", "verify", "remediate", "regress"],
+      "properties": {
+        "attack": { "type": "string", "minLength": 1 },
+        "verify": { "$ref": "#/$defs/nullablePath" },
+        "remediate": { "$ref": "#/$defs/nullablePath" },
+        "regress": { "$ref": "#/$defs/nullablePath" }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["required"],
+      "properties": { "required": { "$ref": "#/$defs/stringArray" } }
+    },
+    "assessment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "verifier"],
+      "properties": {
+        "mode": { "type": "string", "minLength": 1 },
+        "verifier": { "$ref": "#/$defs/nullablePath" }
+      }
+    }
+  },
+  "$defs": {
+    "stringArray": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "nullablePath": {
+      "type": ["string", "null"],
+      "minLength": 1
+    }
+  }
+}

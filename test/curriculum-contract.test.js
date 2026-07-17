@@ -1,6 +1,7 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const { validateManifest } = require('../scripts/lib/curriculum');
 const test = require('node:test');
 
 const root = path.resolve(__dirname, '..');
@@ -8,6 +9,73 @@ const root = path.resolve(__dirname, '..');
 function readJson(relativePath) {
   return JSON.parse(fs.readFileSync(path.join(root, relativePath), 'utf8'));
 }
+
+function validManifest() {
+  return {
+    id: 's1',
+    version: 1,
+    title: 'Port scan',
+    track: 'soc',
+    mode: 'docker-lab',
+    maturity: 'runnable',
+    platforms: {
+      required: ['docker-desktop'],
+      optional: [],
+    },
+    standards: {
+      mitre_attack: ['T1595'],
+      owasp_api: [],
+      cwe: [],
+      nist_csf: ['DE.CM'],
+    },
+    prerequisites: ['p0'],
+    safety: {
+      target_services: ['app'],
+      allowed_cidrs: ['172.23.0.0/24'],
+      external_network: false,
+    },
+    workflow: {
+      attack: 'attack/scripts/s1_portscan.sh',
+      verify: null,
+      remediate: null,
+      regress: null,
+    },
+    evidence: {
+      required: ['attack-result', 'suricata-event'],
+    },
+    assessment: {
+      mode: 'guided-only',
+      verifier: null,
+    },
+  };
+}
+
+test('lab manifest validator accepts the runnable contract', () => {
+  assert.deepEqual(validateManifest(validManifest()), []);
+});
+
+test('lab manifest validator rejects unsupported maturity and external networking', () => {
+  const manifest = validManifest();
+  manifest.maturity = 'complete';
+  manifest.safety.external_network = true;
+
+  assert.deepEqual(validateManifest(manifest), [
+    'maturity must be one of documented, runnable, verified, external',
+    'external_network must be false for bundled labs',
+  ]);
+});
+
+test('verified lab manifests require their complete quality workflow', () => {
+  const manifest = validManifest();
+  manifest.maturity = 'verified';
+
+  assert.deepEqual(validateManifest(manifest), [
+    'verified labs require workflow.verify',
+    'verified labs require workflow.remediate',
+    'verified labs require workflow.regress',
+    'verified labs require assessment.verifier',
+  ]);
+});
 
 test('OWASP API Security Top 10 2023 catalog preserves the official category contract', () => {
   const catalog = readJson('curriculum/standards/owasp-api-2023.json');
