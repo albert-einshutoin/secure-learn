@@ -28,6 +28,13 @@ jobs:
           git fetch --no-tags origin main:refs/remotes/origin/main
           git merge-base --is-ancestor "$GITHUB_SHA" origin/main
 
+      - name: Setup supported Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
       - name: Verify tag and product version
         id: version
         shell: bash

@@ -298,6 +298,8 @@ test('release contract includes version, changelog, SBOM, and vulnerability scan
   assert.match(workflow, /attest/i);
   assert.match(workflow, /fetch-depth:\s*0/);
   assert.match(workflow, /merge-base --is-ancestor/);
+  assert.match(workflow, /actions\/setup-node@[a-f0-9]{40}/);
+  assert.match(workflow, /node-version:\s*24/);
 });
 
 test('GitHub Actions dependencies are pinned to immutable commits', () => {
