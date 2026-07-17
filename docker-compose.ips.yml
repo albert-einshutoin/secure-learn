@@ -12,14 +12,15 @@ services:
   # NFQUEUE rules are installed in the Suricata/App namespace only. This avoids
   # changing host iptables and keeps IPS mode safe to start and stop for labs.
   ips-iptables:
-    image: alpine:3.22
+    build:
+      context: ./docker/ips-iptables
+    image: secure-learn-ips-iptables:local
     container_name: soc-lab-ips-iptables
     cap_add:
       - NET_ADMIN
     network_mode: "service:suricata"
     command: >
       sh -c "
-        apk add --no-cache iptables &&
         if ! iptables -C INPUT -p tcp --dport 3000 -j NFQUEUE --queue-num 0 2>/dev/null; then
           iptables -I INPUT -p tcp --dport 3000 -j NFQUEUE --queue-num 0;
         fi &&
