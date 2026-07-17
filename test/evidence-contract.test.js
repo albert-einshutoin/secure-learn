@@ -89,7 +89,7 @@ test('keeps the plan examples explicit without treating omitted stages as succes
 
   assert.throws(() => classifyOutcome({
     attack: true, telemetry: true, pipeline: true, control: true, regression: true, cleanup: true,
-  }), /environment must be a boolean/);
+  }), /environment must be an own boolean field/);
 });
 
 test('fails closed for missing, non-boolean, or unknown outcome fields', () => {
@@ -99,11 +99,11 @@ test('fails closed for missing, non-boolean, or unknown outcome fields', () => {
     const results = passingResults();
     delete results.evidence;
     classifyOutcome(results);
-  }, /evidence must be a boolean/);
+  }, /evidence must be an own boolean field/);
   assert.throws(() => classifyOutcome({ ...passingResults(), extra: true }), /unknown result field: extra/);
   const invalidAfterFailure = { ...passingResults(), environment: false };
   delete invalidAfterFailure.cleanup;
-  assert.throws(() => classifyOutcome(invalidAfterFailure), /cleanup must be a boolean/);
+  assert.throws(() => classifyOutcome(invalidAfterFailure), /cleanup must be an own boolean field/);
   assert.throws(() => classifyOutcome([]), /results must be a plain object/);
 });
 
@@ -152,7 +152,8 @@ test('restricts target to an explicit local service or canonical IPv4 descriptor
     assert.equal(createEvidence(validInput({ target })).target, target);
   }
   for (const target of ['', ' app', 'app ', 'APP', '-app', 'app-', 'http://app', 'user@app', 'app/path',
-    'app;id', '127.1', '0177.0.0.1', '2130706433', '256.1.1.1', 'Cafe\u0301']) {
+    'app;id', '127.1', '0177.0.0.1', '2130706433', '0x7f000001', '0x7f.0.0.1',
+    '256.1.1.1', 'Cafe\u0301']) {
     assert.throws(() => createEvidence(validInput({ target })), /target/);
   }
 });
@@ -183,18 +184,26 @@ test('requires every field to be an own property and accepts null-prototype reco
   const input = Object.assign(Object.create(pollutedPrototype), validInput());
   assert.throws(() => createEvidence(input), /evidence input must be a plain object/);
 
-  Object.prototype.environment = true;
-  Object.prototype.lab = 's1';
-  try {
-    const inheritedResult = passingResults();
-    delete inheritedResult.environment;
-    assert.throws(() => classifyOutcome(inheritedResult), /environment must be an own boolean field/);
-    const inheritedRoot = validInput();
-    delete inheritedRoot.lab;
-    assert.throws(() => createEvidence(inheritedRoot), /lab must be an own evidence field/);
-  } finally {
-    delete Object.prototype.environment;
-    delete Object.prototype.lab;
+  for (const stage of STAGES) {
+    Object.prototype[stage] = true;
+    try {
+      const inheritedResult = passingResults();
+      delete inheritedResult[stage];
+      assert.throws(() => classifyOutcome(inheritedResult), new RegExp(`${stage} must be an own boolean field`));
+    } finally {
+      delete Object.prototype[stage];
+    }
+  }
+
+  for (const [field, inheritedValue] of Object.entries(validInput())) {
+    Object.prototype[field] = inheritedValue;
+    try {
+      const inheritedRoot = validInput();
+      delete inheritedRoot[field];
+      assert.throws(() => createEvidence(inheritedRoot), new RegExp(`${field} must be an own evidence field`));
+    } finally {
+      delete Object.prototype[field];
+    }
   }
 
   const nullResults = Object.assign(Object.create(null), passingResults());
@@ -218,8 +227,16 @@ test('verifies canonical receipts and returns false for integrity tampering', ()
 
 test('rejects malformed receipt shapes before integrity comparison', () => {
   const evidence = structuredClone(createEvidence(validInput()));
-  const { sha256, ...missingHash } = evidence;
-  assert.throws(() => verifyEvidence(missingHash), /sha256 must be an own evidence field/);
+  for (const [field, inheritedValue] of Object.entries(evidence)) {
+    Object.prototype[field] = inheritedValue;
+    try {
+      const missingOwnField = { ...evidence };
+      delete missingOwnField[field];
+      assert.throws(() => verifyEvidence(missingOwnField), new RegExp(`${field} must be an own evidence field`));
+    } finally {
+      delete Object.prototype[field];
+    }
+  }
   assert.throws(() => verifyEvidence({ ...evidence, sha256: 'not-a-hash' }), /sha256/);
   assert.throws(() => verifyEvidence({ ...evidence, extra: true }), /unknown evidence field: extra/);
   assert.throws(() => verifyEvidence(null), /evidence must be a plain object/);
