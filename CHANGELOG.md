@@ -7,6 +7,7 @@ All notable changes to Secure Learn are documented here. This project follows [S
 ### Changed
 
 - Stage all release evidence on a draft before publication so immutable releases never expose a partial asset set.
+- Run JavaScript/TypeScript CodeQL as a required CI gate and remove the incomplete regular-expression sanitization it identified.
 
 ## [1.0.0] - 2026-07-17
 
