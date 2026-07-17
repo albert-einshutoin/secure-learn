@@ -480,12 +480,15 @@ Create executable `scripts/learn` in Node.js. Implement:
 Use `spawnSync` with fixed executable candidates, argument arrays, a sanitized environment, bounded output and timeout; never use `shell: true`. Product code must not contain a readiness bypass. Tests inject process dependencies into the doctor module instead.
 
 The VM receipt is an operator-attested local disposable-VM readiness receipt,
-not cryptographic attestation. First run
-`sudo scripts/provision-vm-adapter <snapshot-id> --acknowledge-disposable-snapshot`
-inside a supported local VM. Provisioning is
-Linux/root-only, rejects containers, bare metal, and cloud-provider evidence,
-and writes the root-owned fixed marker
-`/etc/secure-learn/vm-adapter.json`. The acknowledgement is not proof that a
+not cryptographic attestation. Generate marker JSON as a non-root user with
+`node scripts/provision-vm-adapter <snapshot-id> --acknowledge-disposable-snapshot`,
+using `umask 077` and a temporary output file. The provisioner refuses root
+execution, rejects containers, bare metal, and cloud-provider evidence, and
+never writes `/etc`. Install only the data with fixed commands:
+`/usr/bin/sudo /usr/bin/install -d -o root -g root -m 0755 /etc/secure-learn`,
+then `/usr/bin/sudo /usr/bin/install -o root -g root -m 0644 -- "$marker" /etc/secure-learn/vm-adapter.json`. Repository JavaScript,
+Node.js, and environment-selected shebangs must never run through `sudo`. The
+acknowledgement is not proof that a
 hypervisor snapshot API was called; a root operator can forge this non-cryptographic
 local safety control.
 

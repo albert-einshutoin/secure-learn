@@ -238,8 +238,32 @@ test('issuer writes a private receipt atomically without replacing an existing r
   const output = path.join(root, 'evidence', 'vm-receipts', 'issued.json');
   writeVmReceiptAtomic(output, validReceipt(), { repositoryRoot: root, now: NOW });
   assert.equal(fs.statSync(output).mode & 0o777, 0o600);
+  assert.equal(fs.statSync(output).nlink, 1);
   assert.deepEqual(JSON.parse(fs.readFileSync(output, 'utf8')), validReceipt());
   assert.throws(() => writeVmReceiptAtomic(output, validReceipt(), { repositoryRoot: root, now: NOW }), /already exists/);
+  assert.deepEqual(
+    fs.readdirSync(path.dirname(output)).filter((name) => name.includes('.tmp-')),
+    [],
+  );
+});
+
+test('atomic receipt publication preserves a target created immediately before link', (t) => {
+  const tempRoot = makeRoot(t);
+  const output = path.join(tempRoot, 'evidence', 'vm-receipts', 'raced.json');
+  const existing = 'competitor-content\n';
+  const fsImpl = { ...fs };
+  fsImpl.linkSync = (temporary, target) => {
+    fs.writeFileSync(target, existing, { mode: 0o600, flag: 'wx' });
+    fs.linkSync(temporary, target);
+  };
+
+  assert.throws(() => writeVmReceiptAtomic(output, validReceipt(), {
+    repositoryRoot: tempRoot,
+    now: NOW,
+    fsImpl,
+  }), /already exists/);
+  assert.equal(fs.readFileSync(output, 'utf8'), existing);
+  assert.equal(fs.statSync(output).nlink, 1);
   assert.deepEqual(
     fs.readdirSync(path.dirname(output)).filter((name) => name.includes('.tmp-')),
     [],

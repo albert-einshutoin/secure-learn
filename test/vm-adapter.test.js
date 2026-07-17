@@ -60,21 +60,39 @@ test('accepts known local VM evidence and rejects bare metal, containers, and cl
   })), /cloud virtual machine/);
 });
 
-test('provisioning requires Linux root, explicit disposable acknowledgement, and local VM evidence', () => {
+test('marker generation requires Linux non-root, explicit disposable acknowledgement, and local VM evidence', () => {
   const base = {
     platform: 'linux',
-    euid: 0,
+    euid: 501,
     now: () => NOW,
     randomBytes: () => Buffer.alloc(32, 0xab),
     inspect: () => ({ provider: 'qemu-kvm' }),
-    writeMarker: (marker) => marker,
   };
   assert.throws(() => provisionVmAdapter({ snapshotId: 'snapshot-001', acknowledge: false }, base), /acknowledge/);
   assert.throws(() => provisionVmAdapter({ snapshotId: 'snapshot-001', acknowledge: true }, { ...base, platform: 'darwin' }), /Linux/);
-  assert.throws(() => provisionVmAdapter({ snapshotId: 'snapshot-001', acknowledge: true }, { ...base, euid: 501 }), /root/);
+  assert.throws(() => provisionVmAdapter({ snapshotId: 'snapshot-001', acknowledge: true }, { ...base, euid: 0 }), /root/);
 
   const marker = provisionVmAdapter({ snapshotId: 'snapshot-001', acknowledge: true }, base);
   assert.deepEqual(marker, validMarker({ provisioning_nonce: 'ab'.repeat(32) }));
+});
+
+test('non-root provisioner CLI emits exact marker JSON without performing privileged writes', () => {
+  const { main } = require('../scripts/provision-vm-adapter');
+  let stdout = '';
+  let stderr = '';
+  const marker = validMarker();
+  const status = main(['snapshot-001', '--acknowledge-disposable-snapshot'], {
+    provision: () => marker,
+    stdout: { write: (value) => { stdout += value; } },
+    stderr: { write: (value) => { stderr += value; } },
+  });
+  assert.equal(status, 0);
+  assert.equal(stdout, `${JSON.stringify(marker, null, 2)}\n`);
+  assert.equal(stderr, '');
+
+  const source = fs.readFileSync(path.join(root, 'scripts', 'provision-vm-adapter'), 'utf8');
+  assert.match(source, /^#!\/usr\/bin\/node\n/);
+  assert.doesNotMatch(source, /child_process|spawn|exec|sudo|\/etc\/secure-learn/);
 });
 
 test('marker validation rejects missing, unsafe, stale, mismatched, and provider-divergent markers', () => {
@@ -108,7 +126,7 @@ test('marker validation rejects missing, unsafe, stale, mismatched, and provider
   }), /provider/);
 });
 
-test('provisioning CLI fails safely outside a Linux root VM and never reflects input', { skip: process.platform === 'linux' }, () => {
+test('provisioning CLI fails safely outside a Linux non-root VM and never reflects input', { skip: process.platform === 'linux' }, () => {
   const script = path.join(root, 'scripts', 'provision-vm-adapter');
   const result = spawnSync(process.execPath, [script, 'snapshot-secret', '--acknowledge-disposable-snapshot'], {
     encoding: 'utf8',
@@ -131,4 +149,14 @@ test('published marker schema locks the exact local adapter contract', () => {
     'qemu-kvm', 'vmware', 'virtualbox', 'parallels', 'apple-virtualization', 'utm',
   ]);
   assert.equal(schema.properties.disposable_snapshot_acknowledged.const, true);
+});
+
+test('VM adapter docs never execute repository JavaScript as root', () => {
+  const documentation = [
+    fs.readFileSync(path.join(root, 'docs', 'vm-adapter.md'), 'utf8'),
+    fs.readFileSync(path.join(root, 'docs', 'superpowers', 'plans', '2026-07-17-security-learning-platform-v2-foundation.md'), 'utf8'),
+  ].join('\n');
+  assert.doesNotMatch(documentation, /sudo[^\n]*(?:node|provision-vm-adapter)/i);
+  assert.match(documentation, /\/usr\/bin\/sudo \/usr\/bin\/install -d -o root -g root -m 0755 \/etc\/secure-learn/);
+  assert.match(documentation, /\/usr\/bin\/sudo \/usr\/bin\/install -o root -g root -m 0644 --/);
 });

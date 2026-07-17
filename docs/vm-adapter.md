@@ -5,15 +5,26 @@ hosted Linux VM—not on the macOS host, bare metal, a container, or a cloud VM.
 
 ## Provision the adapter
 
-After creating a VM snapshot, run this inside the VM as root:
+After creating a VM snapshot, generate the marker as the normal VM user, then
+install only that data file with fixed absolute root commands:
 
 ```bash
-sudo scripts/provision-vm-adapter snapshot-001 --acknowledge-disposable-snapshot
+umask 077
+marker="$(mktemp)"
+node scripts/provision-vm-adapter snapshot-001 --acknowledge-disposable-snapshot > "$marker"
+/usr/bin/sudo /usr/bin/install -d -o root -g root -m 0755 /etc/secure-learn
+/usr/bin/sudo /usr/bin/install -o root -g root -m 0644 -- "$marker" /etc/secure-learn/vm-adapter.json
+rm -f -- "$marker"
 ```
+
+The provisioner refuses root execution. Do not run repository JavaScript,
+Node.js, or an environment-selected shebang through `sudo`; root only installs
+the already-generated marker as data.
 
 The acknowledgement means the operator has created a disposable snapshot and
 accepts that the lab may change the guest. Secure Learn detects supported local
-virtualization evidence and writes `/etc/secure-learn/vm-adapter.json`. The
+virtualization evidence and emits the marker JSON. The fixed install step writes
+`/etc/secure-learn/vm-adapter.json`. The
 marker is root-owned, bounded, non-symlinked, and records its provider, snapshot
 label, timestamp, and random provisioning nonce.
 
