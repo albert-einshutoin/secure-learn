@@ -1,0 +1,46 @@
+#!/usr/bin/env node
+'use strict';
+
+const fs = require('node:fs');
+const path = require('node:path');
+const {
+  createVmReceipt,
+  ensureReceiptDirectory,
+  writeVmReceiptAtomic,
+} = require('./lib/vm-receipt');
+
+const REPOSITORY_ROOT = fs.realpathSync(path.resolve(__dirname, '..'));
+const CONTROL_CHARACTER = /[\u0000-\u001F\u007F-\u009F]/;
+
+function main(argv = process.argv.slice(2)) {
+  if (
+    argv.length < 2
+    || argv.length > 3
+    || argv.some((value) => typeof value !== 'string' || CONTROL_CHARACTER.test(value))
+    || argv[0].length > 2
+    || argv[1].length > 128
+    || (argv[2] !== undefined && argv[2].length > 1024)
+  ) {
+    process.stderr.write('Usage: scripts/issue-vm-receipt <s5|s6> <snapshot-id> [receipt-path]\n');
+    return 2;
+  }
+  try {
+    const receipt = createVmReceipt({ labId: argv[0], snapshotId: argv[1] });
+    if (argv[2] === undefined) {
+      process.stdout.write(`${JSON.stringify(receipt, null, 2)}\n`);
+    } else {
+      ensureReceiptDirectory(REPOSITORY_ROOT);
+      writeVmReceiptAtomic(argv[2], receipt, { repositoryRoot: REPOSITORY_ROOT });
+      process.stdout.write('Linux VM readiness receipt issued.\n');
+    }
+    return 0;
+  } catch {
+    // Identity values and filesystem details must never be reflected.
+    process.stderr.write('Linux VM readiness receipt could not be issued.\n');
+    return 1;
+  }
+}
+
+if (require.main === module) process.exitCode = main();
+
+module.exports = { main };

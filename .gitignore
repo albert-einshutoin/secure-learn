@@ -21,6 +21,7 @@ npm-debug.log*
 reports/
 results/
 /release/
+/evidence/vm-receipts/
 *.log
 *.pcap
 *.pcapng

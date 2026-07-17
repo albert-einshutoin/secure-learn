@@ -2,157 +2,24 @@
 'use strict';
 
 const fs = require('node:fs');
-const os = require('node:os');
 const path = require('node:path');
-const { spawnSync } = require('node:child_process');
 const { loadManifests, loadStandards } = require('./lib/curriculum');
-const { assertAllowedTarget } = require('./lib/target-policy');
+const { doctorManifest } = require('./lib/doctor');
 
 const REPOSITORY_ROOT = fs.realpathSync(path.resolve(__dirname, '..'));
-const DOCKER_CANDIDATES = [
-  '/Applications/Docker.app/Contents/Resources/bin/docker',
-  '/opt/homebrew/bin/docker',
-  '/usr/local/bin/docker',
-  '/usr/bin/docker',
-];
-const MAX_RECEIPT_BYTES = 16 * 1024;
-
-function findDockerBinary() {
-  for (const candidate of DOCKER_CANDIDATES) {
-    try {
-      const resolved = fs.realpathSync(candidate);
-      const stat = fs.statSync(resolved);
-      fs.accessSync(resolved, fs.constants.X_OK);
-      if (stat.isFile()) return resolved;
-    } catch {
-      // Missing candidates are expected; only fixed system locations are tried.
-    }
-  }
-  return null;
-}
-
-function checkDockerDesktop(options = {}) {
-  const findDocker = options.findDocker || findDockerBinary;
-  const binary = findDocker();
-  if (binary === null) return { ok: false, message: 'Docker Desktop is not ready: docker CLI was not found.' };
-
-  // The executable, argv, cwd, and environment are all bounded here so a
-  // caller-controlled PATH, shell fragment, or remote DOCKER_HOST cannot run.
-  const result = spawnSync(binary, ['info', '--format', '{{json .ServerVersion}}'], {
-    cwd: REPOSITORY_ROOT,
-    encoding: 'utf8',
-    shell: false,
-    timeout: 15_000,
-    env: {
-      HOME: os.homedir(),
-      PATH: '/usr/bin:/bin:/usr/sbin:/sbin',
-      DOCKER_CLI_HINTS: 'false',
-    },
-  });
-  if (result.error || result.status !== 0) {
-    return { ok: false, message: 'Docker Desktop is not ready: docker info failed.' };
-  }
-  return { ok: true, message: 'Platform ready: docker-desktop' };
-}
-
-function isInside(parent, child) {
-  const relative = path.relative(parent, child);
-  return relative !== '' && !relative.startsWith(`..${path.sep}`) && relative !== '..' && !path.isAbsolute(relative);
-}
-
-function validateVmReceipt(receiptPath, repositoryRoot = REPOSITORY_ROOT) {
-  if (typeof receiptPath !== 'string' || receiptPath.length === 0 || receiptPath.includes('\u0000')) {
-    throw new Error('Linux VM receipt path is required.');
-  }
-
-  const trustedDirectory = path.resolve(repositoryRoot, '.secure-learn', 'receipts');
-  const requested = path.resolve(receiptPath);
-  if (!isInside(trustedDirectory, requested)) {
-    throw new Error('Linux VM receipt must be inside the trusted receipt directory.');
-  }
-
-  let linkStat;
-  try {
-    linkStat = fs.lstatSync(requested);
-  } catch {
-    throw new Error('Linux VM receipt does not exist.');
-  }
-  if (linkStat.isSymbolicLink()) throw new Error('Linux VM receipt must not be a symbolic link.');
-
-  let resolved;
-  try {
-    resolved = fs.realpathSync(requested);
-  } catch {
-    throw new Error('Linux VM receipt cannot be resolved.');
-  }
-  const trustedReal = fs.realpathSync(trustedDirectory);
-  if (!isInside(trustedReal, resolved)) {
-    throw new Error('Linux VM receipt must be inside the trusted receipt directory.');
-  }
-
-  const stat = fs.statSync(resolved);
-  if (!stat.isFile()) throw new Error('Linux VM receipt must be a regular file.');
-  if (stat.size > MAX_RECEIPT_BYTES) throw new Error('Linux VM receipt is too large.');
-  if ((stat.mode & 0o022) !== 0) throw new Error('Linux VM receipt has unsafe permissions.');
-  if (typeof process.getuid === 'function' && stat.uid !== process.getuid()) {
-    throw new Error('Linux VM receipt must be owned by the current user.');
-  }
-
-  let receipt;
-  try {
-    receipt = JSON.parse(fs.readFileSync(resolved, 'utf8'));
-  } catch {
-    throw new Error('Linux VM receipt must contain valid JSON.');
-  }
-  if (
-    receipt === null
-    || typeof receipt !== 'object'
-    || Array.isArray(receipt)
-    || receipt.version !== 1
-    || receipt.platform !== 'linux-vm'
-  ) {
-    throw new Error('Linux VM receipt has an unsupported contract.');
-  }
-}
-
-function validateSafetyBoundary(safety) {
-  for (const service of safety.target_services) assertAllowedTarget(service, safety);
-  for (const cidr of safety.allowed_cidrs) assertAllowedTarget(cidr.split('/')[0], safety);
-}
-
-function safetyOutput(safety) {
-  return [
-    `Allowed services: ${safety.target_services.length > 0 ? safety.target_services.join(',') : 'none'}`,
-    `Allowed CIDRs: ${safety.allowed_cidrs.length > 0 ? safety.allowed_cidrs.join(',') : 'none'}`,
-    `External network: ${safety.external_network ? 'enabled' : 'disabled'}`,
-  ].join('\n');
-}
+const SAFE_INPUT = /^[A-Za-z0-9][A-Za-z0-9-]{0,63}$/;
 
 function findManifest(manifests, id) {
   return manifests.find((manifest) => manifest.id === id);
 }
 
-function doctor(manifest, env = process.env) {
-  validateSafetyBoundary(manifest.safety);
-  const messages = [];
-  for (const platform of manifest.platforms.required) {
-    if (platform === 'docker-desktop') {
-      const bypass = env.NODE_ENV === 'test' && env.SECURE_LEARN_SKIP_DOCKER_CHECK === '1';
-      const result = bypass ? { ok: true, message: 'Platform ready: docker-desktop' } : checkDockerDesktop();
-      if (!result.ok) throw new Error(result.message);
-      messages.push(result.message);
-    } else if (platform === 'linux-vm') {
-      if (process.platform !== 'linux') throw new Error('Linux VM lab must be checked from a Linux VM.');
-      validateVmReceipt(env.SECURE_LEARN_VM_RECEIPT, REPOSITORY_ROOT);
-      messages.push('Platform ready: linux-vm');
-    } else {
-      throw new Error(`Unsupported required platform: ${platform}`);
-    }
-  }
-  return `${messages.join('\n')}\n${safetyOutput(manifest.safety)}\n`;
-}
-
 function main(argv = process.argv.slice(2)) {
+  // Validate before loading data or reflecting values so control sequences and
+  // oversized arguments never cross a diagnostic boundary.
+  if (argv.some((value) => typeof value !== 'string' || !SAFE_INPUT.test(value))) {
+    process.stderr.write('Invalid command input.\n');
+    return 2;
+  }
   const [command, ...args] = argv;
   const manifests = loadManifests(REPOSITORY_ROOT);
 
@@ -189,7 +56,7 @@ function main(argv = process.argv.slice(2)) {
       return 2;
     }
     try {
-      process.stdout.write(doctor(manifest));
+      process.stdout.write(doctorManifest(manifest, { repositoryRoot: REPOSITORY_ROOT }));
       return 0;
     } catch (error) {
       process.stderr.write(`${error.message}\n`);
@@ -211,4 +78,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { checkDockerDesktop, validateVmReceipt };
+module.exports = { main };
