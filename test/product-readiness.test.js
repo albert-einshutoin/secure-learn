@@ -303,7 +303,7 @@ test('S7 is presented as a cross-layer event chain within one trust zone', () =>
   assert.match(scenario, /not (?:an? )?(?:APT|lateral movement)/i);
   assert.doesNotMatch(scenario, /APT模擬|実際のAPT|横移動を再現/i);
   assert.match(generator, /id: 'S7',[\s\S]*?title: 'Cross-Layer Incident'/);
-  assert.doesNotMatch(script, /APT|Lateral Movement/i);
+  assert.doesNotMatch(script, /\bAPT\b|Lateral Movement/i);
   assert.match(script, /Cross-Layer Incident/);
   assert.match(script, /Event Chain Report/);
   assert.doesNotMatch(script, /Open ports discovered|Attack Chain Complete|S5 Related|\| Completed \||Valid credentials found|Successful:/i);

