@@ -3,9 +3,26 @@
 
 set -euo pipefail
 
+SCRIPT_PATH="${BASH_SOURCE[0]}"
+SCRIPT_DIR="${SCRIPT_PATH%/*}"
+if [[ "$SCRIPT_DIR" == "$SCRIPT_PATH" ]]; then
+  SCRIPT_DIR=.
+fi
+ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd -P)"
+source "$ROOT_DIR/scripts/lib/target_guard.sh"
+
 BASE_URL="${BASE_URL:-http://127.0.0.1:3000}"
-if [[ "$BASE_URL" != "http://127.0.0.1:3000" ]]; then
-  echo "ERROR: BASE_URL must be the loopback-only Secure Learn endpoint http://127.0.0.1:3000." >&2
+REQUESTS="${REQUESTS:-50}"
+CONCURRENCY="${CONCURRENCY:-5}"
+SLO_MS="${SLO_MS:-500}"
+RUN_CHAOS="${RUN_CHAOS:-0}"
+
+secure_learn_validate_loopback_base_url "$BASE_URL"
+secure_learn_validate_bounded_decimal REQUESTS "$REQUESTS" 1 500
+secure_learn_validate_bounded_decimal CONCURRENCY "$CONCURRENCY" 1 50
+secure_learn_validate_bounded_decimal SLO_MS "$SLO_MS" 1 10000
+if [[ "$RUN_CHAOS" != "0" && "$RUN_CHAOS" != "1" ]]; then
+  echo "ERROR: RUN_CHAOS must be 0 or 1." >&2
   exit 64
 fi
 
@@ -14,14 +31,7 @@ fi
 # Compose project.
 unset COMPOSE_PROJECT_DIR
 
-SCRIPT_PATH="${BASH_SOURCE[0]}"
-SCRIPT_DIR="${SCRIPT_PATH%/*}"
-if [[ "$SCRIPT_DIR" == "$SCRIPT_PATH" ]]; then
-  SCRIPT_DIR=.
-fi
-ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd -P)"
 REPORT_DIR="${REPORT_DIR:-reports/incident_drill_$(date +%Y%m%d_%H%M%S)}"
-RUN_CHAOS="${RUN_CHAOS:-0}"
 
 mkdir -p "$REPORT_DIR"
 
@@ -33,7 +43,7 @@ echo "Report dir: $REPORT_DIR"
 echo
 
 BASE_URL="$BASE_URL" REPORT_DIR="$REPORT_DIR/backend" "$ROOT_DIR/scripts/backend_hands_on_tests.sh"
-BASE_URL="$BASE_URL" REPORT_DIR="$REPORT_DIR/load" "$ROOT_DIR/scripts/load_hands_on_tests.sh"
+BASE_URL="$BASE_URL" REQUESTS="$REQUESTS" CONCURRENCY="$CONCURRENCY" SLO_MS="$SLO_MS" REPORT_DIR="$REPORT_DIR/load" "$ROOT_DIR/scripts/load_hands_on_tests.sh"
 
 if [ "$RUN_CHAOS" = "1" ]; then
   BASE_URL="$BASE_URL" REPORT_DIR="$REPORT_DIR/chaos" "$ROOT_DIR/scripts/chaos_hands_on_tests.sh"

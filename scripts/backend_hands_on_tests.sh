@@ -4,7 +4,11 @@
 
 set -euo pipefail
 
-BASE_URL="${BASE_URL:-http://localhost:3000}"
+BASE_URL="${BASE_URL:-http://127.0.0.1:3000}"
+if [[ "$BASE_URL" != "http://127.0.0.1:3000" ]]; then
+  echo "ERROR: BASE_URL must be the loopback-only Secure Learn endpoint http://127.0.0.1:3000." >&2
+  exit 64
+fi
 REPORT_DIR="${REPORT_DIR:-reports/backend_hands_on_$(date +%Y%m%d_%H%M%S)}"
 LAB_LOGIN_NAME="${LAB_LOGIN_NAME:-guest}"
 LAB_LOGIN_VALUE="${LAB_LOGIN_VALUE:-guest}"

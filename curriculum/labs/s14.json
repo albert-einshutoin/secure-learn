@@ -38,7 +38,7 @@
       "localhost"
     ],
     "allowed_cidrs": [
-      "127.0.0.0/8"
+      "127.0.0.1/32"
     ],
     "external_network": false
   },

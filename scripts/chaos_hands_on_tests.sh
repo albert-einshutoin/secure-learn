@@ -3,8 +3,19 @@
 
 set -euo pipefail
 
-BASE_URL="${BASE_URL:-http://localhost:3000}"
-COMPOSE_PROJECT_DIR="${COMPOSE_PROJECT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+BASE_URL="${BASE_URL:-http://127.0.0.1:3000}"
+if [[ "$BASE_URL" != "http://127.0.0.1:3000" ]]; then
+  echo "ERROR: BASE_URL must be the loopback-only Secure Learn endpoint http://127.0.0.1:3000." >&2
+  exit 64
+fi
+
+SCRIPT_PATH="${BASH_SOURCE[0]}"
+SCRIPT_DIR="${SCRIPT_PATH%/*}"
+if [[ "$SCRIPT_DIR" == "$SCRIPT_PATH" ]]; then
+  SCRIPT_DIR=.
+fi
+unset COMPOSE_PROJECT_DIR
+readonly COMPOSE_PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd -P)"
 REPORT_DIR="${REPORT_DIR:-reports/chaos_hands_on_$(date +%Y%m%d_%H%M%S)}"
 
 mkdir -p "$REPORT_DIR"

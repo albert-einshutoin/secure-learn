@@ -3,10 +3,24 @@
 
 set -euo pipefail
 
-BASE_URL="${BASE_URL:-http://localhost:3000}"
+SCRIPT_PATH="${BASH_SOURCE[0]}"
+SCRIPT_DIR="${SCRIPT_PATH%/*}"
+if [[ "$SCRIPT_DIR" == "$SCRIPT_PATH" ]]; then
+  SCRIPT_DIR=.
+fi
+ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd -P)"
+source "$ROOT_DIR/scripts/lib/target_guard.sh"
+
+BASE_URL="${BASE_URL:-http://127.0.0.1:3000}"
 REQUESTS="${REQUESTS:-50}"
 CONCURRENCY="${CONCURRENCY:-5}"
 SLO_MS="${SLO_MS:-500}"
+
+secure_learn_validate_loopback_base_url "$BASE_URL"
+secure_learn_validate_bounded_decimal REQUESTS "$REQUESTS" 1 500
+secure_learn_validate_bounded_decimal CONCURRENCY "$CONCURRENCY" 1 50
+secure_learn_validate_bounded_decimal SLO_MS "$SLO_MS" 1 10000
+
 REPORT_DIR="${REPORT_DIR:-reports/load_hands_on_$(date +%Y%m%d_%H%M%S)}"
 
 mkdir -p "$REPORT_DIR"
