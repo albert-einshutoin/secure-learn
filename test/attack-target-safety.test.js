@@ -24,7 +24,7 @@ const attackScripts = [
 ];
 const interceptedTools = [
   'arping', 'awk', 'cat', 'curl', 'cut', 'date', 'dig', 'docker', 'getent',
-  'grep', 'head', 'hostname', 'hydra', 'ip', 'jq', 'mkdir', 'nc', 'nmap',
+  'dirname', 'grep', 'head', 'hostname', 'hydra', 'ip', 'jq', 'mkdir', 'nc', 'nmap',
   'openssl', 'ping', 'seq', 'sleep', 'sqlmap', 'tail', 'tee', 'timeout',
   'traceroute',
 ];
@@ -111,12 +111,67 @@ test('attack scripts treat target command substitutions as inert rejected data',
     const fake = makeFakePath(t);
     const payloadMarker = path.join(fake.directory, 'target-payload-executed');
     const result = runScript(relativePath, fake, {
-      PAYLOAD_MARKER: payloadMarker,
-      TARGET: '$(touch "$PAYLOAD_MARKER")',
+      TARGET: `$(printf owned > ${payloadMarker})`,
     });
     assert.notEqual(result.status, 0, `${relativePath} accepted a target payload`);
     assert.equal(fs.existsSync(payloadMarker), false, `${relativePath} evaluated its target payload`);
     assert.equal(fs.existsSync(fake.marker), false, `${relativePath} invoked a tool for its target payload`);
+  }
+});
+
+test('bounded decimal validator accepts every documented boundary as decimal', () => {
+  const guard = path.join(root, 'scripts/lib/target_guard.sh');
+  const accepted = [
+    ['CONCURRENT', '1', '1', '50'], ['CONCURRENT', '50', '1', '50'],
+    ['REQUESTS', '1', '1', '500'], ['REQUESTS', '500', '1', '500'],
+    ['DELAY', '0', '0', '10'], ['DELAY', '10', '0', '10'],
+    ['BURST', '1', '1', '20'], ['BURST', '20', '1', '20'],
+    ['PING_COUNT', '1', '1', '20'], ['PING_COUNT', '20', '1', '20'],
+    ['COUNT', '1', '1', '20'], ['COUNT', '20', '1', '20'],
+    ['SESSIONS', '1', '1', '50'], ['SESSIONS', '50', '1', '50'],
+    ['HOLD_SECONDS', '1', '1', '15'], ['HOLD_SECONDS', '15', '1', '15'],
+    ['SLO_MS', '1', '1', '10000'], ['SLO_MS', '10000', '1', '10000'],
+    // Leading zeroes are intentionally accepted and interpreted in base 10.
+    ['DELAY', '00', '0', '10'], ['REQUESTS', '0500', '1', '500'],
+  ];
+
+  for (const [name, value, minimum, maximum] of accepted) {
+    const result = spawnSync(bash, ['-c', 'source "$1"; secure_learn_validate_bounded_decimal "$2" "$3" "$4" "$5"', '_', guard, name, value, minimum, maximum], {
+      encoding: 'utf8',
+      env: { PATH: process.env.PATH },
+    });
+    assert.equal(result.status, 0, `${name}=${value}: ${result.stderr}`);
+  }
+});
+
+test('quality gate rejects every non-canonical runtime endpoint before tools run', (t) => {
+  const cases = [
+    { APP_BASE_URL: 'https://example.com' },
+    { APP_HEALTH_URL: 'http://127.0.0.1:3000/health?next=https://example.com' },
+    { ELASTICSEARCH_URL: 'http://169.254.169.254:9200' },
+    { KIBANA_URL: 'http://user@127.0.0.1:5601' },
+  ];
+  for (const overrides of cases) {
+    const fake = makeFakePath(t);
+    const result = runScript('scripts/lab_quality_gate.sh', fake, overrides);
+    assert.notEqual(result.status, 0, `quality gate accepted ${JSON.stringify(overrides)}`);
+    assert.equal(fs.existsSync(fake.marker), false, 'quality gate invoked a tool before endpoint validation');
+  }
+});
+
+test('shared endpoint validator accepts only canonical local quality endpoints', () => {
+  const guard = path.join(root, 'scripts/lib/target_guard.sh');
+  for (const [name, value, expected] of [
+    ['APP_BASE_URL', 'http://127.0.0.1:3000', 'http://127.0.0.1:3000'],
+    ['APP_HEALTH_URL', 'http://127.0.0.1:3000/health', 'http://127.0.0.1:3000/health'],
+    ['ELASTICSEARCH_URL', 'http://127.0.0.1:9200', 'http://127.0.0.1:9200'],
+    ['KIBANA_URL', 'http://127.0.0.1:5601', 'http://127.0.0.1:5601'],
+  ]) {
+    const result = spawnSync(bash, ['-c', 'source "$1"; secure_learn_validate_exact_loopback_endpoint "$2" "$3" "$4"', '_', guard, name, value, expected], {
+      encoding: 'utf8',
+      env: { PATH: process.env.PATH },
+    });
+    assert.equal(result.status, 0, `${name}: ${result.stderr}`);
   }
 });
 
@@ -277,8 +332,21 @@ test('IPS helper installs iptables at build time and never fetches packages at r
 
   assert.match(compose, /ips-iptables:\n\s+build:\n\s+context: \.\/docker\/ips-iptables/);
   assert.doesNotMatch(compose, /apk add/);
-  assert.match(dockerfile, /^FROM alpine:3\.22$/m);
-  assert.match(dockerfile, /^RUN apk add --no-cache iptables$/m);
+  assert.match(dockerfile, /^FROM alpine:3\.22@sha256:14358309a308569c32bdc37e2e0e9694be33a9d99e68afb0f5ff33cc1f695dce$/m);
+  assert.match(dockerfile, /^RUN apk add --no-cache iptables=1\.8\.11-r1$/m);
+});
+
+test('CI and release evidence cover the privileged IPS helper image', () => {
+  const ci = fs.readFileSync(path.join(root, '.github/workflows/ci.yml'), 'utf8');
+  const releaseArtifacts = fs.readFileSync(path.join(root, 'scripts/release_artifacts.sh'), 'utf8');
+
+  assert.match(ci, /secure-learn-ips-iptables/);
+  assert.match(ci, /--network none/);
+  assert.match(ci, /--cap-add NET_ADMIN/);
+  assert.match(ci, /NFQUEUE/);
+  assert.match(releaseArtifacts, /IPS_IMAGE="secure-learn-ips-iptables:\$VERSION"/);
+  assert.match(releaseArtifacts, /secure-learn-ips-iptables-\$VERSION\.trivy\.json/);
+  assert.match(releaseArtifacts, /secure-learn-ips-iptables-\$VERSION\.spdx\.json/);
 });
 
 test('Docker Compose accepts the contained network configuration when available', (t) => {
