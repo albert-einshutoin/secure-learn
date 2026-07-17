@@ -70,10 +70,26 @@ test('verified lab manifests require their complete quality workflow', () => {
   manifest.maturity = 'verified';
 
   assert.deepEqual(validateManifest(manifest), [
-    'verified labs require workflow.verify',
-    'verified labs require workflow.remediate',
-    'verified labs require workflow.regress',
-    'verified labs require assessment.verifier',
+    'verified lab requires workflow.verify',
+    'verified lab requires workflow.remediate',
+    'verified lab requires workflow.regress',
+    'verified lab requires assessment.verifier',
+  ]);
+});
+
+test('verified lab manifests reject empty workflow and verifier paths', () => {
+  const manifest = validManifest();
+  manifest.maturity = 'verified';
+  manifest.workflow.verify = '';
+  manifest.workflow.remediate = '';
+  manifest.workflow.regress = '';
+  manifest.assessment.verifier = '';
+
+  assert.deepEqual(validateManifest(manifest), [
+    'verified lab requires workflow.verify',
+    'verified lab requires workflow.remediate',
+    'verified lab requires workflow.regress',
+    'verified lab requires assessment.verifier',
   ]);
 });
 

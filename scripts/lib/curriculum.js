@@ -46,7 +46,7 @@ function validateManifest(manifest) {
     errors.push('maturity must be one of documented, runnable, verified, external');
   }
   if (!MODE_VALUES.includes(candidate.mode)) {
-    errors.push('mode must be one of docker-lab, host-assisted, operator-workflow, design-exercise');
+    errors.push('mode is not supported');
   }
   if (!candidate.safety || candidate.safety.external_network !== false) {
     errors.push('external_network must be false for bundled labs');
@@ -55,10 +55,10 @@ function validateManifest(manifest) {
   if (candidate.maturity === 'verified') {
     const workflow = candidate.workflow || {};
     const assessment = candidate.assessment || {};
-    if (workflow.verify == null) errors.push('verified labs require workflow.verify');
-    if (workflow.remediate == null) errors.push('verified labs require workflow.remediate');
-    if (workflow.regress == null) errors.push('verified labs require workflow.regress');
-    if (assessment.verifier == null) errors.push('verified labs require assessment.verifier');
+    if (!workflow.verify) errors.push('verified lab requires workflow.verify');
+    if (!workflow.remediate) errors.push('verified lab requires workflow.remediate');
+    if (!workflow.regress) errors.push('verified lab requires workflow.regress');
+    if (!assessment.verifier) errors.push('verified lab requires assessment.verifier');
   }
 
   return errors;
