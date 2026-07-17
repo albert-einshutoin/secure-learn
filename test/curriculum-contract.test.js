@@ -283,11 +283,11 @@ test('legacy inventory records its execution and maturity without overstatement'
     ['s5', 'Important File Tampering', 'dfir', 'host-assisted', 'external', ['T1565'], ['attack/scripts/s5_file_tamper.sh', []], null],
     ['s6', 'Sudo Activity Detection', 'dfir', 'host-assisted', 'external', ['T1548.003'], ['attack/scripts/s6_privesc.sh', []], null],
     ['s7', 'Cross-Layer Incident', 'soc', 'docker-lab', 'runnable', ['T1595', 'T1110', 'T1190'], ['attack/scripts/s7_lateral.sh', []], ['scripts/scenario_e2e_check.sh', ['S7']]],
-    ['s8', 'ARP Observation', 'foundation', 'docker-lab', 'runnable', ['T1046'], ['attack/scripts/s8_l2_arp_observe.sh', []], null],
+    ['s8', 'ARP Observation', 'foundation', 'docker-lab', 'runnable', ['T1018'], ['attack/scripts/s8_l2_arp_observe.sh', []], null],
     ['s9', 'ICMP Reconnaissance', 'foundation', 'docker-lab', 'runnable', ['T1595'], ['attack/scripts/s9_l3_icmp_recon.sh', []], null],
     ['s10', 'TCP State Observation', 'foundation', 'docker-lab', 'runnable', ['T1595'], ['attack/scripts/s10_l4_tcp_state.sh', []], null],
     ['s11', 'Session Pressure', 'foundation', 'docker-lab', 'runnable', ['T1499'], ['attack/scripts/s11_l5_session_stress.sh', []], null],
-    ['s12', 'TLS Visibility Boundary', 'foundation', 'docker-lab', 'runnable', ['T1040', 'T1573'], ['attack/scripts/s12_l6_tls_boundary.sh', []], null],
+    ['s12', 'TLS Visibility Boundary', 'foundation', 'docker-lab', 'runnable', [], ['attack/scripts/s12_l6_tls_boundary.sh', []], null],
     ['s13', 'DNS Service Discovery', 'foundation', 'docker-lab', 'runnable', ['T1018'], ['attack/scripts/s13_l7_dns_observe.sh', []], null],
     ['s14', 'SRE Incident Response', 'sre', 'operator-workflow', 'runnable', ['T1499'], ['scripts/incident_drill.sh', []], null],
     ['s15', 'Integrated Capstone', 'governance', 'operator-workflow', 'documented', ['T1595', 'T1190', 'T1499'], null, null],
@@ -383,4 +383,41 @@ test('legacy manifest prerequisites refer only to earlier labs without cycles', 
       assert.ok(position.get(prerequisite) < position.get(manifest.id), `${manifest.id} prerequisite ${prerequisite} must appear earlier`);
     }
   }
+});
+
+test('declared execution specs resolve to executable regular files inside the repository', () => {
+  const repositoryRoot = fs.realpathSync(root);
+  const manifests = loadManifests(root);
+
+  for (const manifest of manifests) {
+    const specs = [...Object.values(manifest.workflow), manifest.assessment.verifier];
+    for (const spec of specs) {
+      if (spec === null) continue;
+      const resolved = fs.realpathSync(path.resolve(root, spec.path));
+      assert.ok(
+        resolved.startsWith(`${repositoryRoot}${path.sep}`),
+        `${manifest.id} execution path escapes the repository: ${spec.path}`,
+      );
+      assert.ok(fs.statSync(resolved).isFile(), `${manifest.id} execution path is not a regular file: ${spec.path}`);
+      fs.accessSync(resolved, fs.constants.X_OK);
+    }
+  }
+});
+
+test('S1 port scan executes argv directly without shell evaluation', () => {
+  const source = fs.readFileSync(path.join(root, 'attack/scripts/s1_portscan.sh'), 'utf8');
+
+  assert.doesNotMatch(source, /\beval\b/);
+  assert.match(source, /"\$@"/);
+});
+
+test('manifest schema conditionals retain object type constraints for portable validators', () => {
+  const schema = readJson('curriculum/schema/lab.schema.json');
+  const runnableWorkflow = schema.allOf[0].then.properties.workflow;
+  const verifiedWorkflow = schema.allOf[1].then.properties.workflow;
+  const verifiedAssessment = schema.allOf[1].then.properties.assessment;
+
+  assert.equal(runnableWorkflow.type, 'object');
+  assert.equal(verifiedWorkflow.type, 'object');
+  assert.equal(verifiedAssessment.type, 'object');
 });

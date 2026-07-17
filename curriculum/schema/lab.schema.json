@@ -99,6 +99,7 @@
       "then": {
         "properties": {
           "workflow": {
+            "type": "object",
             "properties": {
               "attack": { "$ref": "#/$defs/executionSpec" },
               "verify": { "$ref": "#/$defs/nullableExecutionSpec" },
@@ -117,6 +118,7 @@
       "then": {
         "properties": {
           "workflow": {
+            "type": "object",
             "properties": {
               "verify": { "$ref": "#/$defs/executionSpec" },
               "remediate": { "$ref": "#/$defs/executionSpec" },
@@ -124,6 +126,7 @@
             }
           },
           "assessment": {
+            "type": "object",
             "properties": { "verifier": { "$ref": "#/$defs/executionSpec" } }
           }
         }

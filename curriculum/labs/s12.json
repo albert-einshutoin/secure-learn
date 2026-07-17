@@ -12,10 +12,7 @@
     "optional": []
   },
   "standards": {
-    "mitre_attack": [
-      "T1040",
-      "T1573"
-    ],
+    "mitre_attack": [],
     "owasp_api": [],
     "cwe": [],
     "nist_csf": [

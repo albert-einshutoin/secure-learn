@@ -376,11 +376,11 @@ Execution entries are structured `{"path":"...","args":[...]}` argv specificatio
 | s5 | Important File Tampering | dfir | host-assisted | external | T1565 | `{"path":"attack/scripts/s5_file_tamper.sh","args":[]}` | null |
 | s6 | Sudo Activity Detection | dfir | host-assisted | external | T1548.003 | `{"path":"attack/scripts/s6_privesc.sh","args":[]}` | null |
 | s7 | Cross-Layer Incident | soc | docker-lab | runnable | T1595,T1110,T1190 | `{"path":"attack/scripts/s7_lateral.sh","args":[]}` | `{"path":"scripts/scenario_e2e_check.sh","args":["S7"]}` |
-| s8 | ARP Observation | foundation | docker-lab | runnable | T1046 | `{"path":"attack/scripts/s8_l2_arp_observe.sh","args":[]}` | null |
+| s8 | ARP Observation | foundation | docker-lab | runnable | T1018 | `{"path":"attack/scripts/s8_l2_arp_observe.sh","args":[]}` | null |
 | s9 | ICMP Reconnaissance | foundation | docker-lab | runnable | T1595 | `{"path":"attack/scripts/s9_l3_icmp_recon.sh","args":[]}` | null |
 | s10 | TCP State Observation | foundation | docker-lab | runnable | T1595 | `{"path":"attack/scripts/s10_l4_tcp_state.sh","args":[]}` | null |
 | s11 | Session Pressure | foundation | docker-lab | runnable | T1499 | `{"path":"attack/scripts/s11_l5_session_stress.sh","args":[]}` | null |
-| s12 | TLS Visibility Boundary | foundation | docker-lab | runnable | T1040,T1573 | `{"path":"attack/scripts/s12_l6_tls_boundary.sh","args":[]}` | null |
+| s12 | TLS Visibility Boundary | foundation | docker-lab | runnable | — | `{"path":"attack/scripts/s12_l6_tls_boundary.sh","args":[]}` | null |
 | s13 | DNS Service Discovery | foundation | docker-lab | runnable | T1018 | `{"path":"attack/scripts/s13_l7_dns_observe.sh","args":[]}` | null |
 | s14 | SRE Incident Response | sre | operator-workflow | runnable | T1499 | `{"path":"scripts/incident_drill.sh","args":[]}` | null |
 | s15 | Integrated Capstone | governance | operator-workflow | documented | T1595,T1190,T1499 | null | null |
