@@ -14,11 +14,14 @@ FROM node:24-alpine@sha256:a0b9bf06e4e6193cf7a0f58816cc935ff8c2a908f81e6f1a95432
 
 WORKDIR /app
 
+# npm is required only in build stages. Removing its package tree from the
+# runtime image reduces both executable attack surface and scanner noise.
 RUN apk add --no-cache su-exec \
   && addgroup -g 10001 -S appgroup \
   && adduser -S appuser -u 10001 -G appgroup \
   && mkdir -p /var/log/app \
-  && chown -R appuser:appgroup /app /var/log/app
+  && chown -R appuser:appgroup /app /var/log/app \
+  && rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 
 COPY --chown=root:root docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod 755 /usr/local/bin/docker-entrypoint.sh
