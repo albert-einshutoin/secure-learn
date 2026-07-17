@@ -2,8 +2,10 @@
 
 const assert = require('node:assert/strict');
 const { createHash } = require('node:crypto');
+const path = require('node:path');
 const test = require('node:test');
 
+const { loadManifests } = require('../scripts/lib/curriculum');
 const { classifyOutcome, createEvidence, verifyEvidence } = require('../scripts/lib/evidence');
 
 const STAGES = [
@@ -19,19 +21,12 @@ const STAGES = [
   'cleanup',
 ];
 
-const BASE_SAFETY = Object.freeze({
-  target_services: Object.freeze(['app']),
-  allowed_cidrs: Object.freeze(['172.23.0.0/24']),
-  external_network: false,
-});
-const INCIDENT_SAFETY = Object.freeze({
-  target_services: Object.freeze(['localhost']),
-  allowed_cidrs: Object.freeze(['127.0.0.1/32']),
-  external_network: false,
-});
+const manifests = loadManifests(path.resolve(__dirname, '..'));
+const S1_MANIFEST = manifests.find((manifest) => manifest.id === 's1');
+const S14_MANIFEST = manifests.find((manifest) => manifest.id === 's14');
 
 function context(overrides = {}) {
-  return { safety: BASE_SAFETY, ...overrides };
+  return { manifest: S1_MANIFEST, ...overrides };
 }
 
 function createReceipt(input, trustedContext = context()) {
@@ -155,23 +150,23 @@ test('sorts result keys deterministically while preserving meaningful changes', 
   assert.notEqual(first.sha256, changedTarget.sha256);
 });
 
-test('requires trusted manifest safety and hashes its canonical independent snapshot', () => {
+test('requires a complete trusted manifest and hashes its canonical safety snapshot', () => {
   assert.throws(() => createEvidence(validInput()), /context/);
-  assert.throws(() => createEvidence(validInput(), {}), /safety must be an own context field/);
-  assert.throws(() => createEvidence(validInput(), { safety: BASE_SAFETY, extra: true }), /unknown context field/);
-  Object.prototype.safety = BASE_SAFETY;
+  assert.throws(() => createEvidence(validInput(), {}), /manifest must be an own context field/);
+  assert.throws(() => createEvidence(validInput(), { manifest: S1_MANIFEST, extra: true }), /unknown context field/);
+  Object.prototype.manifest = S1_MANIFEST;
   try {
-    assert.throws(() => createEvidence(validInput(), {}), /safety must be an own context field/);
+    assert.throws(() => createEvidence(validInput(), {}), /manifest must be an own context field/);
   } finally {
-    delete Object.prototype.safety;
+    delete Object.prototype.manifest;
   }
   assert.throws(
-    () => createEvidence(validInput(), { safety: { ...BASE_SAFETY, external_network: true } }),
-    /invalid safety policy/,
+    () => createEvidence(validInput(), { manifest: { ...S1_MANIFEST, safety: { ...S1_MANIFEST.safety, external_network: true } } }),
+    /invalid manifest/,
   );
   assert.throws(
-    () => createEvidence(validInput(), { safety: { ...BASE_SAFETY, allowed_cidrs: ['0.0.0.0/0'] } }),
-    /invalid safety policy/,
+    () => createEvidence(validInput(), { manifest: { ...S1_MANIFEST, title: '' } }),
+    /invalid manifest/,
   );
 
   const firstSafety = {
@@ -184,8 +179,12 @@ test('requires trusted manifest safety and hashes its canonical independent snap
     allowed_cidrs: [...firstSafety.allowed_cidrs].reverse(),
     external_network: false,
   };
-  const first = createEvidence(validInput(), { safety: firstSafety });
-  const reordered = createEvidence(validInput(), { safety: secondSafety });
+  const firstManifest = structuredClone(S1_MANIFEST);
+  firstManifest.safety = firstSafety;
+  const reorderedManifest = structuredClone(S1_MANIFEST);
+  reorderedManifest.safety = secondSafety;
+  const first = createEvidence(validInput(), { manifest: firstManifest });
+  const reordered = createEvidence(validInput(), { manifest: reorderedManifest });
   assert.equal(first.sha256, reordered.sha256);
   assert.deepEqual(first.target_policy, {
     allowed_cidrs: ['172.23.0.0/24', '192.168.10.0/24'],
@@ -223,8 +222,12 @@ test('binds targets to the trusted manifest safety boundary', () => {
     '0.0.0.0', 'evil.attacker.com', 'localhost', '127.0.0.1']) {
     assert.throws(() => createReceipt(validInput({ target })), /target|prohibited/);
   }
-  assert.equal(createReceipt(validInput({ target: 'localhost' }), { safety: INCIDENT_SAFETY }).target, 'localhost');
-  assert.equal(createReceipt(validInput({ target: '127.0.0.1' }), { safety: INCIDENT_SAFETY }).target, '127.0.0.1');
+  assert.equal(createReceipt(validInput({ lab: 's14', target: 'localhost' }), { manifest: S14_MANIFEST }).target, 'localhost');
+  assert.equal(createReceipt(validInput({ lab: 's14', target: '127.0.0.1' }), { manifest: S14_MANIFEST }).target, '127.0.0.1');
+  assert.throws(
+    () => createReceipt(validInput({ lab: 's14', target: 'localhost' }), context()),
+    /manifest id must match evidence lab/,
+  );
 });
 
 test('rejects unsupported target types and unknown schema fields without secret guessing', () => {
@@ -296,12 +299,18 @@ test('verifies canonical receipts and returns false for integrity tampering', ()
 
 test('rejects trusted-policy mismatch even if an embedded permissive policy is rehashed', () => {
   const evidence = structuredClone(createReceipt(validInput()));
-  const wrongLabSafety = {
-    target_services: ['target-api'],
-    allowed_cidrs: ['172.24.0.0/24'],
-    external_network: false,
-  };
-  assert.equal(verifyEvidence(evidence, { safety: wrongLabSafety }), false);
+  assert.throws(() => verifyEvidence(evidence, { manifest: S14_MANIFEST }), /manifest id must match evidence lab/);
+
+  const wrongVersion = structuredClone(S1_MANIFEST);
+  wrongVersion.version += 1;
+  assert.throws(
+    () => verifyEvidence(evidence, { manifest: wrongVersion }),
+    /manifest version must match evidence manifest_version/,
+  );
+  assert.throws(
+    () => createEvidence(validInput({ manifest_version: 2 }), { manifest: S1_MANIFEST }),
+    /manifest version must match evidence manifest_version/,
+  );
 
   evidence.target_policy.allowed_cidrs.push('10.0.0.0/8');
   evidence.target_policy.allowed_cidrs.sort();
