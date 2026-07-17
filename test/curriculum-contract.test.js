@@ -1,7 +1,8 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
-const { validateManifest } = require('../scripts/lib/curriculum');
+const { loadManifests, loadStandards, validateManifest } = require('../scripts/lib/curriculum');
 const test = require('node:test');
 
 const root = path.resolve(__dirname, '..');
@@ -75,6 +76,82 @@ test('verified lab manifests require their complete quality workflow', () => {
     'verified lab requires workflow.regress',
     'verified lab requires assessment.verifier',
   ]);
+});
+
+test('lab manifest validator rejects malformed fields, unknown keys, and unsafe paths', () => {
+  const manifest = validManifest();
+  manifest.version = 0;
+  manifest.title = '';
+  manifest.platforms = {};
+  manifest.standards = {};
+  manifest.prerequisites = 'p0';
+  manifest.platforms.extra = true;
+  manifest.extra = true;
+  manifest.workflow.attack = '../attack.sh';
+  manifest.maturity = 'verified';
+
+  const errors = validateManifest(manifest);
+  assert.ok(errors.includes('version must be a positive integer'));
+  assert.ok(errors.includes('title must be a non-empty string'));
+  assert.ok(errors.includes('missing required field: platforms.required'));
+  assert.ok(errors.includes('missing required field: standards.mitre_attack'));
+  assert.ok(errors.includes('prerequisites must be an array of non-empty strings'));
+  assert.ok(errors.includes('platforms contains unknown field: extra'));
+  assert.ok(errors.includes('manifest contains unknown field: extra'));
+  assert.ok(errors.includes('workflow.attack must be a safe repository-relative path'));
+  assert.deepEqual(errors.slice(-4), [
+    'verified lab requires workflow.verify',
+    'verified lab requires workflow.remediate',
+    'verified lab requires workflow.regress',
+    'verified lab requires assessment.verifier',
+  ]);
+});
+
+test('loadManifests validates files, ignores non-JSON files, and preserves safe diagnostics', (t) => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'secure-learn-curriculum-'));
+  const labs = path.join(tempRoot, 'curriculum', 'labs');
+  fs.mkdirSync(labs, { recursive: true });
+  t.after(() => fs.rmSync(tempRoot, { recursive: true, force: true }));
+
+  const invalid = validManifest();
+  invalid.id = '';
+  fs.writeFileSync(path.join(labs, 'invalid.json'), JSON.stringify(invalid));
+  assert.throws(() => loadManifests(tempRoot), /invalid\.json: id must be a non-empty string/);
+  fs.unlinkSync(path.join(labs, 'invalid.json'));
+
+  for (const id of ['s10', 'named', 's2', 's1']) {
+    const manifest = validManifest();
+    manifest.id = id;
+    fs.writeFileSync(path.join(labs, `${id}.json`), JSON.stringify(manifest));
+  }
+  fs.writeFileSync(path.join(labs, 'ignore.txt'), 'not a manifest');
+  const manifests = loadManifests(tempRoot);
+  assert.deepEqual(manifests.map((manifest) => manifest.id), ['s1', 's2', 's10', 'named']);
+  const descriptor = Object.getOwnPropertyDescriptor(manifests[0], 'sourcePath');
+  assert.equal(descriptor.enumerable, false);
+  assert.equal(descriptor.writable, false);
+  manifests[0].sourcePath = 'changed';
+  assert.notEqual(manifests[0].sourcePath, 'changed');
+});
+
+test('loadManifests rejects duplicate IDs and handles missing lab directories', (t) => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'secure-learn-curriculum-'));
+  t.after(() => fs.rmSync(tempRoot, { recursive: true, force: true }));
+  assert.deepEqual(loadManifests(tempRoot), []);
+
+  const labs = path.join(tempRoot, 'curriculum', 'labs');
+  fs.mkdirSync(labs, { recursive: true });
+  fs.writeFileSync(path.join(labs, 'one.json'), JSON.stringify(validManifest()));
+  fs.writeFileSync(path.join(labs, 'two.json'), JSON.stringify(validManifest()));
+  assert.throws(() => loadManifests(tempRoot), /duplicate lab manifest ID: s1/);
+});
+
+test('loadStandards exposes catalog ID sets', () => {
+  const standards = loadStandards(root);
+  assert.ok(standards.owaspApiIds instanceof Set);
+  assert.ok(standards.mitreAttackIds instanceof Set);
+  assert.ok(standards.owaspApiIds.has('API1:2023'));
+  assert.ok(standards.mitreAttackIds.has('T1595'));
 });
 
 test('OWASP API Security Top 10 2023 catalog preserves the official category contract', () => {

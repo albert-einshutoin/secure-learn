@@ -68,7 +68,7 @@
       "additionalProperties": false,
       "required": ["attack", "verify", "remediate", "regress"],
       "properties": {
-        "attack": { "type": "string", "minLength": 1 },
+        "attack": { "$ref": "#/$defs/nullablePath" },
         "verify": { "$ref": "#/$defs/nullablePath" },
         "remediate": { "$ref": "#/$defs/nullablePath" },
         "regress": { "$ref": "#/$defs/nullablePath" }
@@ -78,7 +78,7 @@
       "type": "object",
       "additionalProperties": false,
       "required": ["required"],
-      "properties": { "required": { "$ref": "#/$defs/stringArray" } }
+      "properties": { "required": { "$ref": "#/$defs/nonEmptyStringArray" } }
     },
     "assessment": {
       "type": "object",
@@ -90,14 +90,49 @@
       }
     }
   },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "maturity": { "const": "verified" } },
+        "required": ["maturity"]
+      },
+      "then": {
+        "properties": {
+          "workflow": {
+            "properties": {
+              "verify": { "$ref": "#/$defs/logicalPath" },
+              "remediate": { "$ref": "#/$defs/logicalPath" },
+              "regress": { "$ref": "#/$defs/logicalPath" }
+            }
+          },
+          "assessment": {
+            "properties": { "verifier": { "$ref": "#/$defs/logicalPath" } }
+          }
+        }
+      }
+    }
+  ],
   "$defs": {
     "stringArray": {
       "type": "array",
       "items": { "type": "string", "minLength": 1 }
     },
+    "nonEmptyStringArray": {
+      "allOf": [
+        { "$ref": "#/$defs/stringArray" },
+        { "minItems": 1 }
+      ]
+    },
+    "logicalPath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?!.*//)(?!.*(?:^|/)\\.{1,2}(?:/|$))[A-Za-z0-9._@+=,-]+(?:/[A-Za-z0-9._@+=,-]+)*$"
+    },
     "nullablePath": {
-      "type": ["string", "null"],
-      "minLength": 1
+      "anyOf": [
+        { "$ref": "#/$defs/logicalPath" },
+        { "type": "null" }
+      ]
     }
   }
 }
