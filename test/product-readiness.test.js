@@ -330,6 +330,16 @@ test('artifact uploads use the Node.js 24-based action generation', () => {
   assert.ok(majors.every((major) => major >= 7), majors.join(','));
 });
 
+test('CI performs pinned JavaScript and TypeScript CodeQL analysis', () => {
+  const workflow = read('.github/workflows/ci.yml');
+
+  assert.match(workflow, /name:\s*CodeQL analysis/);
+  assert.match(workflow, /github\/codeql-action\/init@[a-f0-9]{40}/);
+  assert.match(workflow, /github\/codeql-action\/analyze@[a-f0-9]{40}/);
+  assert.match(workflow, /languages:\s*javascript-typescript/);
+  assert.match(workflow, /security-events:\s*write/);
+});
+
 test('example environment only advertises configuration consumed by Compose', () => {
   const example = read('.env.example');
   const compose = `${read('docker-compose.yml')}\n${read('docker-compose.exercise.yml')}\n${read('docker-compose.alerting.yml')}`;
