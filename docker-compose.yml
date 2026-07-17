@@ -197,7 +197,7 @@ services:
   # SIEM - Elasticsearch
   # ============================================
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.19.17@sha256:aa6ee0ea2d708cea22a24ed44a420c5bbde9853d58a872e1e870f2086d04f652
     container_name: soc-lab-elasticsearch
     hostname: elasticsearch
     networks:
@@ -227,7 +227,7 @@ services:
   # SIEM - Kibana
   # ============================================
   kibana:
-    image: docker.elastic.co/kibana/kibana:8.11.0
+    image: docker.elastic.co/kibana/kibana:8.19.17@sha256:a0ab425c2ae1688c09fbe1956b0d55009960cbc55564b26a55c946a589f0276c
     container_name: soc-lab-kibana
     hostname: kibana
     networks:
@@ -269,7 +269,7 @@ services:
   # Log Collector - Filebeat
   # ============================================
   filebeat:
-    image: docker.elastic.co/beats/filebeat:8.11.0
+    image: docker.elastic.co/beats/filebeat:8.19.17@sha256:b7645bf950ddb3132ecd17a184e4abe1aa2faf3809ba33ae769a8aa6ca936824
     container_name: soc-lab-filebeat
     hostname: filebeat
     user: root
