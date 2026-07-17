@@ -174,6 +174,9 @@ jobs:
       - name: Check world-class curriculum coverage
         run: scripts/world_class_curriculum_check.sh
 
+      - name: Ensure curriculum coverage is committed
+        run: git diff --exit-code -- docs/curriculum/coverage.md
+
       - name: Ensure generated learning guides are committed
         run: git diff --exit-code -- docs/learning-phases
 

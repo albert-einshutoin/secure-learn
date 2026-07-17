@@ -5,16 +5,52 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TOPIC="${1:-all}"
-REPORT_DIR="${REPORT_DIR:-$ROOT_DIR/reports/world_class_hands_on_$(date +%Y%m%d_%H%M%S)}"
-REPORT_FILE="$REPORT_DIR/summary.md"
+REPORT_ROOT="$ROOT_DIR/reports"
+REPORT_DIR_IS_SET="${REPORT_DIR+x}"
+REQUESTED_REPORT_DIR="${REPORT_DIR-}"
 NODE_BIN="$(command -v node || true)"
-
-mkdir -p "$REPORT_DIR"
 
 [[ -x "$NODE_BIN" ]] || {
   echo "world-class hands-on check failed: node is unavailable" >&2
   exit 1
 }
+
+unsafe_destination() {
+  echo "world-class hands-on check failed: unsafe report destination" >&2
+  exit 1
+}
+
+umask 077
+if [[ ! -e "$REPORT_ROOT" && ! -L "$REPORT_ROOT" ]]; then
+  mkdir "$REPORT_ROOT" 2>/dev/null || true
+fi
+[[ -d "$REPORT_ROOT" && ! -L "$REPORT_ROOT" ]] || unsafe_destination
+
+root_real="$("$NODE_BIN" -e 'process.stdout.write(require("node:fs").realpathSync(process.argv[1]))' "$ROOT_DIR")"
+report_root_real="$("$NODE_BIN" -e 'process.stdout.write(require("node:fs").realpathSync(process.argv[1]))' "$REPORT_ROOT")"
+[[ "$report_root_real" == "$root_real/reports" ]] || unsafe_destination
+
+if [[ "$REPORT_DIR_IS_SET" == "x" ]]; then
+  [[ -n "$REQUESTED_REPORT_DIR" ]] || unsafe_destination
+  [[ "$REQUESTED_REPORT_DIR" == "$REPORT_ROOT/"* ]] || unsafe_destination
+  report_basename="${REQUESTED_REPORT_DIR#"$REPORT_ROOT/"}"
+  [[ -n "$report_basename" && "$report_basename" != */* && "$report_basename" != "." && "$report_basename" != ".." ]] || unsafe_destination
+  [[ ! -e "$REQUESTED_REPORT_DIR" && ! -L "$REQUESTED_REPORT_DIR" ]] || unsafe_destination
+  mkdir "$REQUESTED_REPORT_DIR" 2>/dev/null || unsafe_destination
+  REPORT_DIR="$REQUESTED_REPORT_DIR"
+else
+  REPORT_DIR="$(mktemp -d "$REPORT_ROOT/world-class-hands-on.XXXXXXXX")" || unsafe_destination
+fi
+
+report_dir_real="$("$NODE_BIN" -e 'process.stdout.write(require("node:fs").realpathSync(process.argv[1]))' "$REPORT_DIR")"
+[[ "$report_dir_real" == "$report_root_real/"* && "${report_dir_real#"$report_root_real/"}" != */* ]] || unsafe_destination
+
+REPORT_FILE="$REPORT_DIR/summary.md"
+REPORT_TEMP="$(mktemp "$REPORT_DIR/.summary.XXXXXXXX")" || unsafe_destination
+cleanup_report_temp() {
+  rm -f "$REPORT_TEMP"
+}
+trap cleanup_report_temp EXIT
 
 support_verified=0
 support_present=0
@@ -49,7 +85,7 @@ record() {
     WARN) support_warn=$((support_warn + 1)) ;;
   esac
 
-  printf '| %s | %s | %s |\n' "$status" "$topic" "$detail" >> "$REPORT_FILE"
+  printf '| %s | %s | %s |\n' "$status" "$topic" "$detail" >> "$REPORT_TEMP"
   printf '[%s] %s - %s\n' "$status" "$topic" "$detail"
 }
 
@@ -98,7 +134,7 @@ section() {
     echo
     echo "| Status | Check | Evidence |"
     echo "|--------|-------|----------|"
-  } >> "$REPORT_FILE"
+  } >> "$REPORT_TEMP"
 }
 
 run_linux() {
@@ -244,7 +280,7 @@ run_topic() {
   echo "## Supporting material"
   echo
   echo "The checks below inventory supporting files, prose, and commands. They do not change curriculum maturity."
-} > "$REPORT_FILE"
+} > "$REPORT_TEMP"
 
 run_topic "$TOPIC"
 
@@ -258,7 +294,31 @@ run_topic "$TOPIC"
   echo "- WARN: $support_warn"
   echo
   echo "VERIFIED means a command ran successfully. PRESENT and DOCUMENTED do not prove runtime behavior or production mastery."
-} >> "$REPORT_FILE"
+} >> "$REPORT_TEMP"
+
+if ! "$NODE_BIN" - "$REPORT_TEMP" "$REPORT_FILE" "$REPORT_DIR" 2>/dev/null <<'NODE'
+const fs = require('node:fs');
+const [temporary, final, directory] = process.argv.slice(2);
+let descriptor = fs.openSync(temporary, 'r');
+try {
+  fs.fsyncSync(descriptor);
+} finally {
+  fs.closeSync(descriptor);
+}
+fs.linkSync(temporary, final);
+fs.unlinkSync(temporary);
+descriptor = fs.openSync(directory, 'r');
+try {
+  fs.fsyncSync(descriptor);
+} finally {
+  fs.closeSync(descriptor);
+}
+NODE
+then
+  echo "world-class hands-on check failed: report publication failed" >&2
+  exit 1
+fi
+trap - EXIT
 
 echo
 echo "Curriculum maturity: documented=$maturity_documented runnable=$maturity_runnable verified=$maturity_verified external=$maturity_external"

@@ -64,14 +64,16 @@ function checkCoverage(expected, existing) {
   return Buffer.from(expected, 'utf8').equals(existing);
 }
 
-function assertSafeOutputPath(outputPath) {
+function assertSafeOutputPath(outputPath, allowedRoot = ROOT) {
   const parent = path.dirname(outputPath);
   const parentStat = fs.lstatSync(parent);
   if (!parentStat.isDirectory() || parentStat.isSymbolicLink()) throw new Error(UNSAFE_PATH);
 
-  const repository = fs.realpathSync(ROOT);
+  const repository = fs.realpathSync(allowedRoot);
   const realParent = fs.realpathSync(parent);
-  if (!realParent.startsWith(repository + path.sep)) throw new Error(UNSAFE_PATH);
+  if (realParent !== repository && !realParent.startsWith(repository + path.sep)) {
+    throw new Error(UNSAFE_PATH);
+  }
 
   try {
     const outputStat = fs.lstatSync(outputPath);
@@ -81,8 +83,8 @@ function assertSafeOutputPath(outputPath) {
   }
 }
 
-function writeCoverageAtomically(outputPath, contents) {
-  assertSafeOutputPath(outputPath);
+function writeCoverageAtomically(outputPath, contents, allowedRoot = ROOT) {
+  assertSafeOutputPath(outputPath, allowedRoot);
   const tempPath = path.join(
     path.dirname(outputPath),
     '.coverage.md.' + process.pid + '.' + randomUUID() + '.tmp',
@@ -97,12 +99,25 @@ function writeCoverageAtomically(outputPath, contents) {
     fs.closeSync(descriptor);
     descriptor = undefined;
     fs.chmodSync(tempPath, 0o644);
-    assertSafeOutputPath(outputPath);
+    assertSafeOutputPath(outputPath, allowedRoot);
     fs.renameSync(tempPath, outputPath);
+    const parentDescriptor = fs.openSync(path.dirname(outputPath), 'r');
+    try {
+      // Persisting the directory entry makes the atomic replacement durable,
+      // not merely visible in the current process.
+      fs.fsyncSync(parentDescriptor);
+    } finally {
+      fs.closeSync(parentDescriptor);
+    }
   } finally {
     if (descriptor !== undefined) fs.closeSync(descriptor);
     fs.rmSync(tempPath, { force: true });
   }
+}
+
+function checkCoverageFile(outputPath, expected, allowedRoot = ROOT) {
+  assertSafeOutputPath(outputPath, allowedRoot);
+  return checkCoverage(expected, fs.readFileSync(outputPath));
 }
 
 function main(argv = process.argv.slice(2)) {
@@ -139,4 +154,4 @@ function main(argv = process.argv.slice(2)) {
 
 if (require.main === module) process.exitCode = main();
 
-module.exports = { checkCoverage, renderCoverage };
+module.exports = { checkCoverageFile, renderCoverage, writeCoverageAtomically };

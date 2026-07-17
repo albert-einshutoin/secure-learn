@@ -758,7 +758,7 @@ test('hands-on reports reject unsafe explicit destinations without touching exte
   const existing = path.join(reportRoot, `task6-existing-${process.pid}-${Date.now()}`);
   fs.mkdirSync(existing);
   t.after(() => {
-    fs.rmSync(link, { force: true });
+    fs.unlinkSync(link);
     fs.rmSync(existing, { recursive: true, force: true });
     fs.rmSync(external, { recursive: true, force: true });
   });
