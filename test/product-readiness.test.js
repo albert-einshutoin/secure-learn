@@ -257,6 +257,64 @@ test('curriculum copy distinguishes container labs, host-assisted work, and oper
   assert.doesNotMatch(readme, /意図的に脆弱性を含んでいます/);
 });
 
+test('OWASP API 2023 curriculum uses the canonical API6 through API8 semantics', () => {
+  const track = read('docs/curriculum/owasp-api-security-track.md');
+  const row = (module) => track.split('\n').find((line) => line.startsWith(`| ${module} |`)) || '';
+
+  assert.match(row('API-6'), /Unrestricted Access to Sensitive Business Flows/);
+  assert.match(row('API-6'), /inventory|automation/i);
+  assert.match(row('API-7'), /Server Side Request Forgery/);
+  assert.match(row('API-8'), /Security Misconfiguration/);
+  assert.doesNotMatch(row('API-8'), /Injection/i);
+  assert.match(track, /Injection[^\n]*supporting secure-coding topic/i);
+});
+
+test('MITRE scenario mappings describe only behavior the exercises demonstrate', () => {
+  const s5 = read('scenarios/S5_file_tamper.md');
+  const s8 = read('scenarios/S8_l2_arp_observe.md');
+
+  assert.match(s5, /Impact - Data Manipulation \(T1565\)/);
+  assert.match(s8, /Discovery - Remote System Discovery \(T1018\)/);
+  assert.doesNotMatch(s8, /T1046|Network Service Discovery|service scan/i);
+  assert.match(s8, /ARP[^\n]*(?:neighbor|近隣)[^\n]*(?:観測|observation)/i);
+  assert.match(s8, /(?:物理|physical)[^\n]*(?:switch|スイッチ)[^\n]*(?:見え|観測でき)/i);
+});
+
+test('S7 is presented as a cross-layer event chain within one trust zone', () => {
+  const scenario = read('scenarios/S7_lateral.md');
+  const generator = read('scripts/generate_scenario_html.js');
+  const script = read('attack/scripts/s7_lateral.sh');
+
+  assert.match(scenario, /^# S7: Cross-Layer Incident/m);
+  assert.match(scenario, /one trust zone/i);
+  assert.match(scenario, /not (?:an? )?(?:APT|lateral movement)/i);
+  assert.doesNotMatch(scenario, /APT模擬|実際のAPT|横移動を再現/i);
+  assert.match(generator, /id: 'S7',[\s\S]*?title: 'Cross-Layer Incident'/);
+  assert.doesNotMatch(script, /APT|Lateral Movement/i);
+  assert.match(script, /Cross-Layer Incident/);
+});
+
+test('scenario evaluation reports the honest execution-format split and maturity source', () => {
+  const evaluation = read('docs/curriculum/world-class-scenario-evaluation.md');
+
+  assert.match(evaluation, /Docker実行型ラボ\s*\|\s*11/);
+  assert.match(evaluation, /Linuxホスト補助演習\s*\|\s*2/);
+  assert.match(evaluation, /運用ワークフロー演習\s*\|\s*2/);
+  assert.match(evaluation, /ガイド型設計演習\s*\|\s*18/);
+  assert.match(evaluation, /\[.*maturity.*coverage.*\]\(coverage\.md\)/i);
+  assert.doesNotMatch(evaluation, /実行型ラボ\s*S1-S15|S1-S15[^\n]*(?:executable|runnable|verified|実行型ラボ)/i);
+});
+
+test('generated scenario guides retain public URLs while using corrected S7 and S8 semantics', () => {
+  const s7 = read('docs/scenario-guides/s7-lateral.html');
+  const s8 = read('docs/scenario-guides/s8-arp.html');
+
+  assert.match(s7, /Cross-Layer Incident/);
+  assert.doesNotMatch(s7, /APT模擬|実際のAPT|Lateral Movement/i);
+  assert.match(s8, /Remote System Discovery \(T1018\)/);
+  assert.doesNotMatch(s8, /T1046|Network Service Discovery|service scan/i);
+});
+
 test('scenario scripts do not report unverified success', () => {
   const attackScripts = fs
     .readdirSync(path.join(root, 'attack/scripts'))
