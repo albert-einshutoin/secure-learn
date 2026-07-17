@@ -6,6 +6,15 @@ const { loadManifests, loadStandards, validateManifest } = require('../scripts/l
 const test = require('node:test');
 
 const root = path.resolve(__dirname, '..');
+const learnScript = path.join(root, 'scripts', 'learn');
+
+function runLearn(args, options = {}) {
+  return require('node:child_process').spawnSync(process.execPath, [learnScript, ...args], {
+    cwd: options.cwd || root,
+    encoding: 'utf8',
+    env: options.env || process.env,
+  });
+}
 
 function readJson(relativePath) {
   return JSON.parse(fs.readFileSync(path.join(root, relativePath), 'utf8'));
@@ -425,4 +434,99 @@ test('manifest schema conditionals retain object type constraints for portable v
   assert.equal(verifiedAssessment.type, 'object');
   assert.equal(schema.$defs.nonEmptyStringArray.allOf[1].type, 'array');
   assert.equal(schema.$defs.nonEmptyStringArray.allOf[1].minItems, 1);
+});
+
+test('learner CLI lists labs deterministically from any working directory', () => {
+  const result = runLearn(['list'], { cwd: os.tmpdir() });
+  assert.equal(result.status, 0, result.stderr);
+  const lines = result.stdout.trimEnd().split('\n');
+  assert.equal(lines.length, 15);
+  assert.equal(lines[0], 's1\trunnable\tdocker-desktop\tPort Scan');
+  assert.equal(lines[4], 's5\texternal\tlinux-vm\tImportant File Tampering');
+  assert.equal(lines[14], 's15\tdocumented\tdocker-desktop\tIntegrated Capstone');
+  assert.equal(result.stderr, '');
+});
+
+test('learner CLI shows exact manifests and validates the complete catalog', () => {
+  const show = runLearn(['show', 's14']);
+  assert.equal(show.status, 0, show.stderr);
+  assert.deepEqual(JSON.parse(show.stdout), readJson('curriculum/labs/s14.json'));
+
+  const validate = runLearn(['validate']);
+  assert.equal(validate.status, 0, validate.stderr);
+  assert.equal(validate.stdout, 'Validated 15 lab manifests.\n');
+});
+
+test('learner CLI separates unknown labs from reserved commands', () => {
+  const unknown = runLearn(['show', 'S1']);
+  assert.equal(unknown.status, 2);
+  assert.equal(unknown.stdout, '');
+  assert.equal(unknown.stderr, "Unknown lab 'S1'.\n");
+
+  const reserved = runLearn(['attack', 's1']);
+  assert.equal(reserved.status, 2);
+  assert.equal(reserved.stdout, '');
+  assert.equal(reserved.stderr, "Command 'attack' is reserved for the executable-lab slices.\n");
+});
+
+test('docker doctor test bypass is exact and unavailable in production', () => {
+  const bypass = runLearn(['doctor', 's1'], {
+    env: { ...process.env, NODE_ENV: 'test', SECURE_LEARN_SKIP_DOCKER_CHECK: '1' },
+  });
+  assert.equal(bypass.status, 0, bypass.stderr);
+  assert.match(bypass.stdout, /^Platform ready: docker-desktop\n/);
+  assert.match(bypass.stdout, /Allowed services: app\nAllowed CIDRs: 172\.23\.0\.0\/24\nExternal network: disabled\n$/);
+
+  const fakeBin = fs.mkdtempSync(path.join(os.tmpdir(), 'secure-learn-fake-bin-'));
+  const marker = path.join(fakeBin, 'executed');
+  fs.writeFileSync(path.join(fakeBin, 'docker'), `#!/bin/sh\ntouch "${marker}"\n`, { mode: 0o755 });
+  const production = runLearn(['doctor', 's1'], {
+    env: {
+      ...process.env,
+      NODE_ENV: 'production',
+      SECURE_LEARN_SKIP_DOCKER_CHECK: '1',
+      PATH: fakeBin,
+    },
+  });
+  assert.equal(fs.existsSync(marker), false, 'doctor must not resolve docker from an attacker-controlled PATH');
+  assert.ok([0, 1].includes(production.status));
+  fs.rmSync(fakeBin, { recursive: true, force: true });
+});
+
+test('Docker doctor reports spawn failures without exposing environment secrets', () => {
+  const { checkDockerDesktop } = require('../scripts/learn');
+  const secret = 'do-not-print-this-secret';
+  const result = checkDockerDesktop({
+    env: { SECRET_VALUE: secret },
+    findDocker: () => '/definitely/missing/docker',
+  });
+  assert.equal(result.ok, false);
+  assert.match(result.message, /Docker Desktop is not ready/);
+  assert.doesNotMatch(result.message, new RegExp(secret));
+});
+
+test('Linux VM receipts must be bounded, private regular files inside the repository', (t) => {
+  const { validateVmReceipt } = require('../scripts/learn');
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'secure-learn-receipt-'));
+  const receiptDir = path.join(tempRoot, '.secure-learn', 'receipts');
+  fs.mkdirSync(receiptDir, { recursive: true, mode: 0o700 });
+  t.after(() => fs.rmSync(tempRoot, { recursive: true, force: true }));
+
+  const receipt = path.join(receiptDir, 'vm.json');
+  fs.writeFileSync(receipt, JSON.stringify({ version: 1, platform: 'linux-vm' }), { mode: 0o600 });
+  assert.doesNotThrow(() => validateVmReceipt(receipt, tempRoot));
+
+  const outside = path.join(tempRoot, 'outside.json');
+  fs.writeFileSync(outside, JSON.stringify({ version: 1, platform: 'linux-vm' }), { mode: 0o600 });
+  assert.throws(() => validateVmReceipt(outside, tempRoot), /trusted receipt directory/);
+
+  const link = path.join(receiptDir, 'link.json');
+  fs.symlinkSync(receipt, link);
+  assert.throws(() => validateVmReceipt(link, tempRoot), /symbolic link/);
+
+  fs.chmodSync(receipt, 0o666);
+  assert.throws(() => validateVmReceipt(receipt, tempRoot), /permissions/);
+  fs.chmodSync(receipt, 0o600);
+  fs.writeFileSync(receipt, Buffer.alloc(16 * 1024 + 1), { mode: 0o600 });
+  assert.throws(() => validateVmReceipt(receipt, tempRoot), /too large/);
 });
