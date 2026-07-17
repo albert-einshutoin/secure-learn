@@ -210,7 +210,7 @@ function validManifest() {
       allowed_cidrs: ['172.23.0.0/24'],
       external_network: false,
     },
-    workflow: { attack: 'attack/scripts/s1_portscan.sh', verify: null, remediate: null, regress: null },
+    workflow: { attack: { path: 'attack/scripts/s1_portscan.sh', args: [] }, verify: null, remediate: null, regress: null },
     evidence: { required: ['attack-result', 'suricata-event'] },
     assessment: { mode: 'guided-only', verifier: null },
   };
@@ -261,6 +261,8 @@ Create `curriculum/schema/lab.schema.json` with draft 2020-12, `additionalProper
 
 Constrain maturity to `documented`, `runnable`, `verified`, or `external`; mode to `docker-lab`, `host-assisted`, `operator-workflow`, or `design-exercise`; and set `external_network` to JSON Schema `const: false`.
 
+Define each `workflow` field and `assessment.verifier` as `null` or an executionSpec: `{ path: string, args: string[] }`. `path` must use the repository-relative logical-path constraint; `args` must reject NUL and control characters. `runnable` and `verified` manifests require `workflow.attack` to be a non-null, valid executionSpec; `verified` additionally requires non-null valid executionSpecs for verify, remediate, regress, and assessment verifier. Express these same rules with JSON Schema `if`/`then` and runtime validation, and keep their fixture corpus aligned so the two contracts do not drift. Execution is downstream work: its runner must pass `path` and `args` to `spawnSync`/equivalent argv APIs with `shell: false`, never concatenate a command string.
+
 - [ ] **Step 4: Implement a dependency-free validator**
 
 Create `scripts/lib/curriculum.js` exporting `validateManifest`, `loadManifests`, and `loadStandards`. The validator must:
@@ -289,11 +291,14 @@ function validateManifest(manifest) {
   if (manifest.safety.external_network !== false) {
     errors.push('external_network must be false for bundled labs');
   }
+  if (['runnable', 'verified'].includes(manifest.maturity) && !isExecutionSpec(manifest.workflow.attack)) {
+    errors.push(`${manifest.maturity} lab requires workflow.attack`);
+  }
   if (manifest.maturity === 'verified') {
     for (const field of ['verify', 'remediate', 'regress']) {
-      if (!manifest.workflow[field]) errors.push(`verified lab requires workflow.${field}`);
+      if (!isExecutionSpec(manifest.workflow[field])) errors.push(`verified lab requires workflow.${field}`);
     }
-    if (!manifest.assessment.verifier) errors.push('verified lab requires assessment.verifier');
+    if (!isExecutionSpec(manifest.assessment.verifier)) errors.push('verified lab requires assessment.verifier');
   }
   return errors;
 }
@@ -311,7 +316,7 @@ node --check scripts/lib/curriculum.js
 git diff --check
 ```
 
-Expected: 5 tests pass.
+Expected: 12 tests pass.
 
 Commit:
 
@@ -360,7 +365,7 @@ Expected: inventory assertion receives `[]` instead of S1-S15.
 - [ ] **Step 3: Create the 15 manifests using this exact inventory**
 
 All manifests use `version: 1`, `external_network: false`, required platform `docker-desktop` unless shown as `linux-vm`, and optional platforms `[]`.
-Execution entries are structured `{"path":"...","args":[...]}` argv specifications; Task 3 must execute them without a shell so shell metacharacters remain literal arguments.
+Execution entries are structured `{"path":"...","args":[...]}` argv specifications. Task 3 records these declarations only; the downstream runner must use `spawnSync`/equivalent argv APIs with `shell: false`, so shell metacharacters remain literal arguments.
 
 | ID | Title | Track | Mode | Maturity | MITRE | Attack | Verify |
 |---|---|---|---|---|---|---|---|
