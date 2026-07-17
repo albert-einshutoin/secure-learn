@@ -1,4 +1,5 @@
 const { createHash, timingSafeEqual } = require('node:crypto');
+const { assertAllowedTarget } = require('./target-policy');
 
 const FAILURE_STAGES = Object.freeze([
   'environment',
@@ -22,7 +23,8 @@ const INPUT_FIELDS = Object.freeze([
   'target',
   'results',
 ]);
-const RECEIPT_FIELDS = Object.freeze([...INPUT_FIELDS, 'outcome', 'sha256']);
+const RECEIPT_FIELDS = Object.freeze([...INPUT_FIELDS, 'outcome', 'target_policy', 'sha256']);
+const SAFETY_FIELDS = Object.freeze(['target_services', 'allowed_cidrs', 'external_network']);
 const OUTCOMES = new Set([...FAILURE_STAGES, 'verified']);
 
 const MAX_DURATION_MS = 24 * 60 * 60 * 1000;
@@ -93,6 +95,7 @@ function codePointCompare(left, right) {
 }
 
 function stableSerialize(value) {
+  if (Array.isArray(value)) return `[${value.map(stableSerialize).join(',')}]`;
   if (value !== null && typeof value === 'object') {
     const entries = Object.keys(value)
       .sort(codePointCompare)
@@ -140,25 +143,72 @@ function validateTarget(value) {
   return value;
 }
 
-function readClock(options) {
-  if (!isPlainRecord(options)) throw new TypeError('options must be a plain object');
-  assertDataProperties(options, 'options');
-  for (const field of Object.keys(options)) {
-    if (field !== 'clock') throw new TypeError(`unknown options field: ${field}`);
+function readContext(context) {
+  if (!isPlainRecord(context)) throw new TypeError('trusted context must be a plain object');
+  assertDataProperties(context, 'context');
+  for (const field of Object.keys(context)) {
+    if (!['safety', 'now'].includes(field)) throw new TypeError(`unknown context field: ${field}`);
   }
-  const clock = Object.hasOwn(options, 'clock') ? options.clock : Date.now;
-  if (typeof clock !== 'function') throw new TypeError('clock must be a function');
+  if (!Object.hasOwn(context, 'safety')) throw new TypeError('safety must be an own context field');
+  const nowProvider = Object.hasOwn(context, 'now') ? context.now : Date.now;
+  if (typeof nowProvider !== 'function') throw new TypeError('now must be a function');
 
   let now;
   try {
-    now = clock();
+    now = nowProvider();
   } catch {
-    throw new TypeError('clock must return a valid Unix timestamp');
+    throw new TypeError('now must return a valid Unix timestamp');
   }
   if (!Number.isSafeInteger(now) || now < 0) {
-    throw new TypeError('clock must return a valid Unix timestamp');
+    throw new TypeError('now must return a valid Unix timestamp');
   }
-  return now;
+  return { now, safety: context.safety };
+}
+
+function assertCanonicalArray(value, field) {
+  if (!Array.isArray(value)) throw new TypeError('invalid safety policy');
+  const ownKeys = Reflect.ownKeys(value).filter((key) => key !== 'length');
+  if (ownKeys.some((key) => typeof key !== 'string' || !/^(?:0|[1-9]\d*)$/u.test(key))
+    || Object.keys(value).length !== value.length
+    || value.some((item) => typeof item !== 'string')
+    || new Set(value).size !== value.length) {
+    throw new TypeError('invalid safety policy');
+  }
+  for (const key of ownKeys) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    if (!descriptor.enumerable || !Object.hasOwn(descriptor, 'value')) {
+      throw new TypeError(`invalid safety policy ${field}`);
+    }
+  }
+}
+
+function canonicalizeTargetPolicy(target, safety) {
+  if (!isPlainRecord(safety) || Object.getPrototypeOf(safety) !== Object.prototype) {
+    throw new TypeError('invalid safety policy');
+  }
+  try {
+    assertExactOwnFields(safety, SAFETY_FIELDS, 'safety policy');
+    assertCanonicalArray(safety.target_services, 'target_services');
+    assertCanonicalArray(safety.allowed_cidrs, 'allowed_cidrs');
+  } catch (error) {
+    if (error instanceof TypeError && error.message === 'invalid safety policy') throw error;
+    throw new TypeError('invalid safety policy');
+  }
+
+  let allowed = true;
+  try {
+    assertAllowedTarget(target, safety);
+  } catch (error) {
+    if (error instanceof Error && error.message === 'prohibited target') allowed = false;
+    else throw new TypeError('invalid safety policy');
+  }
+
+  const snapshot = {
+    allowed_cidrs: [...safety.allowed_cidrs].sort(codePointCompare),
+    external_network: false,
+    target_services: [...safety.target_services].sort(codePointCompare),
+  };
+  return { allowed, snapshot };
 }
 
 function canonicalizeInput(input, now) {
@@ -204,6 +254,13 @@ function canonicalizeInput(input, now) {
   ].sort(([left], [right]) => codePointCompare(left, right)));
 }
 
+function attachTargetPolicy(body, targetPolicy) {
+  return Object.fromEntries(
+    [...Object.entries(body), ['target_policy', targetPolicy]]
+      .sort(([left], [right]) => codePointCompare(left, right)),
+  );
+}
+
 function hashBody(body) {
   // A digest cannot include itself without a fixed-point problem. Hash the
   // complete canonical receipt body, then attach its lowercase SHA-256.
@@ -218,12 +275,17 @@ function deepFreeze(value) {
   return value;
 }
 
-function createEvidence(input, options = {}) {
-  const body = canonicalizeInput(input, readClock(options));
+function createEvidence(input, context) {
+  const trusted = readContext(context);
+  const baseBody = canonicalizeInput(input, trusted.now);
+  const policy = canonicalizeTargetPolicy(baseBody.target, trusted.safety);
+  if (!policy.allowed) throw new TypeError('prohibited target for trusted safety policy');
+  const body = attachTargetPolicy(baseBody, policy.snapshot);
   return deepFreeze({ ...body, sha256: hashBody(body) });
 }
 
-function verifyEvidence(receipt, options = {}) {
+function verifyEvidence(receipt, context) {
+  const trusted = readContext(context);
   if (!isPlainRecord(receipt)) throw new TypeError('evidence must be a plain object');
   assertExactOwnFields(receipt, RECEIPT_FIELDS, 'evidence');
   if (typeof receipt.outcome !== 'string' || !OUTCOMES.has(receipt.outcome)) {
@@ -236,8 +298,20 @@ function verifyEvidence(receipt, options = {}) {
   // Revalidate the public receipt as if it were new input. Old receipts remain
   // valid, while evidence beyond the same five-minute clock-skew bound fails.
   const input = Object.fromEntries(INPUT_FIELDS.map((field) => [field, receipt[field]]));
-  const body = canonicalizeInput(input, readClock(options));
-  if (receipt.outcome !== body.outcome) return false;
+  const baseBody = canonicalizeInput(input, trusted.now);
+
+  const embeddedPolicy = canonicalizeTargetPolicy(baseBody.target, receipt.target_policy);
+  if (!embeddedPolicy.allowed) throw new TypeError('embedded target_policy does not allow target');
+  if (stableSerialize(receipt.target_policy) !== stableSerialize(embeddedPolicy.snapshot)) {
+    throw new TypeError('target_policy must be canonical');
+  }
+
+  const trustedPolicy = canonicalizeTargetPolicy(baseBody.target, trusted.safety);
+  if (!trustedPolicy.allowed) return false;
+  if (stableSerialize(embeddedPolicy.snapshot) !== stableSerialize(trustedPolicy.snapshot)) return false;
+  if (receipt.outcome !== baseBody.outcome) return false;
+
+  const body = attachTargetPolicy(baseBody, trustedPolicy.snapshot);
 
   const expected = Buffer.from(hashBody(body), 'hex');
   const actual = Buffer.from(receipt.sha256, 'hex');

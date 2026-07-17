@@ -158,6 +158,13 @@ test('sorts result keys deterministically while preserving meaningful changes', 
 test('requires trusted manifest safety and hashes its canonical independent snapshot', () => {
   assert.throws(() => createEvidence(validInput()), /context/);
   assert.throws(() => createEvidence(validInput(), {}), /safety must be an own context field/);
+  assert.throws(() => createEvidence(validInput(), { safety: BASE_SAFETY, extra: true }), /unknown context field/);
+  Object.prototype.safety = BASE_SAFETY;
+  try {
+    assert.throws(() => createEvidence(validInput(), {}), /safety must be an own context field/);
+  } finally {
+    delete Object.prototype.safety;
+  }
   assert.throws(
     () => createEvidence(validInput(), { safety: { ...BASE_SAFETY, external_network: true } }),
     /invalid safety policy/,
@@ -317,6 +324,14 @@ test('rejects malformed receipt shapes before integrity comparison', () => {
   }
   assert.throws(() => verifyReceipt({ ...evidence, sha256: 'not-a-hash' }), /sha256/);
   assert.throws(() => verifyReceipt({ ...evidence, extra: true }), /unknown evidence field: extra/);
+  assert.throws(
+    () => verifyReceipt({
+      ...evidence,
+      outcome: 'control',
+      target_policy: { ...evidence.target_policy, external_network: true },
+    }),
+    /invalid safety policy/,
+  );
   assert.throws(() => verifyReceipt(null), /evidence must be a plain object/);
 });
 
