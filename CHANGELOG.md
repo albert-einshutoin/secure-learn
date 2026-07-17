@@ -4,6 +4,10 @@ All notable changes to Secure Learn are documented here. This project follows [S
 
 ## [Unreleased]
 
+### Changed
+
+- Stage all release evidence on a draft before publication so immutable releases never expose a partial asset set.
+
 ## [1.0.0] - 2026-07-17
 
 ### Added

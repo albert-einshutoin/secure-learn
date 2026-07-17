@@ -89,4 +89,5 @@ jobs:
             --verify-tag \
             --title "Secure Learn ${{ steps.version.outputs.version }}" \
             --generate-notes \
-            --latest
+            --draft
+          gh release edit "$GITHUB_REF_NAME" --draft=false --latest
