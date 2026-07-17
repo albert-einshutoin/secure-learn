@@ -315,6 +315,19 @@ test('GitHub Actions dependencies are pinned to immutable commits', () => {
   }
 });
 
+test('artifact uploads use the Node.js 24-based action generation', () => {
+  const workflows = fs
+    .readdirSync(path.join(root, '.github/workflows'))
+    .filter((name) => name.endsWith('.yml'))
+    .map((name) => read(`.github/workflows/${name}`))
+    .join('\n');
+  const majors = [...workflows.matchAll(/actions\/upload-artifact@[a-f0-9]{40}\s+# v(\d+)/g)]
+    .map((match) => Number(match[1]));
+
+  assert.ok(majors.length > 0);
+  assert.ok(majors.every((major) => major >= 7), majors.join(','));
+});
+
 test('example environment only advertises configuration consumed by Compose', () => {
   const example = read('.env.example');
   const compose = `${read('docker-compose.yml')}\n${read('docker-compose.exercise.yml')}\n${read('docker-compose.alerting.yml')}`;
