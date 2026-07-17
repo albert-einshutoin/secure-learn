@@ -25,7 +25,7 @@ const benchmarks = [
   {
     label: 'OWASP API Security Top 10 2023',
     href: 'https://owasp.org/API-Security/editions/2023/en/0x11-t10/',
-    use: 'BOLA、認証、認可、resource consumption、injectionの抜け漏れ確認',
+    use: 'API6 Unrestricted Access to Sensitive Business Flows、API7 Server Side Request Forgery、API8 Security Misconfigurationの2023分類を確認',
   },
   {
     label: 'Google SRE: Service Level Objectives',
@@ -653,7 +653,7 @@ const scenarios = [
     id: 'S15',
     mode: 'operator-workflow',
     slug: 's15-capstone',
-    title: 'ホワイトハット/SRE修了課題',
+    title: '統合キャップストーン',
     layer: '全体',
     level: '上級',
     roles: ['Whitehat', 'SRE', 'Backend'],

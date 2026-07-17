@@ -23,7 +23,7 @@
 | 2 | OS/横断 | S5-S7 | OS監査と複数レイヤー相関を扱う |
 | 3 | OSI補完 | S8-S13 | L2/L3/L4/L5/L6/L7 の観測境界を整理する |
 | 4 | SRE実務 | S14 | 監視、SLO、インシデント対応を運用に接続する |
-| 5 | 修了課題 | S15 | ホワイトハット/SRE 両面の最終証跡を作る |
+| 5 | 統合キャップストーン | S15 | 複数の役割観点を統合した教材内の最終証跡を作る |
 | 6 | 業務レベル拡張 | Professional tracks | OWASP、backend TDD、Kubernetes、SRE、supply chain を補完する |
 | 7 | 発展領域の準備 | P0-P19 Learning Docker | Linux、Docker、Backend、Detection、Observability、Kubernetes、分散システム、Cloud/IaC、Supply Chain、Release Governance を段階的に通す |
 | 8 | ガイド型設計演習 | S16-S33 | Linux internals、BGP/Anycast、mTLS、Kubernetes platform、Cloud IAM、Terraform/OPA、burn-rate、OpenTelemetry、Kafka/Temporal、migration、BOLA/SSRF、SBOM、EDR、flamegraph、GitOpsを設計レビューと証跡作成で扱う |
@@ -38,7 +38,7 @@ scripts/learning_phase.sh start p10
 scripts/world_class_hands_on_check.sh all
 ```
 
-## 修了の定義
+## 教材内完了の定義
 
 このリポジトリ上では、次を満たしたときに「教材内の学習証跡が揃った」とみなします。採用、配属、本番権限付与の判断には別の実技評価と組織固有の確認が必要です。
 

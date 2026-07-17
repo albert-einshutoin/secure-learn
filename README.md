@@ -233,7 +233,7 @@ HTMLガイドは `docs/learning-phases/index.html` と `docs/scenario-guides/ind
 | S12 | TLS可視性境界 | L6 | 中級 |
 | S13 | DNS観測 | L7 | 初級 |
 | S14 | SREインシデント対応 | 横断/SRE | 上級 |
-| S15 | ホワイトハット/SRE修了課題 | 全体 | 上級 |
+| S15 | 統合キャップストーン | 全体 | 上級 |
 
 ## ディレクトリ構造
 

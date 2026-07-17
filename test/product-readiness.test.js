@@ -312,17 +312,19 @@ test('S7 is presented as a cross-layer event chain within one trust zone', () =>
 
 test('public evaluation language is self-assessment rather than certification', () => {
   const checklist = read('docs/templates/evaluation-checklist.md');
-  const publicCopy = [
-    read('README.md'),
-    read('scenarios/S15_capstone.md'),
-    read('scripts/generate_scenario_html.js'),
-    read('docs/scenario-guides/s15-capstone.html'),
-  ].join('\n');
+  const readme = read('README.md');
+  const scenario = read('scenarios/S15_capstone.md');
+  const generator = read('scripts/generate_scenario_html.js');
+  const guide = read('docs/scenario-guides/s15-capstone.html');
+  const publicCopy = [readme, scenario, generator, guide].join('\n');
 
   assert.match(checklist, /教材内セルフ評価レベル/);
   assert.match(checklist, /外部資格|技能や職位/);
   assert.doesNotMatch(checklist, /認定レベル|初級認定|中級認定|上級認定|ホワイトハット\/SRE修了/);
-  assert.match(publicCopy, /S15[^\n<|]*統合キャップストーン/);
+  assert.match(readme, /\| S15 \| 統合キャップストーン \|/);
+  assert.match(scenario, /^# S15: 統合キャップストーン/m);
+  assert.match(generator, /id: 'S15',[\s\S]{0,120}title: '統合キャップストーン'/);
+  assert.match(guide, /S15 統合キャップストーン/);
   assert.doesNotMatch(publicCopy, /ホワイトハット\/SRE\s*修了課題/);
 });
 
