@@ -4,23 +4,29 @@
 
 set -euo pipefail
 
-TARGET="${TARGET:-app}"
+# Resolve the repository copy when run from source and the read-only mounted
+# copy when run in the attack container. No external command runs before the
+# target profile is validated.
+ATTACK_SCRIPT_PATH="${BASH_SOURCE[0]}"
+ATTACK_SCRIPT_DIR="${ATTACK_SCRIPT_PATH%/*}"
+if [[ "$ATTACK_SCRIPT_DIR" == "$ATTACK_SCRIPT_PATH" ]]; then
+    ATTACK_SCRIPT_DIR=.
+fi
+if [[ -r "$ATTACK_SCRIPT_DIR/../../scripts/lib/target_guard.sh" ]]; then
+    source "$ATTACK_SCRIPT_DIR/../../scripts/lib/target_guard.sh"
+elif [[ "$ATTACK_SCRIPT_DIR" == "/scripts" && -r "/secure-learn-target-guard.sh" ]]; then
+    source "/secure-learn-target-guard.sh"
+else
+    echo "ERROR: Secure Learn target guard is unavailable." >&2
+    exit 64
+fi
+secure_learn_validate_target
+
 OUTPUT_DIR="${OUTPUT_DIR:-/results}"
 PING_COUNT="${PING_COUNT:-6}"
 
 mkdir -p "$OUTPUT_DIR"
 OUTPUT_FILE="$OUTPUT_DIR/s9_l3_icmp_recon_$(date +%Y%m%d_%H%M%S).txt"
-
-resolve_target_ip() {
-    getent hosts "$TARGET" | awk '{print $1; exit}'
-}
-
-TARGET_IP="${TARGET_IP:-$(resolve_target_ip)}"
-
-if [ -z "$TARGET_IP" ]; then
-    echo "ERROR: Could not resolve target: $TARGET" >&2
-    exit 1
-fi
 
 {
     echo "============================================"
@@ -51,4 +57,3 @@ fi
 
 echo ""
 echo "Results saved to: $OUTPUT_FILE"
-

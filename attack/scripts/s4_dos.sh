@@ -4,6 +4,24 @@
 
 set -e
 
+# Resolve the repository copy when run from source and the read-only mounted
+# copy when run in the attack container. No external command runs before the
+# target profile is validated.
+ATTACK_SCRIPT_PATH="${BASH_SOURCE[0]}"
+ATTACK_SCRIPT_DIR="${ATTACK_SCRIPT_PATH%/*}"
+if [[ "$ATTACK_SCRIPT_DIR" == "$ATTACK_SCRIPT_PATH" ]]; then
+    ATTACK_SCRIPT_DIR=.
+fi
+if [[ -r "$ATTACK_SCRIPT_DIR/../../scripts/lib/target_guard.sh" ]]; then
+    source "$ATTACK_SCRIPT_DIR/../../scripts/lib/target_guard.sh"
+elif [[ "$ATTACK_SCRIPT_DIR" == "/scripts" && -r "/secure-learn-target-guard.sh" ]]; then
+    source "/secure-learn-target-guard.sh"
+else
+    echo "ERROR: Secure Learn target guard is unavailable." >&2
+    exit 64
+fi
+secure_learn_validate_target
+
 # Configuration
 TARGET="${TARGET:-app}"
 TARGET_IP="${TARGET_IP:-172.23.0.20}"
@@ -28,7 +46,7 @@ OUTPUT_FILE="$OUTPUT_DIR/s4_dos_$(date +%Y%m%d_%H%M%S).txt"
 
 # Check if target is reachable
 echo "Checking target connectivity..."
-start_response=$(curl -s --connect-timeout 5 -o /dev/null -w "%{http_code}" "http://$TARGET:$TARGET_PORT/" || echo "000")
+start_response=$(curl -s --connect-timeout 5 -H "Host: $TARGET" -o /dev/null -w "%{http_code}" "http://$TARGET_IP:$TARGET_PORT/" || echo "000")
 if [ "$start_response" = "000" ]; then
     echo "ERROR: Target is not reachable at http://$TARGET:$TARGET_PORT"
     exit 1
@@ -43,7 +61,7 @@ echo "============================================"
 # Get baseline response time
 echo "Measuring baseline response time..."
 for i in 1 2 3; do
-    baseline=$(curl -s -o /dev/null -w "%{time_total}" "http://$TARGET:$TARGET_PORT/")
+    baseline=$(curl -s -H "Host: $TARGET" -o /dev/null -w "%{time_total}" "http://$TARGET_IP:$TARGET_PORT/")
     echo "  Request $i: ${baseline}s"
 done
 echo ""
@@ -58,7 +76,7 @@ fail_count=0
 rate_limited=0
 
 for i in $(seq 1 $REQUESTS); do
-    response=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 "http://$TARGET:$TARGET_PORT/" 2>/dev/null || echo "000")
+    response=$(curl -s -H "Host: $TARGET" -o /dev/null -w "%{http_code}" --max-time 5 "http://$TARGET_IP:$TARGET_PORT/" 2>/dev/null || echo "000")
     
     case $response in
         200) ((success_count += 1)) ;;
@@ -91,7 +109,7 @@ parallel_results="$OUTPUT_DIR/s4_parallel_results.txt"
 
 for i in $(seq 1 100); do
     (
-        response=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 "http://$TARGET:$TARGET_PORT/" 2>/dev/null || echo "000")
+        response=$(curl -s -H "Host: $TARGET" -o /dev/null -w "%{http_code}" --max-time 5 "http://$TARGET_IP:$TARGET_PORT/" 2>/dev/null || echo "000")
         echo "$response" >> "$parallel_results"
     ) &
     
@@ -125,7 +143,7 @@ sleep 2
 
 # Check if we're banned or rate limited
 echo "Checking current status..."
-final_response=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 "http://$TARGET:$TARGET_PORT/" 2>/dev/null || echo "000")
+final_response=$(curl -s -H "Host: $TARGET" -o /dev/null -w "%{http_code}" --max-time 5 "http://$TARGET_IP:$TARGET_PORT/" 2>/dev/null || echo "000")
 
 case $final_response in
     200) echo "  Status: Normal (200 OK)" ;;

