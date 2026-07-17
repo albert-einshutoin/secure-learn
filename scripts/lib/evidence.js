@@ -1,4 +1,5 @@
 const { createHash, timingSafeEqual } = require('node:crypto');
+const { validateManifest } = require('./curriculum');
 const { assertAllowedTarget } = require('./target-policy');
 
 const FAILURE_STAGES = Object.freeze([
@@ -29,6 +30,7 @@ const OUTCOMES = new Set([...FAILURE_STAGES, 'verified']);
 
 const MAX_DURATION_MS = 24 * 60 * 60 * 1000;
 const MAX_FUTURE_SKEW_MS = 5 * 60 * 1000;
+const MANIFEST_FIELD_COUNT = 13;
 const CONTROL_CHARACTERS = /[\u0000-\u001f\u007f]/u;
 const CANONICAL_UTC = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/u;
 const SAFE_IDENTIFIER = /^[a-z][a-z0-9-]{0,63}$/u;
@@ -147,9 +149,31 @@ function readContext(context) {
   if (!isPlainRecord(context)) throw new TypeError('trusted context must be a plain object');
   assertDataProperties(context, 'context');
   for (const field of Object.keys(context)) {
-    if (!['safety', 'now'].includes(field)) throw new TypeError(`unknown context field: ${field}`);
+    if (!['manifest', 'now'].includes(field)) throw new TypeError(`unknown context field: ${field}`);
   }
-  if (!Object.hasOwn(context, 'safety')) throw new TypeError('safety must be an own context field');
+  if (!Object.hasOwn(context, 'manifest')) throw new TypeError('manifest must be an own context field');
+  if (!isPlainRecord(context.manifest)) throw new TypeError('invalid manifest: manifest must be a plain object');
+  const manifestFields = Object.keys(context.manifest);
+  // validateManifest diagnoses the full schema; this additional own-data check
+  // prevents inherited fields from satisfying that trusted manifest contract.
+  if (manifestFields.length !== MANIFEST_FIELD_COUNT) {
+    throw new TypeError('invalid manifest: every required field must be own');
+  }
+  for (const field of manifestFields) {
+    const descriptor = Object.getOwnPropertyDescriptor(context.manifest, field);
+    if (!descriptor || !descriptor.enumerable || !Object.hasOwn(descriptor, 'value')) {
+      throw new TypeError(`invalid manifest: ${field} must be an own data field`);
+    }
+  }
+  let manifestErrors;
+  try {
+    manifestErrors = validateManifest(context.manifest);
+  } catch {
+    throw new TypeError('invalid manifest: validation failed');
+  }
+  if (manifestErrors.length > 0) {
+    throw new TypeError(`invalid manifest: ${manifestErrors.join('; ')}`);
+  }
   const nowProvider = Object.hasOwn(context, 'now') ? context.now : Date.now;
   if (typeof nowProvider !== 'function') throw new TypeError('now must be a function');
 
@@ -162,7 +186,7 @@ function readContext(context) {
   if (!Number.isSafeInteger(now) || now < 0) {
     throw new TypeError('now must return a valid Unix timestamp');
   }
-  return { now, safety: context.safety };
+  return { manifest: context.manifest, now };
 }
 
 function assertCanonicalArray(value, field) {
@@ -261,6 +285,13 @@ function attachTargetPolicy(body, targetPolicy) {
   );
 }
 
+function assertManifestBinding(body, manifest) {
+  if (body.lab !== manifest.id) throw new TypeError('manifest id must match evidence lab');
+  if (body.manifest_version !== manifest.version) {
+    throw new TypeError('manifest version must match evidence manifest_version');
+  }
+}
+
 function hashBody(body) {
   // A digest cannot include itself without a fixed-point problem. Hash the
   // complete canonical receipt body, then attach its lowercase SHA-256.
@@ -278,7 +309,8 @@ function deepFreeze(value) {
 function createEvidence(input, context) {
   const trusted = readContext(context);
   const baseBody = canonicalizeInput(input, trusted.now);
-  const policy = canonicalizeTargetPolicy(baseBody.target, trusted.safety);
+  assertManifestBinding(baseBody, trusted.manifest);
+  const policy = canonicalizeTargetPolicy(baseBody.target, trusted.manifest.safety);
   if (!policy.allowed) throw new TypeError('prohibited target for trusted safety policy');
   const body = attachTargetPolicy(baseBody, policy.snapshot);
   return deepFreeze({ ...body, sha256: hashBody(body) });
@@ -299,6 +331,7 @@ function verifyEvidence(receipt, context) {
   // valid, while evidence beyond the same five-minute clock-skew bound fails.
   const input = Object.fromEntries(INPUT_FIELDS.map((field) => [field, receipt[field]]));
   const baseBody = canonicalizeInput(input, trusted.now);
+  assertManifestBinding(baseBody, trusted.manifest);
 
   const embeddedPolicy = canonicalizeTargetPolicy(baseBody.target, receipt.target_policy);
   if (!embeddedPolicy.allowed) throw new TypeError('embedded target_policy does not allow target');
@@ -306,7 +339,7 @@ function verifyEvidence(receipt, context) {
     throw new TypeError('target_policy must be canonical');
   }
 
-  const trustedPolicy = canonicalizeTargetPolicy(baseBody.target, trusted.safety);
+  const trustedPolicy = canonicalizeTargetPolicy(baseBody.target, trusted.manifest.safety);
   if (!trustedPolicy.allowed) return false;
   if (stableSerialize(embeddedPolicy.snapshot) !== stableSerialize(trustedPolicy.snapshot)) return false;
   if (receipt.outcome !== baseBody.outcome) return false;

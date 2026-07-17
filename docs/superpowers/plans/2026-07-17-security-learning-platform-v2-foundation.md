@@ -547,11 +547,12 @@ Create `test/evidence-contract.test.js`:
 
 ```js
 const assert = require('node:assert/strict');
+const path = require('node:path');
 const test = require('node:test');
+const { loadManifests } = require('../scripts/lib/curriculum');
 const { classifyOutcome, createEvidence, verifyEvidence } = require('../scripts/lib/evidence');
-const context = {
-  safety: { target_services: ['app'], allowed_cidrs: ['172.23.0.0/24'], external_network: false },
-};
+const manifest = loadManifests(path.resolve(__dirname, '..')).find((candidate) => candidate.id === 's1');
+const context = { manifest };
 
 test('keeps attack, telemetry, pipeline, control, regression, and cleanup separate', () => {
   assert.equal(classifyOutcome({ environment: true, safety: true, startup: true, attack: true, telemetry: true, pipeline: true, control: true, regression: true, evidence: true, cleanup: true }), 'verified');
@@ -578,9 +579,9 @@ test('creates deterministic evidence hashes without hashing the hash field', () 
 
 All ten stage values are required booleans. A missing stage is unverified evidence, so it must fail closed instead of being interpreted as a successful check.
 The input and result fields must be exact own properties; inherited values never satisfy the contract. Plain records with either the normal `Object.prototype` or a null prototype are accepted.
-`target` is a trimmed lowercase local service label or canonical dotted-decimal IPv4 string, rather than arbitrary metadata. It must also be allowed by the manifest-derived trusted `safety` policy. This explicit descriptor avoids pretending that heuristic secret scanning can make arbitrary evidence safe.
-`createEvidence(input, { safety, now? })` and `verifyEvidence(receipt, { safety, now? })` require trusted context. `safety` has the exact manifest fields `target_services`, `allowed_cidrs`, and `external_network: false`; `now` is an optional millisecond clock function for deterministic tests. Both reject evidence ending more than five minutes in the future, while historical evidence remains verifiable. A malformed receipt throws `TypeError`; a structurally valid receipt whose outcome, body, policy, or lowercase SHA-256 was altered returns `false`.
-The receipt contains a `target_policy` snapshot in its hash. Service and CIDR arrays are copied and sorted by code point without mutating the manifest, so manifest order does not change the hash. Verification requires this embedded canonical snapshot to match the independently supplied trusted policy; a permissive embedded policy cannot authorize itself.
+`target` is a trimmed lowercase local service label or canonical dotted-decimal IPv4 string, rather than arbitrary metadata. It must also be allowed by the trusted manifest's `safety` policy. This explicit descriptor avoids pretending that heuristic secret scanning can make arbitrary evidence safe.
+`createEvidence(input, { manifest, now? })` and `verifyEvidence(receipt, { manifest, now? })` require trusted context. The complete manifest must pass `validateManifest`; passing a detached safety object is forbidden. Its `id` and `version` must exactly match the evidence `lab` and `manifest_version`. `now` is an optional millisecond clock function for deterministic tests. Both reject evidence ending more than five minutes in the future, while historical evidence remains verifiable when the caller supplies the corresponding trusted historical manifest version. A malformed receipt throws `TypeError`; a structurally valid receipt whose outcome, body, policy, or lowercase SHA-256 was altered returns `false`.
+The receipt contains a `target_policy` snapshot derived only from `manifest.safety` in its hash. Service and CIDR arrays are copied and sorted by code point without mutating the manifest, so manifest order does not change the hash. Verification requires this embedded canonical snapshot to match the independently supplied trusted manifest; a permissive embedded policy cannot authorize itself.
 
 - [ ] **Step 2: Verify module-not-found failure**
 
@@ -588,7 +589,7 @@ Run `node --test test/evidence-contract.test.js`.
 
 - [ ] **Step 3: Implement stable serialization and ordered failure classification**
 
-Create `scripts/lib/evidence.js`. `classifyOutcome` checks in this order: environment, safety, startup, attack, telemetry, pipeline, control, regression, evidence, cleanup, then verified. `createEvidence` reuses `assertAllowedTarget`, snapshots the trusted manifest safety boundary, sorts object keys, computes SHA-256 over the evidence without `sha256`, and returns a recursively frozen object with `outcome`, `target_policy`, and `sha256`. `verifyEvidence` strictly revalidates the canonical receipt against independently supplied trusted safety, recomputes its outcome and hash, and uses a timing-safe digest comparison. Keep the dependency one-way from evidence to target policy.
+Create `scripts/lib/evidence.js`. `classifyOutcome` checks in this order: environment, safety, startup, attack, telemetry, pipeline, control, regression, evidence, cleanup, then verified. `createEvidence` reuses `validateManifest` and `assertAllowedTarget`, snapshots only the trusted manifest safety boundary, sorts object keys, computes SHA-256 over the evidence without `sha256`, and returns a recursively frozen object with `outcome`, `target_policy`, and `sha256`. `verifyEvidence` strictly revalidates the canonical receipt against the independently supplied matching manifest, recomputes its outcome and hash, and uses a timing-safe digest comparison. Keep dependencies one-way from evidence to curriculum and target policy.
 
 Add comments explaining why failure ordering is stable and why the hash excludes its own field.
 

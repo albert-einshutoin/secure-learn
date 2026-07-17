@@ -153,12 +153,21 @@ test('sorts result keys deterministically while preserving meaningful changes', 
 test('requires a complete trusted manifest and hashes its canonical safety snapshot', () => {
   assert.throws(() => createEvidence(validInput()), /context/);
   assert.throws(() => createEvidence(validInput(), {}), /manifest must be an own context field/);
+  assert.throws(() => createEvidence(validInput(), { safety: S1_MANIFEST.safety }), /unknown context field/);
   assert.throws(() => createEvidence(validInput(), { manifest: S1_MANIFEST, extra: true }), /unknown context field/);
   Object.prototype.manifest = S1_MANIFEST;
   try {
     assert.throws(() => createEvidence(validInput(), {}), /manifest must be an own context field/);
   } finally {
     delete Object.prototype.manifest;
+  }
+  Object.prototype.title = S1_MANIFEST.title;
+  try {
+    const inheritedTitle = structuredClone(S1_MANIFEST);
+    delete inheritedTitle.title;
+    assert.throws(() => createEvidence(validInput(), { manifest: inheritedTitle }), /invalid manifest/);
+  } finally {
+    delete Object.prototype.title;
   }
   assert.throws(
     () => createEvidence(validInput(), { manifest: { ...S1_MANIFEST, safety: { ...S1_MANIFEST.safety, external_network: true } } }),
@@ -222,7 +231,10 @@ test('binds targets to the trusted manifest safety boundary', () => {
     '0.0.0.0', 'evil.attacker.com', 'localhost', '127.0.0.1']) {
     assert.throws(() => createReceipt(validInput({ target })), /target|prohibited/);
   }
-  assert.equal(createReceipt(validInput({ lab: 's14', target: 'localhost' }), { manifest: S14_MANIFEST }).target, 'localhost');
+  const incidentReceipt = createReceipt(validInput({ lab: 's14', target: 'localhost' }), { manifest: S14_MANIFEST });
+  assert.equal(incidentReceipt.target, 'localhost');
+  assert.equal(verifyReceipt(incidentReceipt, { manifest: S14_MANIFEST }), true);
+  assert.throws(() => verifyReceipt(incidentReceipt, context()), /manifest id must match evidence lab/);
   assert.equal(createReceipt(validInput({ lab: 's14', target: '127.0.0.1' }), { manifest: S14_MANIFEST }).target, '127.0.0.1');
   assert.throws(
     () => createReceipt(validInput({ lab: 's14', target: 'localhost' }), context()),
