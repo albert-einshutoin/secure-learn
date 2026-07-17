@@ -21,7 +21,7 @@ function main(argv = process.argv.slice(2)) {
     || argv[1].length > 128
     || (argv[2] !== undefined && argv[2].length > 1024)
   ) {
-    process.stderr.write('Usage: scripts/issue-vm-receipt <s5|s6> <snapshot-id> [receipt-path]\n');
+    process.stderr.write('Usage: scripts/issue-vm-receipt <s5|s6> <snapshot-id> [receipt-name.json]\n');
     return 2;
   }
   try {

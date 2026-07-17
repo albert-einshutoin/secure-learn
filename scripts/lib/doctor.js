@@ -135,7 +135,7 @@ function doctorManifest(manifest, options = {}) {
         repositoryRoot,
         expectedLabId: manifest.id,
       });
-      messages.push('Platform ready: linux-vm');
+      messages.push('Platform ready: linux-vm (operator-attested local VM receipt)');
     } else {
       throw new Error('Unsupported required platform.');
     }

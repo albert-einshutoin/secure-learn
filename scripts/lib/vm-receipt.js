@@ -3,6 +3,7 @@
 const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
+const { validateVmAdapterMarker } = require('./vm-adapter');
 
 const MAX_RECEIPT_BYTES = 16 * 1024;
 const MAX_IDENTITY_BYTES = 4 * 1024;
@@ -20,11 +21,19 @@ const RECEIPT_FIELDS = [
   'nonce',
   'machine_id_sha256',
   'boot_id_sha256',
+  'assurance',
+  'adapter_marker_sha256',
+  'provisioning_nonce',
+  'virtualization_provider',
 ];
 const SNAPSHOT_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{7,127}$/;
 const SHA256 = /^[0-9a-f]{64}$/;
 const LAB_IDS = new Set(['s5', 's6']);
 const ISSUER = 'secure-learn-vm-bootstrap';
+const VIRTUALIZATION_PROVIDERS = new Set([
+  'qemu-kvm', 'vmware', 'virtualbox', 'parallels', 'apple-virtualization', 'utm',
+]);
+const RECEIPT_BASENAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}\.json$/;
 
 function isInside(parent, child) {
   const relative = path.relative(parent, child);
@@ -32,8 +41,15 @@ function isInside(parent, child) {
 }
 
 function resolveReceiptPath(receiptPath, repositoryRoot) {
-  if (typeof receiptPath !== 'string' || receiptPath.length === 0 || receiptPath.includes('\u0000')) {
+  if (
+    typeof receiptPath !== 'string'
+    || receiptPath.length === 0
+    || receiptPath.includes('\u0000')
+  ) {
     throw new Error('Linux VM receipt path is required.');
+  }
+  if (receiptPath.includes('\\')) {
+    throw new Error('Linux VM receipt must be a direct JSON file in the trusted receipt directory.');
   }
   const lexicalRoot = path.resolve(repositoryRoot);
   const root = fs.realpathSync(lexicalRoot);
@@ -44,11 +60,19 @@ function resolveReceiptPath(receiptPath, repositoryRoot) {
     requested = isInside(lexicalRoot, lexicalRequested)
       ? path.join(root, path.relative(lexicalRoot, lexicalRequested))
       : lexicalRequested;
-  } else {
+  } else if (!receiptPath.includes('/')) {
+    requested = path.join(trustedDirectory, receiptPath);
+  } else if (receiptPath.startsWith('evidence/vm-receipts/')) {
     requested = path.resolve(root, receiptPath);
+  } else {
+    throw new Error('Linux VM receipt must be a direct JSON file in the trusted receipt directory.');
   }
-  if (!isInside(trustedDirectory, requested)) {
-    throw new Error('Linux VM receipt must be inside the trusted receipt directory.');
+  if (
+    path.dirname(requested) !== trustedDirectory
+    || !RECEIPT_BASENAME.test(path.basename(requested))
+    || path.basename(requested).includes('..')
+  ) {
+    throw new Error('Linux VM receipt must be a direct JSON file in the trusted receipt directory.');
   }
   return { root, trustedDirectory, requested };
 }
@@ -92,6 +116,7 @@ function validateReceiptContract(receipt, expectedLabId, now) {
     || receipt.platform !== 'linux-vm'
     || receipt.issuer !== ISSUER
     || !LAB_IDS.has(receipt.lab_id)
+    || receipt.assurance !== 'operator-attested-local-vm'
   ) {
     throw new Error('Linux VM receipt has an unsupported contract.');
   }
@@ -102,6 +127,11 @@ function validateReceiptContract(receipt, expectedLabId, now) {
   if (!SHA256.test(receipt.nonce)) throw new Error('Linux VM receipt nonce is invalid.');
   if (!SHA256.test(receipt.machine_id_sha256)) throw new Error('Linux VM receipt machine identifier is invalid.');
   if (!SHA256.test(receipt.boot_id_sha256)) throw new Error('Linux VM receipt boot identifier is invalid.');
+  if (!SHA256.test(receipt.adapter_marker_sha256)) throw new Error('Linux VM receipt adapter marker digest is invalid.');
+  if (!SHA256.test(receipt.provisioning_nonce)) throw new Error('Linux VM receipt provisioning nonce is invalid.');
+  if (!VIRTUALIZATION_PROVIDERS.has(receipt.virtualization_provider)) {
+    throw new Error('Linux VM receipt virtualization provider is invalid.');
+  }
 
   const issuedAt = parseCanonicalTimestamp(receipt.issued_at);
   const expiresAt = parseCanonicalTimestamp(receipt.expires_at);
@@ -170,17 +200,29 @@ function validateVmReceipt(receiptPath, options = {}) {
   }
 }
 
-function readIdentityFile(sourcePath) {
+function readIdentityFile(sourcePath, options = {}) {
+  const fsImpl = options.fsImpl || fs;
   let descriptor;
   try {
-    descriptor = fs.openSync(sourcePath, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
-    const stat = fs.fstatSync(descriptor);
-    if (!stat.isFile() || stat.size === 0 || stat.size > MAX_IDENTITY_BYTES) {
-      throw new Error('Linux VM identity source is invalid.');
+    descriptor = fsImpl.openSync(sourcePath, fsImpl.constants.O_RDONLY | fsImpl.constants.O_NOFOLLOW);
+    const stat = fsImpl.fstatSync(descriptor);
+    if (!stat.isFile()) throw new Error('Linux VM identity source is invalid.');
+
+    // procfs commonly reports st_size=0. Bound the bytes actually read from
+    // one O_NOFOLLOW descriptor instead of trusting filesystem metadata.
+    const chunks = [];
+    let total = 0;
+    while (total <= MAX_IDENTITY_BYTES) {
+      const buffer = Buffer.alloc(Math.min(1024, MAX_IDENTITY_BYTES + 1 - total));
+      const count = fsImpl.readSync(descriptor, buffer, 0, buffer.length, null);
+      if (count === 0) break;
+      chunks.push(buffer.subarray(0, count));
+      total += count;
     }
-    return fs.readFileSync(descriptor);
+    if (total === 0 || total > MAX_IDENTITY_BYTES) throw new Error('Linux VM identity source is invalid.');
+    return Buffer.concat(chunks, total);
   } finally {
-    if (descriptor !== undefined) fs.closeSync(descriptor);
+    if (descriptor !== undefined) fsImpl.closeSync(descriptor);
   }
 }
 
@@ -210,6 +252,8 @@ function createVmReceipt(input, dependencies = {}) {
   const nonce = randomBytes(32);
   if (!Buffer.isBuffer(nonce) || nonce.length !== 32) throw new Error('Receipt nonce source is invalid.');
   const readIdentity = dependencies.readIdentity || readIdentityFile;
+  const validateAdapter = dependencies.validateAdapter || validateVmAdapterMarker;
+  const adapter = validateAdapter(input.snapshotId);
 
   return {
     version: 1,
@@ -222,6 +266,10 @@ function createVmReceipt(input, dependencies = {}) {
     nonce: nonce.toString('hex'),
     machine_id_sha256: hashIdentity(readIdentity('/etc/machine-id')),
     boot_id_sha256: hashIdentity(readIdentity('/proc/sys/kernel/random/boot_id')),
+    assurance: 'operator-attested-local-vm',
+    adapter_marker_sha256: adapter.markerSha256,
+    provisioning_nonce: adapter.marker.provisioning_nonce,
+    virtualization_provider: adapter.marker.virtualization_provider,
   };
 }
 
@@ -237,8 +285,8 @@ function ensureReceiptDirectory(repositoryRoot) {
 
 function writeVmReceiptAtomic(outputPath, receipt, options = {}) {
   const repositoryRoot = options.repositoryRoot || fs.realpathSync(path.resolve(__dirname, '../..'));
-  validateReceiptContract(receipt, receipt && receipt.lab_id, options.now || new Date());
   const { requested } = resolveReceiptPath(outputPath, repositoryRoot);
+  validateReceiptContract(receipt, receipt && receipt.lab_id, options.now || new Date());
   ensureReceiptDirectory(repositoryRoot);
   if (fs.existsSync(requested)) throw new Error('Linux VM receipt already exists.');
 
@@ -262,12 +310,21 @@ function writeVmReceiptAtomic(outputPath, receipt, options = {}) {
     fs.fsyncSync(descriptor);
     fs.closeSync(descriptor);
     descriptor = undefined;
+    // Node has no openat/renameat2-no-replace. Restricting output to a direct
+    // basename in this checked 0700 directory reduces the remaining race to
+    // the same trusted uid. Recheck immediately before the atomic rename.
+    assertSecureAncestry(fs.realpathSync(repositoryRoot), path.dirname(requested));
+    if (fs.existsSync(requested)) throw new Error('Linux VM receipt already exists.');
+    fs.renameSync(temporary, requested);
+    const published = fs.lstatSync(requested);
+    if (!published.isFile() || published.isSymbolicLink() || (published.mode & 0o777) !== 0o600) {
+      throw new Error('Linux VM receipt publication failed.');
+    }
+    const directoryDescriptor = fs.openSync(path.dirname(requested), fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
     try {
-      // Hard-link creation is atomic and refuses to replace an existing path.
-      fs.linkSync(temporary, requested);
-    } catch (error) {
-      if (error.code === 'EEXIST') throw new Error('Linux VM receipt already exists.');
-      throw error;
+      fs.fsyncSync(directoryDescriptor);
+    } finally {
+      fs.closeSync(directoryDescriptor);
     }
   } finally {
     if (descriptor !== undefined) fs.closeSync(descriptor);
@@ -278,6 +335,7 @@ function writeVmReceiptAtomic(outputPath, receipt, options = {}) {
 module.exports = {
   createVmReceipt,
   ensureReceiptDirectory,
+  readIdentityFile,
   validateVmReceipt,
   writeVmReceiptAtomic,
 };

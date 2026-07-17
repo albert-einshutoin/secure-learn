@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://secure-learn.local/schema/vm-adapter-marker.schema.json",
+  "title": "Secure Learn local Linux VM adapter marker",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "adapter",
+    "snapshot_id",
+    "provisioned_at",
+    "disposable_snapshot_acknowledged",
+    "virtualization_provider",
+    "provisioning_nonce"
+  ],
+  "properties": {
+    "version": { "const": 1 },
+    "adapter": { "const": "secure-learn-linux-vm" },
+    "snapshot_id": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 128,
+      "pattern": "^(?!.*\\.\\.)[A-Za-z0-9][A-Za-z0-9._-]*$"
+    },
+    "provisioned_at": { "type": "string", "format": "date-time" },
+    "disposable_snapshot_acknowledged": { "const": true },
+    "virtualization_provider": {
+      "enum": [
+        "qemu-kvm",
+        "vmware",
+        "virtualbox",
+        "parallels",
+        "apple-virtualization",
+        "utm"
+      ]
+    },
+    "provisioning_nonce": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  }
+}
