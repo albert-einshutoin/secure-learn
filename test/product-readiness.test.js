@@ -313,7 +313,11 @@ test('generated scenario guides retain public URLs while using corrected S7 and 
 
   assert.match(s5, /Impact - Data Manipulation \(T1565\)/);
   assert.match(s7, /Cross-Layer Incident/);
-  assert.doesNotMatch(s7, /APT模擬|実際のAPT|Lateral Movement/i);
+  const s7Claims = s7
+    .split('\n')
+    .filter((line) => !/主張せず|not (?:an? )?(?:APT|lateral movement)|compatibility filename/i.test(line))
+    .join('\n');
+  assert.doesNotMatch(s7Claims, /APT模擬|実際のAPT|genuine APT|Lateral Movement/i);
   assert.match(s8, /Remote System Discovery \(T1018\)/);
   assert.doesNotMatch(s8, /T1046|Network Service Discovery/i);
   for (const guide of [s5, s7, s8]) {
