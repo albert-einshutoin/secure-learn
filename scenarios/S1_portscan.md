@@ -32,7 +32,7 @@ docker exec -it soc-lab-kali /bin/bash
 /scripts/s1_portscan.sh
 
 # または手動で実行
-nmap -sS -p 1-1000 172.19.0.20
+nmap -sS -p 1-1000 172.23.0.20
 ```
 
 ### 3. 攻撃バリエーション

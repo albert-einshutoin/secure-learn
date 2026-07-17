@@ -7,14 +7,14 @@
 
 ## 概要
 
-SOC-Labは、セキュリティオペレーションセンター（SOC）の訓練を目的とした、ローカル専用の学習環境です。S1-S15は同梱Docker環境で実行でき、S16-S33は設計レビューと証跡作成を行うガイド型演習です。
+SOC-Labは、セキュリティオペレーションセンター（SOC）の訓練を目的とした、ローカル専用の学習環境です。S1-S4/S7-S13は同梱Docker環境、S5-S6は使い捨てLinux VM、S14-S15は複数の証跡を統合する運用ワークフロー、S16-S33は設計レビューとして提供します。
 
 **攻撃 → 検知 → 対応 → 報告 → 改善** の一連のサイクルを体験できます。
 
 ## 特徴
 
 - 🐳 **Docker Compose一発起動** - 複雑な環境構築不要
-- 🎯 **15の実行型ラボ + 18のガイド型設計演習** - 実行環境の有無を明示して33領域を学習
+- 🎯 **11のDockerラボ + 2のLinuxホスト補助演習 + 2の運用ワークフロー + 18のガイド型設計演習** - 必要な実行環境を明示して33領域を学習
 - 📊 **リアルタイム可視化** - Kibanaダッシュボードで攻撃を観察
 - 🔔 **自動アラート** - ElastAlert + Slack通知
 - 📝 **証跡テンプレート** - incident、postmortem、remediation PRへ学習結果を整理
@@ -151,7 +151,7 @@ HTMLガイドは `docs/learning-phases/index.html` と `docs/scenario-guides/ind
 |------|------------------|------|--------|
 | 1 | [README](README.md) | 全体像、起動方法、主要ドキュメントへの入口 | まず環境を起動し、どの学習入口を使うか決める |
 | 2 | [Learning Phase Guides](docs/learning-phases/index.html) | P0-P19を順番に進めるメイン教材 | 初学者はP0から、経験者は弱い領域のphaseから始める |
-| 3 | [Scenario HTML Guides](docs/scenario-guides/index.html) | S1-S15の実行型ラボとS16-S33のガイド型設計演習 | 各ページの`実行形式`を確認し、再現または設計レビューの証跡を作る |
+| 3 | [Scenario HTML Guides](docs/scenario-guides/index.html) | Docker実行型、Linuxホスト補助型、運用ワークフロー型、ガイド型を区別したS1-S33 | 各ページの`実行形式`を確認し、再現または設計レビューの証跡を作る |
 | 4 | [Scenario Evidence Evaluation](docs/curriculum/world-class-scenario-evaluation.md) | Whitehat、SRE、Backend、Platform、Detectionの自己評価 | 教材内の証跡と、本番環境で追加検証すべき項目を分ける |
 | 5 | [Competency Matrix](docs/curriculum/competency-matrix.md) | スキル棚卸し表 | 自分の不足領域を見つけ、次に読むphaseやscenarioを選ぶ |
 | 6 | [Templates](docs/templates/) | incident、postmortem、remediation PR、評価チェックリスト | ハンズオン結果を第三者がレビューできる成果物に変換する |
@@ -192,7 +192,7 @@ HTMLガイドは `docs/learning-phases/index.html` と `docs/scenario-guides/ind
 3. 各phaseのHTMLで、`抽象的に何を学ぶか`、`具体例`、`学習フロー図`、`Dockerと証跡の図` を読む。
 4. `scripts/learning_phase.sh start <phase>` で必要なDocker profileを起動し、phase内のHands-on Flowを実行する。
 5. 対応する [Scenario HTML Guides](docs/scenario-guides/index.html) のS1-S33を開き、`OSI / HTTP / 到達前の図` で通信やアプリ境界のどこを扱うか確認する。
-6. S1-S15はコマンドを実行してKibana、Suricata、App log、Fail2ban、Auditd、テスト結果を観測する。S16-S33はページに従い設計レビュー、静的検証、tabletopの証跡を作る。
+6. S1-S4/S7-S13はDockerで観測し、S5-S6は使い捨てLinux VMでAuditd証跡を作り、S14-S15は複数の観測結果を統合する。S16-S33は設計レビュー、静的検証、tabletopの証跡を作る。
 7. `合格証跡` を [Incident Report](docs/templates/incident-report.md)、[Postmortem](docs/templates/postmortem.md)、[Vulnerability Remediation PR](docs/templates/vulnerability-remediation-pr.md)、[Backend Test Report](docs/templates/backend-test-report.md) のいずれかにまとめる。
 8. `scripts/lab_quality_gate.sh` で実装を検証し、`scripts/world_class_hands_on_check.sh all` で実行確認済み・存在確認・文書化・不足を区別したレポートを作る。
 9. [Scenario Evidence Evaluation](docs/curriculum/world-class-scenario-evaluation.md) と [Professional Readiness Roadmap](docs/curriculum/professional-readiness-roadmap.md) で、説明できない領域を次の学習対象にする。
@@ -312,7 +312,7 @@ MIT License
 
 - 本番環境では絶対に使用しないでください
 - 閉域ネットワークでのみ使用してください
-- 意図的に脆弱性を含んでいます
+- APIは修正済みの防御契約を実装しています。攻撃スクリプトは拒否・検知・運用判断を学ぶための安全な試行です
 - 攻撃スクリプトを第三者の環境に向けて実行しないでください
 - `.env`、実際のWebhook URL、秘密鍵、実データをコミットしないでください
 

@@ -222,27 +222,27 @@ const scenarios = [
   },
   {
     id: 'S5',
+    mode: 'host-assisted',
     slug: 's5-file-tamper',
     title: '重要ファイル改変',
     layer: 'OS',
     level: '中級',
     roles: ['Whitehat', 'SRE'],
     score: 3,
-    summary: 'Auditdで重要ファイル変更を記録し、変更者、時刻、対象、復旧判断を追う。',
-    objective: 'Docker外のホスト監査として、FIM、監査ログ、復旧、postmortemまで扱えるようにする。',
+    summary: '使い捨てLinux VMのテストファイル変更をAuditdで記録し、変更者、時刻、対象、復旧判断を追う。',
+    objective: '日常利用中のホストを変更せず、FIM、監査ログ、復旧、postmortemまで扱えるようにする。',
     flow: [
-      ['Prepare', 'Linux hostでauditdを有効化し、audit.rulesを読み込む。'],
-      ['Execute', '安全なtest fileまたは明示許可された重要ファイル操作を行う。'],
+      ['Prepare', '使い捨てLinux VMでauditdを有効化し、/tmpのtest fileを監視する。'],
+      ['Execute', '一般ユーザー権限でtest fileだけを変更する。'],
       ['Observe', 'ausearch/aureportでPATH/SYSCALL/auidを確認する。'],
       ['Assess', '変更が正当作業か不正操作かを判断する。'],
       ['Recover', '差分、バックアップ、immutable/FIM戦略を記録する。'],
     ],
     commands: [
-      'sudo cp auditd/audit.rules /etc/audit/rules.d/soc-lab.rules',
+      'sudo install -m 0640 auditd/audit.rules /etc/audit/rules.d/soc-lab.rules',
       'sudo systemctl restart auditd',
-      'docker exec -it soc-lab-kali /bin/bash',
       '/scripts/s5_file_tamper.sh',
-      'sudo ausearch -k passwd_changes -i | head -50',
+      'sudo ausearch -k secure_learn_test_file -i | head -50',
       'sudo aureport --file --summary',
     ],
     tools: [
@@ -265,30 +265,31 @@ const scenarios = [
   },
   {
     id: 'S6',
+    mode: 'host-assisted',
     slug: 's6-privesc',
     title: '権限昇格',
     layer: 'OS',
     level: '中級',
     roles: ['Whitehat', 'SRE'],
     score: 3,
-    summary: 'sudo/su/SUID探索をAuditdで記録し、最小権限と異常昇格の判断を学ぶ。',
+    summary: '使い捨てLinux VMで副作用のないsudo/SUID探索をAuditdに記録し、最小権限と異常昇格の判断を学ぶ。',
     objective: '権限昇格を実行できたで終わらせず、許可、証跡、影響、封じ込め、権限設計まで説明する。',
     flow: [
       ['Prepare', 'auditdとprivilege escalation rulesを有効化する。'],
-      ['Execute', 'sudo、su、SUID列挙を安全な範囲で実行する。'],
+      ['Execute', 'sudoのidentity確認とSUID列挙だけを安全な範囲で実行する。'],
       ['Observe', 'audit.logとauth.logでeuid=0、auid、commandを確認する。'],
       ['Decide', '正当運用、要調査、不正昇格に分類する。'],
       ['Improve', 'sudoers最小化、MFA、session recordingを提案する。'],
     ],
     commands: [
       'sudo auditctl -l | grep privilege',
-      'sudo whoami',
-      'find / -perm -4000 2>/dev/null | head',
+      'sudo -n /usr/bin/id',
+      'find /usr/bin -perm -4000 -type f | head',
       'sudo ausearch -k privilege_escalation -i | head -50',
       'sudo aureport --auth --summary',
     ],
     tools: [
-      ['sudo/su', '昇格イベントを意図的に発生させる。'],
+      ['sudo', '副作用のないidentity commandで昇格イベントを発生させる。'],
       ['find', 'SUID/SGIDの攻撃面を列挙する。'],
       ['Auditd', 'euid、auid、execveを保存する。'],
       ['sudoers review', 'NOPASSWDや広すぎる権限を評価する。'],
@@ -600,6 +601,7 @@ const scenarios = [
   },
   {
     id: 'S14',
+    mode: 'operator-workflow',
     slug: 's14-sre-incident',
     title: 'SREインシデント対応',
     layer: '横断/SRE',
@@ -642,6 +644,7 @@ const scenarios = [
   },
   {
     id: 'S15',
+    mode: 'operator-workflow',
     slug: 's15-capstone',
     title: 'ホワイトハット/SRE修了課題',
     layer: '全体',
@@ -1575,6 +1578,14 @@ function scenarioExamples(scenario) {
 }
 
 function scenarioPrerequisites(scenario) {
+  if (scenario.mode === 'host-assisted') {
+    return [
+      'スナップショットから破棄できるLinux VMを用意している。日常利用中のホストでは実行しない。',
+      'Auditdの導入と一時ルール追加を行う権限がある。',
+      `対象は${scenario.id}で指定した/tmpのテストファイルまたは副作用のないidentity commandだけに限定する。`,
+    ];
+  }
+
   return scenario.prerequisites || [
     'Docker DesktopまたはDocker Engineが起動している。',
     'docker compose config -q が通り、対象service/profileを説明できる。',
@@ -1597,6 +1608,9 @@ function scenarioSafety(scenario) {
   }
   if (/RCE|Upload|SSRF|BOLA|SQL|Traversal|権限|改変/.test(context)) {
     safety.push('攻撃payloadは教材内の明示されたendpoint、file、containerだけに向ける。');
+  }
+  if (scenario.mode === 'host-assisted') {
+    safety.push('日常利用中のホスト、実ユーザー、アカウント制御ファイル、sudoersは変更しない。');
   }
 
   return scenario.safety || safety;
@@ -2201,7 +2215,23 @@ function rating(score) {
 
 function scenarioMode(scenario) {
   const scenarioNumber = Number.parseInt(scenario.id.slice(1), 10);
-  if (scenarioNumber <= 15) {
+  if (scenario.mode === 'host-assisted') {
+    return {
+      label: 'Linuxホスト補助演習',
+      className: 'host-assisted',
+      description: '使い捨てLinux VM上のAuditdを使用します。macOS/WindowsのDocker環境だけでは完了しません。',
+    };
+  }
+
+  if (scenario.mode === 'operator-workflow') {
+    return {
+      label: '運用ワークフロー演習',
+      className: 'operator-workflow',
+      description: '複数の同梱スクリプトと観測結果を組み合わせ、インシデント対応または総合評価を行います。',
+    };
+  }
+
+  if (scenarioNumber <= 13) {
     return {
       label: '実行型ラボ',
       className: 'runnable',
@@ -2407,7 +2437,9 @@ function scenarioPage(scenario) {
 
 function indexPage() {
   const runnableCount = scenarios.filter((scenario) => scenarioMode(scenario).className === 'runnable').length;
-  const guidedCount = scenarios.length - runnableCount;
+  const hostAssistedCount = scenarios.filter((scenario) => scenarioMode(scenario).className === 'host-assisted').length;
+  const operatorWorkflowCount = scenarios.filter((scenario) => scenarioMode(scenario).className === 'operator-workflow').length;
+  const guidedCount = scenarios.filter((scenario) => scenarioMode(scenario).className === 'guided').length;
   const rows = scenarios
     .map((scenario) => {
       const mode = scenarioMode(scenario);
@@ -2434,9 +2466,11 @@ function indexPage() {
     `    <section class="scenario-head">
       <p class="eyebrow">Local SOC learning curriculum</p>
       <h1>シナリオ別ハンズオンHTML</h1>
-      <p class="lead">実行型ラボ ${runnableCount}件とガイド型設計演習 ${guidedCount}件、合計${scenarios.length}件を収録しています。専用スクリプトや実環境の有無を区別したうえで、実行フロー、観測、証跡作成まで追えます。</p>
+      <p class="lead">Docker実行型ラボ ${runnableCount}件、Linuxホスト補助演習 ${hostAssistedCount}件、運用ワークフロー演習 ${operatorWorkflowCount}件、ガイド型設計演習 ${guidedCount}件、合計${scenarios.length}件を収録しています。必要な実行環境を区別したうえで、実行フロー、観測、証跡作成まで追えます。</p>
       <div class="meta-row">
-        <span class="pill mode-runnable">実行型ラボ ${runnableCount}</span>
+        <span class="pill mode-runnable">Docker実行型ラボ ${runnableCount}</span>
+        <span class="pill mode-host-assisted">Linuxホスト補助演習 ${hostAssistedCount}</span>
+        <span class="pill mode-operator-workflow">運用ワークフロー演習 ${operatorWorkflowCount}</span>
         <span class="pill mode-guided">ガイド型設計演習 ${guidedCount}</span>
       </div>
     </section>
@@ -2498,7 +2532,7 @@ function indexPage() {
 
     <section>
       <h2>総合評価</h2>
-      <p>現在のSecure Learnは、S1-S15を同梱環境で再現できる実行型ラボ、S16-S33を設計レビューと証跡作成のガイド型演習として提供します。ガイド型演習は実クラウド、実BGP、実Kubernetesクラスタなどを同梱せず、本番技能の認定を意味しません。</p>
+      <p>現在のSecure Learnは、S1-S4/S7-S13をDocker実行型、S5-S6を使い捨てLinux VMが必要なホスト補助型、S14-S15を複数の証跡を統合する運用ワークフロー型、S16-S33を設計レビュー型として提供します。各教材の完了は本番技能の認定を意味しません。</p>
       ${list(globalGaps)}
     </section>
 
@@ -2521,7 +2555,7 @@ function indexPage() {
     </section>
 `,
     '',
-    'Secure Learnの実行型ラボ15件とガイド型設計演習18件を一覧できるローカルSOC学習ガイド。',
+    'Secure LearnのDocker実行型、Linuxホスト補助型、運用ワークフロー型、ガイド型設計演習を一覧できるローカルSOC学習ガイド。',
   );
 }
 
@@ -3047,6 +3081,8 @@ article {
 .score-3 { color: var(--warn); border-color: #facc15; }
 .score-0, .score-1, .score-2 { color: var(--danger); border-color: #fca5a5; }
 .mode-runnable { color: var(--ok); border-color: #86efac; background: #f0fdf4; }
+.mode-host-assisted { color: var(--warn); border-color: #fcd34d; background: #fffbeb; }
+.mode-operator-workflow { color: var(--violet); border-color: #c4b5fd; background: #f5f3ff; }
 .mode-guided { color: var(--accent-2); border-color: #93c5fd; background: var(--surface-blue); }
 
 .big {

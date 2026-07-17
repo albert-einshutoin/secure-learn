@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Secure Learnの実行型ラボ15件とガイド型設計演習18件を一覧できるローカルSOC学習ガイド。">
+  <meta name="description" content="Secure LearnのDocker実行型、Linuxホスト補助型、運用ワークフロー型、ガイド型設計演習を一覧できるローカルSOC学習ガイド。">
   <title>Scenario Index - Secure Learn</title>
   <link rel="stylesheet" href="assets/scenario.css">
 </head>
@@ -17,9 +17,11 @@
     <section class="scenario-head">
       <p class="eyebrow">Local SOC learning curriculum</p>
       <h1>シナリオ別ハンズオンHTML</h1>
-      <p class="lead">実行型ラボ 15件とガイド型設計演習 18件、合計33件を収録しています。専用スクリプトや実環境の有無を区別したうえで、実行フロー、観測、証跡作成まで追えます。</p>
+      <p class="lead">Docker実行型ラボ 11件、Linuxホスト補助演習 2件、運用ワークフロー演習 2件、ガイド型設計演習 18件、合計33件を収録しています。必要な実行環境を区別したうえで、実行フロー、観測、証跡作成まで追えます。</p>
       <div class="meta-row">
-        <span class="pill mode-runnable">実行型ラボ 15</span>
+        <span class="pill mode-runnable">Docker実行型ラボ 11</span>
+        <span class="pill mode-host-assisted">Linuxホスト補助演習 2</span>
+        <span class="pill mode-operator-workflow">運用ワークフロー演習 2</span>
         <span class="pill mode-guided">ガイド型設計演習 18</span>
       </div>
     </section>
@@ -216,7 +218,7 @@
 
     <section>
       <h2>総合評価</h2>
-      <p>現在のSecure Learnは、S1-S15を同梱環境で再現できる実行型ラボ、S16-S33を設計レビューと証跡作成のガイド型演習として提供します。ガイド型演習は実クラウド、実BGP、実Kubernetesクラスタなどを同梱せず、本番技能の認定を意味しません。</p>
+      <p>現在のSecure Learnは、S1-S4/S7-S13をDocker実行型、S5-S6を使い捨てLinux VMが必要なホスト補助型、S14-S15を複数の証跡を統合する運用ワークフロー型、S16-S33を設計レビュー型として提供します。各教材の完了は本番技能の認定を意味しません。</p>
       <ul><li>API Securityの上位領域はS28で、IDOR/BOLA、SSRF、unsafe upload、RCE、business logic abuseとして扱う。</li><li>SRE/Observabilityの上位領域はS24-S25で、burn-rate alert、metrics/logs/traces、high-cardinality、alert fatigueとして扱う。</li><li>Backend/Distributed/Performanceの上位領域はS26-S27/S32で、idempotency、migration/rollback、transaction、pagination、query planとして扱う。</li><li>Cloud/IaC/Supply Chain/Releaseの上位領域はS22-S23/S29/S33で、IAM、KMS、OPA、SBOM、signing、canary、advisoryとして扱う。</li></ul>
     </section>
 
@@ -259,19 +261,19 @@
       </tr><tr>
         <td><a href="s5-file-tamper.html">S5</a></td>
         <td>重要ファイル改変</td>
-        <td><span class="pill mode-runnable">実行型ラボ</span></td>
+        <td><span class="pill mode-host-assisted">Linuxホスト補助演習</span></td>
         <td>OS</td>
         <td>Whitehat, SRE</td>
         <td><span class="score score-3">3/5 標準</span></td>
-        <td>Auditdで重要ファイル変更を記録し、変更者、時刻、対象、復旧判断を追う。</td>
+        <td>使い捨てLinux VMのテストファイル変更をAuditdで記録し、変更者、時刻、対象、復旧判断を追う。</td>
       </tr><tr>
         <td><a href="s6-privesc.html">S6</a></td>
         <td>権限昇格</td>
-        <td><span class="pill mode-runnable">実行型ラボ</span></td>
+        <td><span class="pill mode-host-assisted">Linuxホスト補助演習</span></td>
         <td>OS</td>
         <td>Whitehat, SRE</td>
         <td><span class="score score-3">3/5 標準</span></td>
-        <td>sudo/su/SUID探索をAuditdで記録し、最小権限と異常昇格の判断を学ぶ。</td>
+        <td>使い捨てLinux VMで副作用のないsudo/SUID探索をAuditdに記録し、最小権限と異常昇格の判断を学ぶ。</td>
       </tr><tr>
         <td><a href="s7-lateral.html">S7</a></td>
         <td>横断インシデント</td>
@@ -331,7 +333,7 @@
       </tr><tr>
         <td><a href="s14-sre-incident.html">S14</a></td>
         <td>SREインシデント対応</td>
-        <td><span class="pill mode-runnable">実行型ラボ</span></td>
+        <td><span class="pill mode-operator-workflow">運用ワークフロー演習</span></td>
         <td>横断/SRE</td>
         <td>SRE, Backend, Whitehat</td>
         <td><span class="score score-4">4/5 発展</span></td>
@@ -339,7 +341,7 @@
       </tr><tr>
         <td><a href="s15-capstone.html">S15</a></td>
         <td>ホワイトハット/SRE修了課題</td>
-        <td><span class="pill mode-runnable">実行型ラボ</span></td>
+        <td><span class="pill mode-operator-workflow">運用ワークフロー演習</span></td>
         <td>全体</td>
         <td>Whitehat, SRE, Backend</td>
         <td><span class="score score-4">4/5 発展</span></td>

@@ -11,8 +11,8 @@ echo "============================================"
 echo "SOC-Lab Scenario S6: Privilege Escalation"
 echo "============================================"
 echo ""
-echo "NOTE: This scenario requires Auditd running on the HOST, not in Docker."
-echo "      Run the attack commands on the host system to generate audit logs."
+echo "NOTE: This scenario requires Auditd in a disposable Linux VM, not Docker."
+echo "      It uses side-effect-free identity commands and changes no accounts."
 echo ""
 echo "Time: $(date -Iseconds)"
 echo ""
@@ -28,23 +28,20 @@ echo "============================================"
 cat << 'EOF'
 
 # =====================================
-# IMPORTANT: Run these on the HOST system
+# IMPORTANT: Run these only in a disposable Linux VM
 # =====================================
 
 # Phase 1: sudo to root
-sudo -u root whoami
+sudo -n /usr/bin/id
 
-# Phase 2: su to root
-su - root -c "whoami"
-
-# Phase 3: Run privileged command
-sudo id
+# Phase 2: Run a side-effect-free privileged command
+sudo -n /usr/bin/true
 
 # Phase 4: Check SUID binaries (reconnaissance)
 find / -perm -4000 2>/dev/null | head -20
 
-# Phase 5: Execute a SUID binary
-sudo /usr/bin/passwd --status root
+# Phase 5: Record the inventory; do not execute or modify SUID programs
+find /usr/bin -perm -4000 -type f
 
 # =====================================
 # Check Audit Logs
@@ -94,7 +91,7 @@ echo "============================================"
 echo "Privilege Escalation Simulation Complete"
 echo "============================================"
 echo ""
-echo "For real attack simulation, run the following on the HOST:"
+echo "To collect real Auditd evidence, use a disposable Linux VM:"
 echo ""
 echo "1. Check Auditd is running:"
 echo "   systemctl status auditd"
@@ -103,8 +100,8 @@ echo "2. Verify audit rules are loaded:"
 echo "   auditctl -l | grep privilege_escalation"
 echo ""
 echo "3. Perform privilege escalation:"
-echo "   sudo -u root whoami"
-echo "   su - root -c 'id'"
+echo "   sudo -n /usr/bin/id"
+echo "   sudo -n /usr/bin/true"
 echo ""
 echo "4. Check audit logs:"
 echo "   ausearch -k privilege_escalation"
@@ -119,4 +116,3 @@ echo "  [✓] Auditd records execve with euid=0"
 echo "  [✓] Original user (auid) is recorded"
 echo "  [✓] Executed command is recorded"
 echo "  [✓] Events visible in Kibana"
-

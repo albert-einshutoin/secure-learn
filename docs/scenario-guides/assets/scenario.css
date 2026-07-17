@@ -519,6 +519,8 @@ article {
 .score-3 { color: var(--warn); border-color: #facc15; }
 .score-0, .score-1, .score-2 { color: var(--danger); border-color: #fca5a5; }
 .mode-runnable { color: var(--ok); border-color: #86efac; background: #f0fdf4; }
+.mode-host-assisted { color: var(--warn); border-color: #fcd34d; background: #fffbeb; }
+.mode-operator-workflow { color: var(--violet); border-color: #c4b5fd; background: #f5f3ff; }
 .mode-guided { color: var(--accent-2); border-color: #93c5fd; background: var(--surface-blue); }
 
 .big {

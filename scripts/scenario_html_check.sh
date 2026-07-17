@@ -19,7 +19,9 @@ grep -q '<meta name="description"' "$GUIDE_DIR/index.html" || fail "index.html i
 grep -q 'class="skip-link"' "$GUIDE_DIR/index.html" || fail "index.html is missing skip link"
 grep -q '<h1>' "$GUIDE_DIR/index.html" || fail "index.html is missing h1"
 grep -q '通信レイヤー共通図' "$GUIDE_DIR/index.html" || fail "index.html is missing protocol layer overview"
-grep -q '実行型ラボ 15' "$GUIDE_DIR/index.html" || fail "index.html must disclose the runnable lab count"
+grep -q 'Docker実行型ラボ 11' "$GUIDE_DIR/index.html" || fail "index.html must disclose the Docker lab count"
+grep -q 'Linuxホスト補助演習 2' "$GUIDE_DIR/index.html" || fail "index.html must disclose the host-assisted count"
+grep -q '運用ワークフロー演習 2' "$GUIDE_DIR/index.html" || fail "index.html must disclose the operator workflow count"
 grep -q 'ガイド型設計演習 18' "$GUIDE_DIR/index.html" || fail "index.html must disclose the guided exercise count"
 
 grep -q ':focus-visible' "$GUIDE_DIR/assets/scenario.css" || fail "scenario.css is missing keyboard focus styles"

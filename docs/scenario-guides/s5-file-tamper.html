@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Auditdで重要ファイル変更を記録し、変更者、時刻、対象、復旧判断を追う。">
+  <meta name="description" content="使い捨てLinux VMのテストファイル変更をAuditdで記録し、変更者、時刻、対象、復旧判断を追う。">
   <title>S5 重要ファイル改変 - Secure Learn</title>
   <link rel="stylesheet" href="assets/scenario.css">
 </head>
@@ -17,9 +17,9 @@
     <section class="scenario-head">
       <p class="eyebrow">S5 / OS / 中級</p>
       <h1>重要ファイル改変</h1>
-      <p class="lead">Auditdで重要ファイル変更を記録し、変更者、時刻、対象、復旧判断を追う。</p>
+      <p class="lead">使い捨てLinux VMのテストファイル変更をAuditdで記録し、変更者、時刻、対象、復旧判断を追う。</p>
       <div class="meta-row">
-        <span class="pill mode-runnable">実行型ラボ</span>
+        <span class="pill mode-host-assisted">Linuxホスト補助演習</span>
         <span class="score score-3">3/5 標準</span>
         <span class="pill">Whitehat</span><span class="pill">SRE</span>
       </div>
@@ -28,8 +28,8 @@
     <section class="grid two">
       <article>
         <h2>実行形式</h2>
-        <p><strong>実行型ラボ</strong></p>
-        <p>同梱Docker環境、攻撃スクリプト、検証スクリプトを使って再現と観測を実行します。</p>
+        <p><strong>Linuxホスト補助演習</strong></p>
+        <p>使い捨てLinux VM上のAuditdを使用します。macOS/WindowsのDocker環境だけでは完了しません。</p>
       </article>
       <article>
         <h2>教材範囲の自己評価</h2>
@@ -40,11 +40,11 @@
     <section class="grid two">
       <article>
         <h2>抽象的に何を学ぶか</h2>
-        <p>重要ファイル改変は、単発の攻撃手順ではなく、Docker外のホスト監査として、FIM、監査ログ、復旧、postmortemまで扱えるようにする。</p>
+        <p>重要ファイル改変は、単発の攻撃手順ではなく、日常利用中のホストを変更せず、FIM、監査ログ、復旧、postmortemまで扱えるようにする。</p>
       </article>
       <article>
         <h2>具体例</h2>
-        <ul><li>Prepare: Linux hostでauditdを有効化し、audit.rulesを読み込む。</li><li>Execute: 安全なtest fileまたは明示許可された重要ファイル操作を行う。</li><li>Observe: ausearch/aureportでPATH/SYSCALL/auidを確認する。</li></ul>
+        <ul><li>Prepare: 使い捨てLinux VMでauditdを有効化し、/tmpのtest fileを監視する。</li><li>Execute: 一般ユーザー権限でtest fileだけを変更する。</li><li>Observe: ausearch/aureportでPATH/SYSCALL/auidを確認する。</li></ul>
       </article>
     </section>
 
@@ -91,7 +91,7 @@
       <div class="visual-map" role="list"><div class="visual-node actor" role="listitem">
         <span class="visual-label">Input</span>
         <strong>実行する刺激</strong>
-        <p>sudo cp auditd/audit.rules /etc/audit/rules.d/soc-lab.rules</p>
+        <p>sudo install -m 0640 auditd/audit.rules /etc/audit/rules.d/soc-lab.rules</p>
       </div><div class="visual-node target" role="listitem">
         <span class="visual-label">Target</span>
         <strong>Host / Process / File</strong>
@@ -241,7 +241,7 @@
     <section class="grid two">
       <article>
         <h2>目的</h2>
-        <p>Docker外のホスト監査として、FIM、監査ログ、復旧、postmortemまで扱えるようにする。</p>
+        <p>日常利用中のホストを変更せず、FIM、監査ログ、復旧、postmortemまで扱えるようにする。</p>
       </article>
       <article>
         <h2>本番環境との差分</h2>
@@ -252,27 +252,26 @@
     <section class="grid two">
       <article>
         <h2>事前準備</h2>
-        <ul><li>Docker DesktopまたはDocker Engineが起動している。</li><li>docker compose config -q が通り、対象service/profileを説明できる。</li><li>対象はローカルラボとS5のHTMLに書かれた範囲だけに限定する。</li></ul>
+        <ul><li>スナップショットから破棄できるLinux VMを用意している。日常利用中のホストでは実行しない。</li><li>Auditdの導入と一時ルール追加を行う権限がある。</li><li>対象はS5で指定した/tmpのテストファイルまたは副作用のないidentity commandだけに限定する。</li></ul>
       </article>
       <article>
         <h2>安全境界</h2>
-        <ul><li>第三者環境、公共IP、許可のないcloud accountには実行しない。</li><li>payload、scan、負荷はHTMLに書かれたローカル対象へ限定する。</li><li>攻撃payloadは教材内の明示されたendpoint、file、containerだけに向ける。</li></ul>
+        <ul><li>第三者環境、公共IP、許可のないcloud accountには実行しない。</li><li>payload、scan、負荷はHTMLに書かれたローカル対象へ限定する。</li><li>攻撃payloadは教材内の明示されたendpoint、file、containerだけに向ける。</li><li>日常利用中のホスト、実ユーザー、アカウント制御ファイル、sudoersは変更しない。</li></ul>
       </article>
     </section>
 
     <section>
       <h2>Hands-on Flow</h2>
-      <ol class="flow"><li><span>Prepare</span><p>Linux hostでauditdを有効化し、audit.rulesを読み込む。</p></li><li><span>Execute</span><p>安全なtest fileまたは明示許可された重要ファイル操作を行う。</p></li><li><span>Observe</span><p>ausearch/aureportでPATH/SYSCALL/auidを確認する。</p></li><li><span>Assess</span><p>変更が正当作業か不正操作かを判断する。</p></li><li><span>Recover</span><p>差分、バックアップ、immutable/FIM戦略を記録する。</p></li></ol>
+      <ol class="flow"><li><span>Prepare</span><p>使い捨てLinux VMでauditdを有効化し、/tmpのtest fileを監視する。</p></li><li><span>Execute</span><p>一般ユーザー権限でtest fileだけを変更する。</p></li><li><span>Observe</span><p>ausearch/aureportでPATH/SYSCALL/auidを確認する。</p></li><li><span>Assess</span><p>変更が正当作業か不正操作かを判断する。</p></li><li><span>Recover</span><p>差分、バックアップ、immutable/FIM戦略を記録する。</p></li></ol>
     </section>
 
     <section class="grid two">
       <article>
         <h2>実行コマンド</h2>
-        <pre><code>sudo cp auditd/audit.rules /etc/audit/rules.d/soc-lab.rules
+        <pre><code>sudo install -m 0640 auditd/audit.rules /etc/audit/rules.d/soc-lab.rules
 sudo systemctl restart auditd
-docker exec -it soc-lab-kali /bin/bash
 /scripts/s5_file_tamper.sh
-sudo ausearch -k passwd_changes -i | head -50
+sudo ausearch -k secure_learn_test_file -i | head -50
 sudo aureport --file --summary</code></pre>
       </article>
       <article>

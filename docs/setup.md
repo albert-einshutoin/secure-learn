@@ -46,15 +46,15 @@ docker compose up -d --build
 docker compose ps
 ```
 
-### 4. 初期化（オプション）
+### 4. 自動初期化の確認
 
 ```bash
-# Kibanaオブジェクトのインポート
-./elk/kibana/import-objects.sh
-
-# ILMポリシーの設定
-./elk/setup-ilm.sh
+# Compose起動時にsiem-setupがtemplate、保持ポリシー、Kibana objectを投入
+docker compose ps -a siem-setup
+docker compose logs siem-setup
 ```
+
+`siem-setup` が `Exited (0)` でなければ初期化は未完了です。手動importを成功条件にせず、原因を解消してserviceを再実行してください。
 
 ## Phase別起動
 
@@ -78,7 +78,7 @@ docker compose -f docker-compose.yml -f docker-compose.alerting.yml up -d --buil
 
 ```bash
 # 演習環境を起動
-docker compose -f docker-compose.exercise.yml up -d --build
+docker compose --project-name secure-learn-exercise -f docker-compose.exercise.yml up -d --build --wait
 
 # または演習スクリプトを使用
 ./scripts/start_exercise.sh

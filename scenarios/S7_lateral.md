@@ -83,7 +83,7 @@ docker exec -it soc-lab-kali /bin/bash
 
 ```bash
 # ポートスキャン
-nmap -sS -p 1-1000 172.19.0.20
+nmap -sS -p 1-1000 172.23.0.20
 ```
 
 #### Phase 2: Credential Attack
@@ -91,7 +91,7 @@ nmap -sS -p 1-1000 172.19.0.20
 ```bash
 # ブルートフォース
 hydra -l admin -P /wordlists/passwords.txt \
-  172.19.0.20 -s 3000 \
+  172.23.0.20 -s 3000 \
   http-post-form "/auth/login:username=^USER^&password=^PASS^:Invalid"
 ```
 
@@ -99,15 +99,15 @@ hydra -l admin -P /wordlists/passwords.txt \
 
 ```bash
 # SQLインジェクション
-sqlmap -u "http://172.19.0.20:3000/users?id=1" --batch --level=3
+sqlmap -u "http://172.23.0.20:3000/users?id=1" --batch --level=3
 ```
 
 #### Phase 4-5: Post-Exploitation
 
 ```bash
-# ホスト上で実行（Auditd対象）
-sudo touch /etc/passwd
-sudo -u root whoami
+# 使い捨てLinux VM上でのみ実行（Auditd対象）
+printf 'cross-layer-test\n' >> /tmp/secure-learn-audit-target
+sudo -n /usr/bin/id
 ```
 
 ---

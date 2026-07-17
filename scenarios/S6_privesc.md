@@ -16,7 +16,8 @@
 ## 前提条件
 
 > **重要**: AuditdはLinuxカーネル機能に依存するため、Docker内では動作しません。
-> このシナリオはホストOS上でAuditdを実行する必要があります。
+> このシナリオはスナップショットから破棄できるLinux VMだけで実行します。
+> 実ユーザーの停止、認証情報の参照、sudoers変更は教材の範囲外です。
 
 ### ホストでのAuditd設定
 
@@ -24,8 +25,8 @@
 # Auditdインストール
 sudo apt-get install auditd audispd-plugins
 
-# ルールをコピー
-sudo cp auditd/audit.rules /etc/audit/rules.d/soc-lab.rules
+# 教材ルールを読み取り専用権限で配置
+sudo install -m 0640 auditd/audit.rules /etc/audit/rules.d/soc-lab.rules
 
 # Auditd再起動
 sudo systemctl restart auditd
@@ -52,25 +53,18 @@ sudo systemctl status auditd
 ### 2. 攻撃の実行（ホスト上）
 
 ```bash
-# sudo による権限昇格
-sudo whoami
-sudo id
-sudo -u root /bin/bash -c "whoami"
-
-# su による権限昇格
-su - root -c "whoami"
-
-# 特権コマンド実行
-sudo cat /etc/shadow
+# 副作用のないコマンドだけをsudo経由で実行
+sudo -n /usr/bin/id
+sudo -n /usr/bin/true
 ```
 
 ### 3. 攻撃バリエーション
 
 | 手法 | コマンド | 検知キー |
 |------|---------|---------|
-| sudo | `sudo whoami` | sudo_usage |
-| su | `su - root` | su_usage |
-| SUID悪用 | `/usr/bin/passwd` | setuid_execution |
+| sudo | `sudo -n /usr/bin/id` | sudo_usage |
+| sudo失敗 | `sudo -n /usr/bin/false` | sudo_usage |
+| SUID探索 | `find /usr/bin -perm -4000 -type f` | setuid_inventory |
 | setuid syscall | カスタムバイナリ | privilege_escalation |
 
 ### 4. SUID探索（偵察）
@@ -163,16 +157,7 @@ sudo ausearch -k privilege_escalation | grep -A5 execve | grep "a0="
 
 ### 5. 対応（不正の場合）
 
-```bash
-# セッション強制終了
-sudo pkill -u <username>
-
-# アカウントロック
-sudo passwd -l <username>
-
-# sudoers から削除
-sudo visudo
-```
+証跡を保存してインシデントをエスカレーションし、実環境の封じ込めは組織の承認済みrunbookと二者確認に従います。教材はユーザー停止や権限設定変更を自動実行しません。
 
 ---
 

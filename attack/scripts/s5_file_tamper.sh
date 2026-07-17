@@ -12,8 +12,8 @@ echo "============================================"
 echo "SOC-Lab Scenario S5: File Tampering"
 echo "============================================"
 echo ""
-echo "NOTE: This scenario requires Auditd running on the HOST, not in Docker."
-echo "      Run the attack commands on the host system to generate audit logs."
+echo "NOTE: This scenario requires Auditd in a disposable Linux VM, not Docker."
+echo "      It never modifies account-control or system configuration files."
 echo ""
 echo "Time: $(date -Iseconds)"
 echo ""
@@ -29,35 +29,25 @@ echo "============================================"
 cat << 'EOF'
 
 # =====================================
-# IMPORTANT: Run these on the HOST system
+# IMPORTANT: Run these only in a disposable Linux VM
 # =====================================
 
-# Phase 1: Modify /etc/passwd (simulated - use test user)
-# WARNING: Do not run on production systems
-# sudo echo "testuser:x:9999:9999:Test User:/home/testuser:/bin/bash" >> /etc/passwd.test
+# Register one disposable target with Auditd
+TEST_FILE=/tmp/secure-learn-audit-target
+touch "$TEST_FILE"
+sudo auditctl -w "$TEST_FILE" -p wa -k secure_learn_test_file
 
-# Phase 2: Modify /etc/shadow (requires root)
-# sudo touch /etc/shadow
-
-# Phase 3: Modify /etc/sudoers (requires root)
-# sudo visudo
-
-# Phase 4: Modify cron jobs
-# sudo echo "* * * * * root echo 'test'" >> /etc/cron.d/test-job
-
-# Phase 5: Modify SSH config
-# sudo touch /etc/ssh/sshd_config
+# Modify only the disposable target as the current user
+printf 'baseline\n' > "$TEST_FILE"
+printf 'tamper simulation\n' >> "$TEST_FILE"
+chmod 600 "$TEST_FILE"
 
 # =====================================
 # Check Audit Logs
 # =====================================
 
 # Search for file changes
-ausearch -k passwd_changes
-ausearch -k shadow_changes
-ausearch -k sudoers_changes
-ausearch -k cron_changes
-ausearch -k sshd_config_changes
+ausearch -k secure_learn_test_file
 
 # Generate summary report
 aureport --file --summary
@@ -92,28 +82,25 @@ echo "============================================"
 echo "Attack Simulation Complete"
 echo "============================================"
 echo ""
-echo "For real attack simulation, run the following on the HOST:"
+echo "To collect real Auditd evidence, use a disposable Linux VM:"
 echo ""
 echo "1. Check Auditd is running:"
 echo "   systemctl status auditd"
 echo ""
 echo "2. Verify audit rules are loaded:"
-echo "   auditctl -l | grep -E 'passwd|shadow|sudoers'"
+echo "   auditctl -l | grep secure-learn-audit-target"
 echo ""
-echo "3. Perform file modifications (as root):"
-echo "   sudo touch /etc/passwd"
-echo "   sudo touch /etc/shadow"
+echo "3. Modify only the disposable test file:"
+echo "   printf 'tamper simulation\\n' >> /tmp/secure-learn-audit-target"
 echo ""
 echo "4. Check audit logs:"
-echo "   ausearch -k passwd_changes"
-echo "   ausearch -k shadow_changes"
+echo "   ausearch -k secure_learn_test_file"
 echo ""
 echo "5. Check Kibana:"
-echo "   - Search: event.module:auditd AND file.path:/etc/passwd"
+echo "   - Search: event.module:auditd AND file.path:/tmp/secure-learn-audit-target"
 echo ""
 echo "Success Criteria:"
 echo "  [✓] Auditd records SYSCALL + PATH events"
 echo "  [✓] File path is correctly identified"
 echo "  [✓] User (auid) is recorded"
 echo "  [✓] Events visible in Kibana"
-

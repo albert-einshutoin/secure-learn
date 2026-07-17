@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="sudo/su/SUID探索をAuditdで記録し、最小権限と異常昇格の判断を学ぶ。">
+  <meta name="description" content="使い捨てLinux VMで副作用のないsudo/SUID探索をAuditdに記録し、最小権限と異常昇格の判断を学ぶ。">
   <title>S6 権限昇格 - Secure Learn</title>
   <link rel="stylesheet" href="assets/scenario.css">
 </head>
@@ -17,9 +17,9 @@
     <section class="scenario-head">
       <p class="eyebrow">S6 / OS / 中級</p>
       <h1>権限昇格</h1>
-      <p class="lead">sudo/su/SUID探索をAuditdで記録し、最小権限と異常昇格の判断を学ぶ。</p>
+      <p class="lead">使い捨てLinux VMで副作用のないsudo/SUID探索をAuditdに記録し、最小権限と異常昇格の判断を学ぶ。</p>
       <div class="meta-row">
-        <span class="pill mode-runnable">実行型ラボ</span>
+        <span class="pill mode-host-assisted">Linuxホスト補助演習</span>
         <span class="score score-3">3/5 標準</span>
         <span class="pill">Whitehat</span><span class="pill">SRE</span>
       </div>
@@ -28,8 +28,8 @@
     <section class="grid two">
       <article>
         <h2>実行形式</h2>
-        <p><strong>実行型ラボ</strong></p>
-        <p>同梱Docker環境、攻撃スクリプト、検証スクリプトを使って再現と観測を実行します。</p>
+        <p><strong>Linuxホスト補助演習</strong></p>
+        <p>使い捨てLinux VM上のAuditdを使用します。macOS/WindowsのDocker環境だけでは完了しません。</p>
       </article>
       <article>
         <h2>教材範囲の自己評価</h2>
@@ -44,7 +44,7 @@
       </article>
       <article>
         <h2>具体例</h2>
-        <ul><li>Prepare: auditdとprivilege escalation rulesを有効化する。</li><li>Execute: sudo、su、SUID列挙を安全な範囲で実行する。</li><li>Observe: audit.logとauth.logでeuid=0、auid、commandを確認する。</li></ul>
+        <ul><li>Prepare: auditdとprivilege escalation rulesを有効化する。</li><li>Execute: sudoのidentity確認とSUID列挙だけを安全な範囲で実行する。</li><li>Observe: audit.logとauth.logでeuid=0、auid、commandを確認する。</li></ul>
       </article>
     </section>
 
@@ -252,25 +252,25 @@
     <section class="grid two">
       <article>
         <h2>事前準備</h2>
-        <ul><li>Docker DesktopまたはDocker Engineが起動している。</li><li>docker compose config -q が通り、対象service/profileを説明できる。</li><li>対象はローカルラボとS6のHTMLに書かれた範囲だけに限定する。</li></ul>
+        <ul><li>スナップショットから破棄できるLinux VMを用意している。日常利用中のホストでは実行しない。</li><li>Auditdの導入と一時ルール追加を行う権限がある。</li><li>対象はS6で指定した/tmpのテストファイルまたは副作用のないidentity commandだけに限定する。</li></ul>
       </article>
       <article>
         <h2>安全境界</h2>
-        <ul><li>第三者環境、公共IP、許可のないcloud accountには実行しない。</li><li>payload、scan、負荷はHTMLに書かれたローカル対象へ限定する。</li><li>攻撃payloadは教材内の明示されたendpoint、file、containerだけに向ける。</li></ul>
+        <ul><li>第三者環境、公共IP、許可のないcloud accountには実行しない。</li><li>payload、scan、負荷はHTMLに書かれたローカル対象へ限定する。</li><li>攻撃payloadは教材内の明示されたendpoint、file、containerだけに向ける。</li><li>日常利用中のホスト、実ユーザー、アカウント制御ファイル、sudoersは変更しない。</li></ul>
       </article>
     </section>
 
     <section>
       <h2>Hands-on Flow</h2>
-      <ol class="flow"><li><span>Prepare</span><p>auditdとprivilege escalation rulesを有効化する。</p></li><li><span>Execute</span><p>sudo、su、SUID列挙を安全な範囲で実行する。</p></li><li><span>Observe</span><p>audit.logとauth.logでeuid=0、auid、commandを確認する。</p></li><li><span>Decide</span><p>正当運用、要調査、不正昇格に分類する。</p></li><li><span>Improve</span><p>sudoers最小化、MFA、session recordingを提案する。</p></li></ol>
+      <ol class="flow"><li><span>Prepare</span><p>auditdとprivilege escalation rulesを有効化する。</p></li><li><span>Execute</span><p>sudoのidentity確認とSUID列挙だけを安全な範囲で実行する。</p></li><li><span>Observe</span><p>audit.logとauth.logでeuid=0、auid、commandを確認する。</p></li><li><span>Decide</span><p>正当運用、要調査、不正昇格に分類する。</p></li><li><span>Improve</span><p>sudoers最小化、MFA、session recordingを提案する。</p></li></ol>
     </section>
 
     <section class="grid two">
       <article>
         <h2>実行コマンド</h2>
         <pre><code>sudo auditctl -l | grep privilege
-sudo whoami
-find / -perm -4000 2&gt;/dev/null | head
+sudo -n /usr/bin/id
+find /usr/bin -perm -4000 -type f | head
 sudo ausearch -k privilege_escalation -i | head -50
 sudo aureport --auth --summary</code></pre>
       </article>
@@ -282,7 +282,7 @@ sudo aureport --auth --summary</code></pre>
 
     <section>
       <h2>ツール活用</h2>
-      <table><thead><tr><th>Tool</th><th>使い方</th></tr></thead><tbody><tr><td><strong>sudo/su</strong></td><td>昇格イベントを意図的に発生させる。</td></tr><tr><td><strong>find</strong></td><td>SUID/SGIDの攻撃面を列挙する。</td></tr><tr><td><strong>Auditd</strong></td><td>euid、auid、execveを保存する。</td></tr><tr><td><strong>sudoers review</strong></td><td>NOPASSWDや広すぎる権限を評価する。</td></tr></tbody></table>
+      <table><thead><tr><th>Tool</th><th>使い方</th></tr></thead><tbody><tr><td><strong>sudo</strong></td><td>副作用のないidentity commandで昇格イベントを発生させる。</td></tr><tr><td><strong>find</strong></td><td>SUID/SGIDの攻撃面を列挙する。</td></tr><tr><td><strong>Auditd</strong></td><td>euid、auid、execveを保存する。</td></tr><tr><td><strong>sudoers review</strong></td><td>NOPASSWDや広すぎる権限を評価する。</td></tr></tbody></table>
     </section>
 
     <section class="grid three">
