@@ -366,6 +366,9 @@ test('legacy manifests preserve platform, evidence, and safe workflow boundaries
       assert.deepEqual(manifest.evidence.required, ['vm-receipt', 'audit-event', 'cleanup-result']);
       assert.deepEqual(manifest.safety.target_services, []);
       assert.deepEqual(manifest.safety.allowed_cidrs, []);
+    } else if (manifest.id === 's14') {
+      assert.deepEqual(manifest.safety.target_services, ['localhost']);
+      assert.deepEqual(manifest.safety.allowed_cidrs, ['127.0.0.0/8']);
     } else if (manifest.id !== 's15') {
       assert.deepEqual(manifest.safety.target_services, ['app']);
       assert.deepEqual(manifest.safety.allowed_cidrs, ['172.23.0.0/24']);

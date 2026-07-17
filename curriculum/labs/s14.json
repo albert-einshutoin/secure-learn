@@ -35,10 +35,10 @@
   ],
   "safety": {
     "target_services": [
-      "app"
+      "localhost"
     ],
     "allowed_cidrs": [
-      "172.23.0.0/24"
+      "127.0.0.0/8"
     ],
     "external_network": false
   },

@@ -3,10 +3,25 @@
 
 set -euo pipefail
 
-BASE_URL="${BASE_URL:-http://localhost:3000}"
+BASE_URL="${BASE_URL:-http://127.0.0.1:3000}"
+if [[ "$BASE_URL" != "http://127.0.0.1:3000" ]]; then
+  echo "ERROR: BASE_URL must be the loopback-only Secure Learn endpoint http://127.0.0.1:3000." >&2
+  exit 64
+fi
+
+# Child drills derive Compose paths from their own repository location. Removing
+# this override prevents callers from redirecting chaos operations to a different
+# Compose project.
+unset COMPOSE_PROJECT_DIR
+
+SCRIPT_PATH="${BASH_SOURCE[0]}"
+SCRIPT_DIR="${SCRIPT_PATH%/*}"
+if [[ "$SCRIPT_DIR" == "$SCRIPT_PATH" ]]; then
+  SCRIPT_DIR=.
+fi
+ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd -P)"
 REPORT_DIR="${REPORT_DIR:-reports/incident_drill_$(date +%Y%m%d_%H%M%S)}"
 RUN_CHAOS="${RUN_CHAOS:-0}"
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 mkdir -p "$REPORT_DIR"
 

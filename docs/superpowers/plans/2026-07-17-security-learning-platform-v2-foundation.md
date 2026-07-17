@@ -387,6 +387,8 @@ Execution entries are structured `{"path":"...","args":[...]}` argv specificatio
 
 For all `runnable` manifests, set `workflow.remediate`, `workflow.regress`, and `assessment.verifier` to null so they cannot be mistaken for `verified`. Use evidence requirements appropriate to the row: every runnable attack requires `attack-result`; S1-S4/S7 additionally require `application-or-network-event` and `elasticsearch-event`; host-assisted labs require `vm-receipt`, `audit-event`, and `cleanup-result`.
 
+S14 is the one host-operated runnable workflow: its target service is `localhost` and its only allowed CIDR is `127.0.0.0/8`. All attack-container scenarios retain the enumerated `app` / `172.23.0.0/24` boundary.
+
 - [ ] **Step 4: Run the inventory tests and commit**
 
 Run:
