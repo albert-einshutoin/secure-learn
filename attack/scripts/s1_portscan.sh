@@ -22,14 +22,19 @@ mkdir -p "$OUTPUT_DIR"
 
 # Function to run scan and save results
 run_scan() {
-    local scan_type=$1
-    local scan_name=$2
+    local scan_name=$1
+    shift
     local output_file="$OUTPUT_DIR/s1_${scan_name}_$(date +%Y%m%d_%H%M%S).txt"
+    local command_display
+
+    # Keep the executable and every argument as distinct values. This prevents
+    # learner-controlled target text from being interpreted as shell syntax.
+    printf -v command_display '%q ' "$@"
     
-    echo "[$scan_name] Running: $scan_type"
+    echo "[$scan_name] Running: ${command_display% }"
     echo "  Output: $output_file"
     
-    if ! eval "$scan_type" > "$output_file" 2>&1; then
+    if ! "$@" > "$output_file" 2>&1; then
         echo "  ERROR: scan failed; see $output_file" >&2
         return 1
     fi
@@ -41,22 +46,22 @@ run_scan() {
 echo "============================================"
 echo "Phase 1: SYN Scan (Default)"
 echo "============================================"
-run_scan "nmap -sS -p 1-1000 $TARGET_IP" "syn_scan"
+run_scan "syn_scan" nmap -sS -p 1-1000 "$TARGET_IP"
 
 echo "============================================"
 echo "Phase 2: Service Detection"
 echo "============================================"
-run_scan "nmap -sV -p 80,3000,5432,9200 $TARGET_IP" "service_scan"
+run_scan "service_scan" nmap -sV -p 80,3000,5432,9200 "$TARGET_IP"
 
 echo "============================================"
 echo "Phase 3: Aggressive Scan (OS + Version)"
 echo "============================================"
-run_scan "nmap -A -p 3000 $TARGET_IP" "aggressive_scan"
+run_scan "aggressive_scan" nmap -A -p 3000 "$TARGET_IP"
 
 echo "============================================"
 echo "Phase 4: Full Port Scan (Slow)"
 echo "============================================"
-run_scan "nmap -sS -p- --max-rate 1000 $TARGET_IP" "full_scan"
+run_scan "full_scan" nmap -sS -p- --max-rate 1000 "$TARGET_IP"
 
 echo "============================================"
 echo "Attack Complete"
