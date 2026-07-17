@@ -12,6 +12,7 @@ function readJson(relativePath) {
 test('OWASP API Security Top 10 2023 catalog preserves the official category contract', () => {
   const catalog = readJson('curriculum/standards/owasp-api-2023.json');
 
+  assert.equal(catalog.framework, 'OWASP API Security Top 10');
   assert.equal(catalog.version, '2023');
   assert.equal(catalog.source, 'https://owasp.org/API-Security/editions/2023/en/0x11-t10/');
   assert.deepEqual(
@@ -34,6 +35,7 @@ test('OWASP API Security Top 10 2023 catalog preserves the official category con
 test('MITRE ATT&CK Enterprise v19 catalog preserves its supported tactic and technique contract', () => {
   const catalog = readJson('curriculum/standards/mitre-attack-v19.json');
 
+  assert.equal(catalog.framework, 'MITRE ATT&CK Enterprise');
   assert.equal(catalog.version, '19');
   assert.equal(catalog.source, 'https://attack.mitre.org/');
   assert.deepEqual(catalog.tactics, [
@@ -54,16 +56,19 @@ test('MITRE ATT&CK Enterprise v19 catalog preserves its supported tactic and tec
     'Impact',
   ]);
 
-  assert.deepEqual(catalog.techniques.T1565, {
-    name: 'Data Manipulation',
-    tactics: ['Impact'],
-  });
-  assert.deepEqual(catalog.techniques.T1046, {
-    name: 'Network Service Discovery',
-    tactics: ['Discovery'],
-  });
-  assert.deepEqual(catalog.techniques['T1548.003'], {
-    name: 'Sudo and Sudo Caching',
-    tactics: ['Privilege Escalation'],
-  });
+  assert.deepEqual(
+    Object.entries(catalog.techniques).map(([id, { name, tactics }]) => ({ id, name, tactics })),
+    [
+      { id: 'T1595', name: 'Active Scanning', tactics: ['Reconnaissance'] },
+      { id: 'T1110', name: 'Brute Force', tactics: ['Credential Access'] },
+      { id: 'T1190', name: 'Exploit Public-Facing Application', tactics: ['Initial Access'] },
+      { id: 'T1499', name: 'Endpoint Denial of Service', tactics: ['Impact'] },
+      { id: 'T1565', name: 'Data Manipulation', tactics: ['Impact'] },
+      { id: 'T1548.003', name: 'Sudo and Sudo Caching', tactics: ['Privilege Escalation'] },
+      { id: 'T1046', name: 'Network Service Discovery', tactics: ['Discovery'] },
+      { id: 'T1040', name: 'Network Sniffing', tactics: ['Credential Access', 'Discovery'] },
+      { id: 'T1573', name: 'Encrypted Channel', tactics: ['Command and Control'] },
+      { id: 'T1018', name: 'Remote System Discovery', tactics: ['Discovery'] },
+    ],
+  );
 });
