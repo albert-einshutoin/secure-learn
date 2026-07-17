@@ -22,6 +22,8 @@ reports/
 results/
 /release/
 /evidence/vm-receipts/
+# Learner evidence can contain local paths, timestamps, and lab-only identifiers.
+evidence/results/
 *.log
 *.pcap
 *.pcapng

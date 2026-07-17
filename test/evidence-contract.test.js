@@ -76,6 +76,9 @@ test('fails closed for missing, non-boolean, or unknown outcome fields', () => {
     classifyOutcome(results);
   }, /evidence must be a boolean/);
   assert.throws(() => classifyOutcome({ ...passingResults(), extra: true }), /unknown result field: extra/);
+  const invalidAfterFailure = { ...passingResults(), environment: false };
+  delete invalidAfterFailure.cleanup;
+  assert.throws(() => classifyOutcome(invalidAfterFailure), /cleanup must be a boolean/);
   assert.throws(() => classifyOutcome([]), /results must be a plain object/);
 });
 
@@ -89,6 +92,7 @@ test('creates deterministic evidence hashes without hashing the hash field', () 
   assert.equal(first.sha256, second.sha256);
   assert.match(first.sha256, /^[a-f0-9]{64}$/);
   assert.equal(first.outcome, 'control');
+  assert.match(createEvidence(validInput({ target: 'app' })).sha256, /^[a-f0-9]{64}$/);
 
   const { sha256, ...body } = first;
   const recreated = createHash('sha256').update(JSON.stringify(sortForHash(body))).digest('hex');
@@ -138,6 +142,11 @@ test('rejects unsupported JSON values, cycles, negative zero, and dangerous keys
   cyclic.self = cyclic;
   assert.throws(() => createEvidence(validInput({ target: cyclic })), /cycle/);
   assert.throws(() => createEvidence(validInput({ target: { api_token: 'do-not-store' } })), /secret-like field/);
+  assert.throws(() => createEvidence(validInput({ target: { apiKey: 'do-not-store' } })), /secret-like field/);
+  assert.throws(() => createEvidence(validInput({ target: { nested: undefined } })), /JSON-compatible/);
+  const accessor = {};
+  Object.defineProperty(accessor, 'service', { enumerable: true, get: () => 'app' });
+  assert.throws(() => createEvidence(validInput({ target: accessor })), /enumerable data property/);
   assert.throws(
     () => createEvidence(validInput({ target: JSON.parse('{"__proto__":{"polluted":true}}') })),
     /dangerous field/,
@@ -150,6 +159,7 @@ test('validates strict root fields, canonical timestamps, and bounded duration',
   assert.throws(() => createEvidence(validInput({ manifest_version: 0 })), /manifest_version/);
   assert.throws(() => createEvidence(validInput({ platform: 'Docker Desktop' })), /platform/);
   assert.throws(() => createEvidence(validInput({ started_at: '2026-07-17T09:00:00+09:00' })), /canonical UTC/);
+  assert.throws(() => createEvidence(validInput({ started_at: '2026-02-30T00:00:00Z' })), /canonical UTC/);
   assert.throws(() => createEvidence(validInput({ ended_at: '2026-07-16T23:59:59Z' })), /ended_at must not precede started_at/);
   assert.throws(() => createEvidence(validInput({ ended_at: '2026-07-19T00:00:01Z' })), /duration/);
   assert.throws(() => createEvidence({ ...validInput(), sha256: 'injected' }), /unknown evidence field: sha256/);
@@ -161,5 +171,5 @@ test('rejects non-plain objects and prototype-polluted input', () => {
   const pollutedPrototype = { polluted: true };
   const input = Object.assign(Object.create(pollutedPrototype), validInput());
   assert.throws(() => createEvidence(input), /evidence input must be a plain object/);
-  assert.throws(() => createEvidence(validInput({ target: new Date() })), /target must contain only plain objects/);
+  assert.throws(() => createEvidence(validInput({ target: new Date() })), /target must be.*plain object/);
 });
