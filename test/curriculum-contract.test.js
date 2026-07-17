@@ -740,6 +740,19 @@ test('curriculum gates derive maturity only from manifests', (t) => {
   assert.match(report, /## Supporting material/);
 });
 
+test('CI regenerates and diffs curriculum coverage before the read-only world-class gate', () => {
+  const workflow = fs.readFileSync(path.join(root, '.github', 'workflows', 'ci.yml'), 'utf8');
+  const generate = workflow.indexOf('node scripts/generate_curriculum_coverage.js');
+  const diff = workflow.indexOf('git diff --exit-code -- docs/curriculum/coverage.md');
+  const worldClass = workflow.indexOf('scripts/world_class_curriculum_check.sh');
+
+  assert.ok(generate >= 0, 'CI must regenerate curriculum coverage');
+  assert.ok(diff > generate, 'CI must diff coverage immediately after regeneration');
+  assert.ok(worldClass > diff, 'the read-only curriculum gate must run only after drift detection');
+  assert.doesNotMatch(workflow.slice(generate, diff), /world_class_curriculum_check|curriculum_check\.sh/);
+  assert.doesNotMatch(workflow.slice(diff, worldClass), /node scripts\/generate_curriculum_coverage\.js/);
+});
+
 test('curriculum coverage contract tests never mutate the tracked report', () => {
   const reportPath = path.join(root, 'docs', 'curriculum', 'coverage.md');
   const before = fileFingerprint(reportPath);
