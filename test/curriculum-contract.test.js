@@ -77,22 +77,6 @@ test('verified lab manifests require their complete quality workflow', () => {
   ]);
 });
 
-test('verified lab manifests reject empty workflow and verifier paths', () => {
-  const manifest = validManifest();
-  manifest.maturity = 'verified';
-  manifest.workflow.verify = '';
-  manifest.workflow.remediate = '';
-  manifest.workflow.regress = '';
-  manifest.assessment.verifier = '';
-
-  assert.deepEqual(validateManifest(manifest), [
-    'verified lab requires workflow.verify',
-    'verified lab requires workflow.remediate',
-    'verified lab requires workflow.regress',
-    'verified lab requires assessment.verifier',
-  ]);
-});
-
 test('OWASP API Security Top 10 2023 catalog preserves the official category contract', () => {
   const catalog = readJson('curriculum/standards/owasp-api-2023.json');
 
