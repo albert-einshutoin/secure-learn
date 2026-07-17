@@ -143,6 +143,11 @@ function validateReceiptContract(receipt, expectedLabId, now) {
   if (current >= expiresAt) throw new Error('Linux VM receipt is expired.');
 }
 
+function constantTimeHexEqual(left, right) {
+  if (!SHA256.test(left) || !SHA256.test(right)) return false;
+  return crypto.timingSafeEqual(Buffer.from(left, 'hex'), Buffer.from(right, 'hex'));
+}
+
 function validateVmReceipt(receiptPath, options = {}) {
   const repositoryRoot = options.repositoryRoot || fs.realpathSync(path.resolve(__dirname, '../..'));
   const expectedLabId = options.expectedLabId;
@@ -187,6 +192,21 @@ function validateVmReceipt(receiptPath, options = {}) {
       throw new Error('Linux VM receipt must contain valid JSON.');
     }
     validateReceiptContract(receipt, expectedLabId, now);
+    // A well-formed JSON receipt is insufficient: re-run the live adapter
+    // checks so copied or handwritten provenance cannot replace current VM,
+    // marker ownership/mode/age, provider, and container boundaries.
+    const validateAdapter = options.validateAdapter || validateVmAdapterMarker;
+    const adapter = validateAdapter(receipt.snapshot_id);
+    if (
+      !adapter
+      || !adapter.marker
+      || adapter.marker.snapshot_id !== receipt.snapshot_id
+      || adapter.marker.virtualization_provider !== receipt.virtualization_provider
+      || !constantTimeHexEqual(adapter.marker.provisioning_nonce, receipt.provisioning_nonce)
+      || !constantTimeHexEqual(adapter.markerSha256, receipt.adapter_marker_sha256)
+    ) {
+      throw new Error('Linux VM receipt does not match the current VM adapter.');
+    }
     const identity = options.identityHashes || {
       machine: hashIdentity(readIdentityFile('/etc/machine-id')),
       boot: hashIdentity(readIdentityFile('/proc/sys/kernel/random/boot_id')),
