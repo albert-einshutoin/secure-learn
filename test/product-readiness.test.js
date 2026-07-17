@@ -300,6 +300,8 @@ test('release contract includes version, changelog, SBOM, and vulnerability scan
   assert.match(workflow, /merge-base --is-ancestor/);
   assert.match(workflow, /actions\/setup-node@[a-f0-9]{40}/);
   assert.match(workflow, /node-version:\s*24/);
+  assert.match(workflow, /gh release create[\s\S]*--draft/);
+  assert.match(workflow, /gh release edit[\s\S]*--draft=false/);
 });
 
 test('GitHub Actions dependencies are pinned to immutable commits', () => {
