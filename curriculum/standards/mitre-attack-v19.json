@@ -1,7 +1,7 @@
 {
   "framework": "MITRE ATT&CK Enterprise",
   "version": "19",
-  "officialSource": "https://attack.mitre.org/",
+  "source": "https://attack.mitre.org/",
   "tactics": [
     "Reconnaissance",
     "Resource Development",
@@ -19,56 +19,46 @@
     "Exfiltration",
     "Impact"
   ],
-  "techniques": [
-    {
-      "id": "T1595",
+  "techniques": {
+    "T1595": {
       "name": "Active Scanning",
       "tactics": ["Reconnaissance"]
     },
-    {
-      "id": "T1110",
+    "T1110": {
       "name": "Brute Force",
       "tactics": ["Credential Access"]
     },
-    {
-      "id": "T1190",
+    "T1190": {
       "name": "Exploit Public-Facing Application",
       "tactics": ["Initial Access"]
     },
-    {
-      "id": "T1499",
+    "T1499": {
       "name": "Endpoint Denial of Service",
       "tactics": ["Impact"]
     },
-    {
-      "id": "T1565",
+    "T1565": {
       "name": "Data Manipulation",
       "tactics": ["Impact"]
     },
-    {
-      "id": "T1548.003",
+    "T1548.003": {
       "name": "Sudo and Sudo Caching",
       "tactics": ["Privilege Escalation"]
     },
-    {
-      "id": "T1046",
+    "T1046": {
       "name": "Network Service Discovery",
       "tactics": ["Discovery"]
     },
-    {
-      "id": "T1040",
+    "T1040": {
       "name": "Network Sniffing",
       "tactics": ["Credential Access", "Discovery"]
     },
-    {
-      "id": "T1573",
+    "T1573": {
       "name": "Encrypted Channel",
       "tactics": ["Command and Control"]
     },
-    {
-      "id": "T1018",
+    "T1018": {
       "name": "Remote System Discovery",
       "tactics": ["Discovery"]
     }
-  ]
+  }
 }

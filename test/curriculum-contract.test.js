@@ -13,6 +13,7 @@ test('OWASP API Security Top 10 2023 catalog preserves the official category con
   const catalog = readJson('curriculum/standards/owasp-api-2023.json');
 
   assert.equal(catalog.version, '2023');
+  assert.equal(catalog.source, 'https://owasp.org/API-Security/editions/2023/en/0x11-t10/');
   assert.deepEqual(
     catalog.categories.map(({ id, name }) => ({ id, name })),
     [
@@ -34,6 +35,7 @@ test('MITRE ATT&CK Enterprise v19 catalog preserves its supported tactic and tec
   const catalog = readJson('curriculum/standards/mitre-attack-v19.json');
 
   assert.equal(catalog.version, '19');
+  assert.equal(catalog.source, 'https://attack.mitre.org/');
   assert.deepEqual(catalog.tactics, [
     'Reconnaissance',
     'Resource Development',
@@ -52,19 +54,15 @@ test('MITRE ATT&CK Enterprise v19 catalog preserves its supported tactic and tec
     'Impact',
   ]);
 
-  const techniques = new Map(catalog.techniques.map((technique) => [technique.id, technique]));
-  assert.deepEqual(techniques.get('T1565'), {
-    id: 'T1565',
+  assert.deepEqual(catalog.techniques.T1565, {
     name: 'Data Manipulation',
     tactics: ['Impact'],
   });
-  assert.deepEqual(techniques.get('T1046'), {
-    id: 'T1046',
+  assert.deepEqual(catalog.techniques.T1046, {
     name: 'Network Service Discovery',
     tactics: ['Discovery'],
   });
-  assert.deepEqual(techniques.get('T1548.003'), {
-    id: 'T1548.003',
+  assert.deepEqual(catalog.techniques['T1548.003'], {
     name: 'Sudo and Sudo Caching',
     tactics: ['Privilege Escalation'],
   });

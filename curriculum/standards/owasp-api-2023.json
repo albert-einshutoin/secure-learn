@@ -1,7 +1,7 @@
 {
   "framework": "OWASP API Security Top 10",
   "version": "2023",
-  "officialSource": "https://owasp.org/API-Security/editions/2023/en/0x11-t10/",
+  "source": "https://owasp.org/API-Security/editions/2023/en/0x11-t10/",
   "categories": [
     {
       "id": "API1:2023",
