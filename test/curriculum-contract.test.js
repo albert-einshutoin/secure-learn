@@ -36,7 +36,7 @@ function validManifest() {
       external_network: false,
     },
     workflow: {
-      attack: 'attack/scripts/s1_portscan.sh',
+      attack: { path: 'attack/scripts/s1_portscan.sh', args: [] },
       verify: null,
       remediate: null,
       regress: null,
@@ -82,13 +82,38 @@ test('verified lab manifests require a safe attack workflow path', () => {
   const manifest = validManifest();
   manifest.maturity = 'verified';
   manifest.workflow.attack = null;
-  manifest.workflow.verify = 'verify/scripts/s1_verify.sh';
-  manifest.workflow.remediate = 'remediate/scripts/s1_remediate.sh';
-  manifest.workflow.regress = 'regress/scripts/s1_regress.sh';
-  manifest.assessment.verifier = 'assessment/scripts/s1_verify.sh';
+  manifest.workflow.verify = { path: 'verify/scripts/s1_verify.sh', args: [] };
+  manifest.workflow.remediate = { path: 'remediate/scripts/s1_remediate.sh', args: [] };
+  manifest.workflow.regress = { path: 'regress/scripts/s1_regress.sh', args: [] };
+  manifest.assessment.verifier = { path: 'assessment/scripts/s1_verify.sh', args: [] };
 
   assert.deepEqual(validateManifest(manifest), [
     'verified lab requires workflow.attack',
+  ]);
+});
+
+test('runnable lab manifests require a safe attack workflow path', () => {
+  const manifest = validManifest();
+  manifest.workflow.attack = null;
+
+  assert.deepEqual(validateManifest(manifest), [
+    'runnable lab requires workflow.attack',
+  ]);
+});
+
+test('execution specs preserve argv boundaries without accepting unsafe paths or control characters', () => {
+  const manifest = validManifest();
+  manifest.workflow.attack = {
+    path: 'scripts/scenario_e2e_check.sh',
+    args: ['S1', '$literal-shell-metacharacter'],
+  };
+  assert.deepEqual(validateManifest(manifest), []);
+
+  manifest.workflow.attack = { path: '../attack.sh', args: ['bad\u0000arg'] };
+  assert.deepEqual(validateManifest(manifest), [
+    'workflow.attack.path must be a safe repository-relative path',
+    'workflow.attack.args must be an array of strings without control characters',
+    'runnable lab requires workflow.attack',
   ]);
 });
 
@@ -101,7 +126,7 @@ test('lab manifest validator rejects malformed fields, unknown keys, and unsafe 
   manifest.prerequisites = 'p0';
   manifest.platforms.extra = true;
   manifest.extra = true;
-  manifest.workflow.attack = '../attack.sh';
+  manifest.workflow.attack = { path: '../attack.sh', args: [] };
   manifest.maturity = 'verified';
 
   const errors = validateManifest(manifest);
@@ -112,7 +137,7 @@ test('lab manifest validator rejects malformed fields, unknown keys, and unsafe 
   assert.ok(errors.includes('prerequisites must be an array of non-empty strings'));
   assert.ok(errors.includes('platforms contains unknown field: extra'));
   assert.ok(errors.includes('manifest contains unknown field: extra'));
-  assert.ok(errors.includes('workflow.attack must be a safe repository-relative path'));
+  assert.ok(errors.includes('workflow.attack.path must be a safe repository-relative path'));
   assert.deepEqual(errors.slice(-4), [
     'verified lab requires workflow.verify',
     'verified lab requires workflow.remediate',

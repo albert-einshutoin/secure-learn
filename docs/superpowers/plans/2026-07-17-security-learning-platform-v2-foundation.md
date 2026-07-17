@@ -360,23 +360,24 @@ Expected: inventory assertion receives `[]` instead of S1-S15.
 - [ ] **Step 3: Create the 15 manifests using this exact inventory**
 
 All manifests use `version: 1`, `external_network: false`, required platform `docker-desktop` unless shown as `linux-vm`, and optional platforms `[]`.
+Execution entries are structured `{"path":"...","args":[...]}` argv specifications; Task 3 must execute them without a shell so shell metacharacters remain literal arguments.
 
 | ID | Title | Track | Mode | Maturity | MITRE | Attack | Verify |
 |---|---|---|---|---|---|---|---|
-| s1 | Port Scan | soc | docker-lab | runnable | T1595 | `attack/scripts/s1_portscan.sh` | `scripts/scenario_e2e_check.sh S1` |
-| s2 | API Brute Force | appsec | docker-lab | runnable | T1110 | `attack/scripts/s2_bruteforce.sh` | `scripts/scenario_e2e_check.sh S2` |
-| s3 | SQL Injection Attempt | appsec | docker-lab | runnable | T1190 | `attack/scripts/s3_sqli.sh` | `scripts/scenario_e2e_check.sh S3` |
-| s4 | HTTP Denial of Service | soc | docker-lab | runnable | T1499 | `attack/scripts/s4_dos.sh` | `scripts/scenario_e2e_check.sh S4` |
-| s5 | Important File Tampering | dfir | host-assisted | external | T1565 | `attack/scripts/s5_file_tamper.sh` | null |
-| s6 | Sudo Activity Detection | dfir | host-assisted | external | T1548.003 | `attack/scripts/s6_privesc.sh` | null |
-| s7 | Cross-Layer Incident | soc | docker-lab | runnable | T1595,T1110,T1190 | `attack/scripts/s7_lateral.sh` | `scripts/scenario_e2e_check.sh S7` |
-| s8 | ARP Observation | foundation | docker-lab | runnable | T1046 | `attack/scripts/s8_l2_arp_observe.sh` | null |
-| s9 | ICMP Reconnaissance | foundation | docker-lab | runnable | T1595 | `attack/scripts/s9_l3_icmp_recon.sh` | null |
-| s10 | TCP State Observation | foundation | docker-lab | runnable | T1595 | `attack/scripts/s10_l4_tcp_state.sh` | null |
-| s11 | Session Pressure | foundation | docker-lab | runnable | T1499 | `attack/scripts/s11_l5_session_stress.sh` | null |
-| s12 | TLS Visibility Boundary | foundation | docker-lab | runnable | T1040,T1573 | `attack/scripts/s12_l6_tls_boundary.sh` | null |
-| s13 | DNS Service Discovery | foundation | docker-lab | runnable | T1018 | `attack/scripts/s13_l7_dns_observe.sh` | null |
-| s14 | SRE Incident Response | sre | operator-workflow | runnable | T1499 | `scripts/incident_drill.sh` | null |
+| s1 | Port Scan | soc | docker-lab | runnable | T1595 | `{"path":"attack/scripts/s1_portscan.sh","args":[]}` | `{"path":"scripts/scenario_e2e_check.sh","args":["S1"]}` |
+| s2 | API Brute Force | appsec | docker-lab | runnable | T1110 | `{"path":"attack/scripts/s2_bruteforce.sh","args":[]}` | `{"path":"scripts/scenario_e2e_check.sh","args":["S2"]}` |
+| s3 | SQL Injection Attempt | appsec | docker-lab | runnable | T1190 | `{"path":"attack/scripts/s3_sqli.sh","args":[]}` | `{"path":"scripts/scenario_e2e_check.sh","args":["S3"]}` |
+| s4 | HTTP Denial of Service | soc | docker-lab | runnable | T1499 | `{"path":"attack/scripts/s4_dos.sh","args":[]}` | `{"path":"scripts/scenario_e2e_check.sh","args":["S4"]}` |
+| s5 | Important File Tampering | dfir | host-assisted | external | T1565 | `{"path":"attack/scripts/s5_file_tamper.sh","args":[]}` | null |
+| s6 | Sudo Activity Detection | dfir | host-assisted | external | T1548.003 | `{"path":"attack/scripts/s6_privesc.sh","args":[]}` | null |
+| s7 | Cross-Layer Incident | soc | docker-lab | runnable | T1595,T1110,T1190 | `{"path":"attack/scripts/s7_lateral.sh","args":[]}` | `{"path":"scripts/scenario_e2e_check.sh","args":["S7"]}` |
+| s8 | ARP Observation | foundation | docker-lab | runnable | T1046 | `{"path":"attack/scripts/s8_l2_arp_observe.sh","args":[]}` | null |
+| s9 | ICMP Reconnaissance | foundation | docker-lab | runnable | T1595 | `{"path":"attack/scripts/s9_l3_icmp_recon.sh","args":[]}` | null |
+| s10 | TCP State Observation | foundation | docker-lab | runnable | T1595 | `{"path":"attack/scripts/s10_l4_tcp_state.sh","args":[]}` | null |
+| s11 | Session Pressure | foundation | docker-lab | runnable | T1499 | `{"path":"attack/scripts/s11_l5_session_stress.sh","args":[]}` | null |
+| s12 | TLS Visibility Boundary | foundation | docker-lab | runnable | T1040,T1573 | `{"path":"attack/scripts/s12_l6_tls_boundary.sh","args":[]}` | null |
+| s13 | DNS Service Discovery | foundation | docker-lab | runnable | T1018 | `{"path":"attack/scripts/s13_l7_dns_observe.sh","args":[]}` | null |
+| s14 | SRE Incident Response | sre | operator-workflow | runnable | T1499 | `{"path":"scripts/incident_drill.sh","args":[]}` | null |
 | s15 | Integrated Capstone | governance | operator-workflow | documented | T1595,T1190,T1499 | null | null |
 
 For all `runnable` manifests, set `workflow.remediate`, `workflow.regress`, and `assessment.verifier` to null so they cannot be mistaken for `verified`. Use evidence requirements appropriate to the row: every runnable attack requires `attack-result`; S1-S4/S7 additionally require `application-or-network-event` and `elasticsearch-event`; host-assisted labs require `vm-receipt`, `audit-event`, and `cleanup-result`.

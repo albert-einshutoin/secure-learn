@@ -27,7 +27,9 @@ const STANDARD_FIELDS = ['mitre_attack', 'owasp_api', 'cwe', 'nist_csf'];
 const SAFETY_FIELDS = ['target_services', 'allowed_cidrs', 'external_network'];
 const EVIDENCE_FIELDS = ['required'];
 const ASSESSMENT_FIELDS = ['mode', 'verifier'];
+const EXECUTION_SPEC_FIELDS = ['path', 'args'];
 const SAFE_LOGICAL_PATH = /^(?!\/)(?!.*\/\/)(?!.*(?:^|\/)\.{1,2}(?:\/|$))[A-Za-z0-9._@+=,-]+(?:\/[A-Za-z0-9._@+=,-]+)*$/;
+const CONTROL_CHARACTER = /[\u0000-\u001F\u007F]/;
 
 /**
  * Validate the maturity gates shared by every lab manifest.
@@ -77,16 +79,18 @@ function validateManifest(manifest) {
     errors.push('external_network must be false for bundled labs');
   }
 
-  if (candidate.maturity === 'verified') {
+  if (candidate.maturity === 'runnable' || candidate.maturity === 'verified') {
     const workflow = candidate.workflow || {};
     const assessment = candidate.assessment || {};
-    if (!workflow.attack || !SAFE_LOGICAL_PATH.test(workflow.attack)) {
-      errors.push('verified lab requires workflow.attack');
+    if (!isUsableExecutionSpec(workflow.attack)) {
+      errors.push(`${candidate.maturity} lab requires workflow.attack`);
     }
-    if (!workflow.verify) errors.push('verified lab requires workflow.verify');
-    if (!workflow.remediate) errors.push('verified lab requires workflow.remediate');
-    if (!workflow.regress) errors.push('verified lab requires workflow.regress');
-    if (!assessment.verifier) errors.push('verified lab requires assessment.verifier');
+    if (candidate.maturity === 'verified') {
+      if (!isUsableExecutionSpec(workflow.verify)) errors.push('verified lab requires workflow.verify');
+      if (!isUsableExecutionSpec(workflow.remediate)) errors.push('verified lab requires workflow.remediate');
+      if (!isUsableExecutionSpec(workflow.regress)) errors.push('verified lab requires workflow.regress');
+      if (!isUsableExecutionSpec(assessment.verifier)) errors.push('verified lab requires assessment.verifier');
+    }
   }
 
   return errors;
@@ -156,12 +160,7 @@ function validateSafety(safety, errors) {
 function validateWorkflow(workflow, errors) {
   if (!validateObject(workflow, 'workflow', WORKFLOW_FIELDS, errors)) return;
   for (const field of WORKFLOW_FIELDS) {
-    const value = workflow[field];
-    if (value !== null && typeof value !== 'string') {
-      errors.push(`workflow.${field} must be a string or null`);
-    } else if (typeof value === 'string' && !SAFE_LOGICAL_PATH.test(value)) {
-      errors.push(`workflow.${field} must be a safe repository-relative path`);
-    }
+    validateExecutionSpec(workflow[field], `workflow.${field}`, errors);
   }
 }
 
@@ -173,11 +172,36 @@ function validateEvidence(evidence, errors) {
 function validateAssessment(assessment, errors) {
   if (!validateObject(assessment, 'assessment', ASSESSMENT_FIELDS, errors)) return;
   validateNonEmptyString(assessment.mode, 'assessment.mode', errors);
-  if (assessment.verifier !== null && typeof assessment.verifier !== 'string') {
-    errors.push('assessment.verifier must be a string or null');
-  } else if (typeof assessment.verifier === 'string' && !SAFE_LOGICAL_PATH.test(assessment.verifier)) {
-    errors.push('assessment.verifier must be a safe repository-relative path');
+  validateExecutionSpec(assessment.verifier, 'assessment.verifier', errors);
+}
+
+function validateExecutionSpec(value, label, errors) {
+  // Specs preserve executable and argv separately; downstream runners must not
+  // concatenate them into a shell command, even when args contain metacharacters.
+  if (value === null) return;
+  if (!isPlainObject(value)) {
+    errors.push(`${label} must be an execution spec or null`);
+    return;
   }
+  reportUnknownFields(value, EXECUTION_SPEC_FIELDS, label, errors);
+  for (const field of EXECUTION_SPEC_FIELDS) {
+    if (!(field in value)) errors.push(`missing required field: ${label}.${field}`);
+  }
+  if (typeof value.path !== 'string' || !SAFE_LOGICAL_PATH.test(value.path)) {
+    errors.push(`${label}.path must be a safe repository-relative path`);
+  }
+  if (!Array.isArray(value.args) || value.args.some((arg) => typeof arg !== 'string' || CONTROL_CHARACTER.test(arg))) {
+    errors.push(`${label}.args must be an array of strings without control characters`);
+  }
+}
+
+function isUsableExecutionSpec(value) {
+  return isPlainObject(value)
+    && Object.keys(value).every((field) => EXECUTION_SPEC_FIELDS.includes(field))
+    && typeof value.path === 'string'
+    && SAFE_LOGICAL_PATH.test(value.path)
+    && Array.isArray(value.args)
+    && value.args.every((arg) => typeof arg === 'string' && !CONTROL_CHARACTER.test(arg));
 }
 
 /**

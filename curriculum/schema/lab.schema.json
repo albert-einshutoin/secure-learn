@@ -68,10 +68,10 @@
       "additionalProperties": false,
       "required": ["attack", "verify", "remediate", "regress"],
       "properties": {
-        "attack": { "$ref": "#/$defs/nullablePath" },
-        "verify": { "$ref": "#/$defs/nullablePath" },
-        "remediate": { "$ref": "#/$defs/nullablePath" },
-        "regress": { "$ref": "#/$defs/nullablePath" }
+        "attack": { "$ref": "#/$defs/nullableExecutionSpec" },
+        "verify": { "$ref": "#/$defs/nullableExecutionSpec" },
+        "remediate": { "$ref": "#/$defs/nullableExecutionSpec" },
+        "regress": { "$ref": "#/$defs/nullableExecutionSpec" }
       }
     },
     "evidence": {
@@ -86,11 +86,29 @@
       "required": ["mode", "verifier"],
       "properties": {
         "mode": { "type": "string", "minLength": 1 },
-        "verifier": { "$ref": "#/$defs/nullablePath" }
+        "verifier": { "$ref": "#/$defs/nullableExecutionSpec" }
       }
     }
   },
   "allOf": [
+    {
+      "if": {
+        "properties": { "maturity": { "enum": ["runnable", "verified"] } },
+        "required": ["maturity"]
+      },
+      "then": {
+        "properties": {
+          "workflow": {
+            "properties": {
+              "attack": { "$ref": "#/$defs/executionSpec" },
+              "verify": { "$ref": "#/$defs/nullableExecutionSpec" },
+              "remediate": { "$ref": "#/$defs/nullableExecutionSpec" },
+              "regress": { "$ref": "#/$defs/nullableExecutionSpec" }
+            }
+          }
+        }
+      }
+    },
     {
       "if": {
         "properties": { "maturity": { "const": "verified" } },
@@ -100,14 +118,13 @@
         "properties": {
           "workflow": {
             "properties": {
-              "attack": { "$ref": "#/$defs/logicalPath" },
-              "verify": { "$ref": "#/$defs/logicalPath" },
-              "remediate": { "$ref": "#/$defs/logicalPath" },
-              "regress": { "$ref": "#/$defs/logicalPath" }
+              "verify": { "$ref": "#/$defs/executionSpec" },
+              "remediate": { "$ref": "#/$defs/executionSpec" },
+              "regress": { "$ref": "#/$defs/executionSpec" }
             }
           },
           "assessment": {
-            "properties": { "verifier": { "$ref": "#/$defs/logicalPath" } }
+            "properties": { "verifier": { "$ref": "#/$defs/executionSpec" } }
           }
         }
       }
@@ -129,9 +146,24 @@
       "minLength": 1,
       "pattern": "^(?!/)(?!.*//)(?!.*(?:^|/)\\.{1,2}(?:/|$))[A-Za-z0-9._@+=,-]+(?:/[A-Za-z0-9._@+=,-]+)*$"
     },
-    "nullablePath": {
+    "executionSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "args"],
+      "properties": {
+        "path": { "$ref": "#/$defs/logicalPath" },
+        "args": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[^\\u0000-\\u001F\\u007F]*$"
+          }
+        }
+      }
+    },
+    "nullableExecutionSpec": {
       "anyOf": [
-        { "$ref": "#/$defs/logicalPath" },
+        { "$ref": "#/$defs/executionSpec" },
         { "type": "null" }
       ]
     }
