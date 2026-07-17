@@ -28,6 +28,15 @@ test('rejects loopback, public, link-local, undeclared private, URLs, and comman
   }
 });
 
+test('rejects alternate numeric host spellings even when a policy declares them as services', () => {
+  for (const target of ['2130706433', '0x7f000001', '017700000001', '127.1']) {
+    assert.throws(
+      () => assertAllowedTarget(target, { ...safety, target_services: [...safety.target_services, target] }),
+      /invalid safety policy|prohibited target/,
+    );
+  }
+});
+
 test('allows loopback only when the manifest declares the exact S14 boundary', () => {
   const incidentSafety = {
     target_services: ['localhost'],

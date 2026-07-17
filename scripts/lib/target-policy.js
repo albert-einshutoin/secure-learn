@@ -3,6 +3,7 @@
 const net = require('node:net');
 
 const SERVICE_NAME = /^[a-z0-9][a-z0-9-]*$/;
+const ALTERNATE_NUMERIC_HOST = /^(?:\d+|0x[0-9a-f]+)$/i;
 const IPV4_DECIMAL = /^(?:0|[1-9]\d{0,2})(?:\.(?:0|[1-9]\d{0,2})){3}$/;
 const CIDR = /^((?:0|[1-9]\d{0,2})(?:\.(?:0|[1-9]\d{0,2})){3})\/(0|[1-9]|[12]\d|3[0-2])$/;
 
@@ -52,7 +53,11 @@ function validateSafety(safety) {
     || safety.external_network !== false
     || !Array.isArray(safety.target_services)
     || !Array.isArray(safety.allowed_cidrs)
-    || safety.target_services.some((service) => typeof service !== 'string' || !SERVICE_NAME.test(service))
+    || safety.target_services.some((service) => (
+      typeof service !== 'string'
+      || !SERVICE_NAME.test(service)
+      || ALTERNATE_NUMERIC_HOST.test(service)
+    ))
   ) {
     throw new Error('invalid safety policy');
   }
