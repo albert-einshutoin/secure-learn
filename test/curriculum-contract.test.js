@@ -197,6 +197,23 @@ test('manifest ownership rejects accessors, symbols, non-enumerable fields, and 
   assert.deepEqual(validateManifest(accessor), ['workflow.attack must be an enumerable data property']);
   assert.equal(getterCalled, false);
 
+  let inheritedGetterCalled = false;
+  Object.defineProperty(Object.prototype, 'attack', {
+    configurable: true,
+    get() {
+      inheritedGetterCalled = true;
+      return { path: 'attack/scripts/s1_portscan.sh', args: [] };
+    },
+  });
+  try {
+    const inheritedAccessor = validManifest();
+    delete inheritedAccessor.workflow.attack;
+    assert.ok(validateManifest(inheritedAccessor).includes('missing required field: workflow.attack'));
+    assert.equal(inheritedGetterCalled, false);
+  } finally {
+    delete Object.prototype.attack;
+  }
+
   const symbol = validManifest();
   symbol.platforms[Symbol('hidden')] = true;
   assert.deepEqual(validateManifest(symbol), ['platforms must not contain symbol properties']);

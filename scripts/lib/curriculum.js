@@ -30,6 +30,9 @@ const ASSESSMENT_FIELDS = ['mode', 'verifier'];
 const EXECUTION_SPEC_FIELDS = ['path', 'args'];
 const SAFE_LOGICAL_PATH = /^(?!\/)(?!.*\/\/)(?!.*(?:^|\/)\.{1,2}(?:\/|$))[A-Za-z0-9._@+=,-]+(?:\/[A-Za-z0-9._@+=,-]+)*$/;
 const CONTROL_CHARACTER = /[\u0000-\u001F\u007F\u0080-\u009F]/;
+const MAGIC_FIELDS = new Set(['__proto__', 'constructor', 'prototype']);
+const MAX_MANIFEST_DEPTH = 32;
+const MAX_MANIFEST_NODES = 5_000;
 
 /**
  * Validate the maturity gates shared by every lab manifest.
@@ -44,13 +47,16 @@ function validateManifest(manifest) {
 
   // Returning before nested access makes incomplete manifests safe to diagnose.
   for (const field of REQUIRED_FIELDS) {
-    if (!(field in candidate)) {
+    if (!Object.hasOwn(candidate, field)) {
       errors.push(`missing required field: ${field}`);
     }
   }
   if (errors.length > 0) {
     return errors;
   }
+
+  const ownershipError = validateJsonOwnership(candidate, '', { nodes: 0 }, 0, true);
+  if (ownershipError) return [ownershipError];
 
   reportUnknownFields(candidate, REQUIRED_FIELDS, 'manifest', errors);
   validateNonEmptyString(candidate.id, 'id', errors);
@@ -75,21 +81,32 @@ function validateManifest(manifest) {
   validateEvidence(candidate.evidence, errors);
   validateAssessment(candidate.assessment, errors);
 
-  if (!isPlainObject(candidate.safety) || candidate.safety.external_network !== false) {
+  if (!isPlainObject(candidate.safety)
+    || !Object.hasOwn(candidate.safety, 'external_network')
+    || candidate.safety.external_network !== false) {
     errors.push('external_network must be false for bundled labs');
   }
 
   if (candidate.maturity === 'runnable' || candidate.maturity === 'verified') {
     const workflow = candidate.workflow || {};
     const assessment = candidate.assessment || {};
-    if (!isUsableExecutionSpec(workflow.attack)) {
+    const attack = Object.hasOwn(workflow, 'attack') ? workflow.attack : undefined;
+    if (!isUsableExecutionSpec(attack)) {
       errors.push(`${candidate.maturity} lab requires workflow.attack`);
     }
     if (candidate.maturity === 'verified') {
-      if (!isUsableExecutionSpec(workflow.verify)) errors.push('verified lab requires workflow.verify');
-      if (!isUsableExecutionSpec(workflow.remediate)) errors.push('verified lab requires workflow.remediate');
-      if (!isUsableExecutionSpec(workflow.regress)) errors.push('verified lab requires workflow.regress');
-      if (!isUsableExecutionSpec(assessment.verifier)) errors.push('verified lab requires assessment.verifier');
+      if (!isUsableExecutionSpec(Object.hasOwn(workflow, 'verify') ? workflow.verify : undefined)) {
+        errors.push('verified lab requires workflow.verify');
+      }
+      if (!isUsableExecutionSpec(Object.hasOwn(workflow, 'remediate') ? workflow.remediate : undefined)) {
+        errors.push('verified lab requires workflow.remediate');
+      }
+      if (!isUsableExecutionSpec(Object.hasOwn(workflow, 'regress') ? workflow.regress : undefined)) {
+        errors.push('verified lab requires workflow.regress');
+      }
+      if (!isUsableExecutionSpec(Object.hasOwn(assessment, 'verifier') ? assessment.verifier : undefined)) {
+        errors.push('verified lab requires assessment.verifier');
+      }
     }
   }
 
@@ -116,10 +133,82 @@ function validateObject(value, label, fields, errors) {
     return false;
   }
   reportUnknownFields(value, fields, label, errors);
+  let complete = true;
   for (const field of fields) {
-    if (!(field in value)) errors.push(`missing required field: ${label}.${field}`);
+    if (!Object.hasOwn(value, field)) {
+      errors.push(`missing required field: ${label}.${field}`);
+      complete = false;
+    }
   }
-  return true;
+  return complete;
+}
+
+function validateJsonOwnership(value, pathLabel, state, depth = 0, isRoot = false) {
+  state.nodes += 1;
+  if (state.nodes > MAX_MANIFEST_NODES) return 'manifest exceeds the maximum node count';
+  if (depth > MAX_MANIFEST_DEPTH) return 'manifest exceeds the maximum nesting depth';
+
+  if (value === null || typeof value === 'string' || typeof value === 'boolean') return null;
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? null : `${pathLabel || 'manifest'} must contain finite JSON numbers`;
+  }
+  if (typeof value !== 'object') return `${pathLabel || 'manifest'} must contain only JSON-compatible values`;
+
+  if (Array.isArray(value)) {
+    const keys = Reflect.ownKeys(value).filter((key) => key !== 'length');
+    if (keys.length !== value.length) return `${pathLabel} must be a dense own array`;
+    for (let index = 0; index < value.length; index += 1) {
+      const key = String(index);
+      const descriptor = Object.getOwnPropertyDescriptor(value, key);
+      if (!descriptor || !descriptor.enumerable || !Object.hasOwn(descriptor, 'value')) {
+        return `${pathLabel} must be a dense own array`;
+      }
+    }
+    if (keys.some((key) => typeof key !== 'string' || !/^(?:0|[1-9]\d*)$/u.test(key))) {
+      return `${pathLabel} must be a dense own array`;
+    }
+    for (let index = 0; index < value.length; index += 1) {
+      const childError = validateJsonOwnership(
+        Object.getOwnPropertyDescriptor(value, String(index)).value,
+        `${pathLabel}[${index}]`,
+        state,
+        depth + 1,
+      );
+      if (childError) return childError;
+    }
+    return null;
+  }
+
+  if (!isPlainObject(value)) return `${pathLabel || 'manifest'} must contain only plain objects`;
+  const label = pathLabel || 'manifest';
+  for (const key of Reflect.ownKeys(value)) {
+    if (isRoot && key === 'sourcePath') {
+      const metadata = Object.getOwnPropertyDescriptor(value, key);
+      if (typeof metadata.value !== 'string' || metadata.enumerable || metadata.writable || metadata.configurable) {
+        return 'manifest.sourcePath must be immutable loader metadata';
+      }
+      continue;
+    }
+    if (typeof key !== 'string') return `${label} must not contain symbol properties`;
+    const childLabel = pathLabel ? `${pathLabel}.${key}` : key;
+    if (MAGIC_FIELDS.has(key)) return `${childLabel} is not an allowed manifest field`;
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    if (!descriptor.enumerable || !Object.hasOwn(descriptor, 'value')) {
+      return `${childLabel} must be an enumerable data property`;
+    }
+  }
+  for (const key of Object.keys(value)) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    const childLabel = pathLabel ? `${pathLabel}.${key}` : key;
+    const childError = validateJsonOwnership(
+      descriptor.value,
+      childLabel,
+      state,
+      depth + 1,
+    );
+    if (childError) return childError;
+  }
+  return null;
 }
 
 function validateNonEmptyString(value, label, errors) {
@@ -185,12 +274,14 @@ function validateExecutionSpec(value, label, errors) {
   }
   reportUnknownFields(value, EXECUTION_SPEC_FIELDS, label, errors);
   for (const field of EXECUTION_SPEC_FIELDS) {
-    if (!(field in value)) errors.push(`missing required field: ${label}.${field}`);
+    if (!Object.hasOwn(value, field)) errors.push(`missing required field: ${label}.${field}`);
   }
-  if (typeof value.path !== 'string' || !SAFE_LOGICAL_PATH.test(value.path)) {
+  const specPath = Object.hasOwn(value, 'path') ? value.path : undefined;
+  const args = Object.hasOwn(value, 'args') ? value.args : undefined;
+  if (typeof specPath !== 'string' || !SAFE_LOGICAL_PATH.test(specPath)) {
     errors.push(`${label}.path must be a safe repository-relative path`);
   }
-  if (!Array.isArray(value.args) || value.args.some((arg) => typeof arg !== 'string' || CONTROL_CHARACTER.test(arg))) {
+  if (!Array.isArray(args) || args.some((arg) => typeof arg !== 'string' || CONTROL_CHARACTER.test(arg))) {
     errors.push(`${label}.args must be an array of strings without control characters`);
   }
 }
@@ -198,8 +289,10 @@ function validateExecutionSpec(value, label, errors) {
 function isUsableExecutionSpec(value) {
   return isPlainObject(value)
     && Object.keys(value).every((field) => EXECUTION_SPEC_FIELDS.includes(field))
+    && Object.hasOwn(value, 'path')
     && typeof value.path === 'string'
     && SAFE_LOGICAL_PATH.test(value.path)
+    && Object.hasOwn(value, 'args')
     && Array.isArray(value.args)
     && value.args.every((arg) => typeof arg === 'string' && !CONTROL_CHARACTER.test(arg));
 }
