@@ -139,3 +139,17 @@ test('Linux doctor binds the receipt to the lab and reports its operator-atteste
   assert.equal(receiptCall[1].repositoryRoot, root);
   assert.match(output, /^Platform ready: linux-vm \(operator-attested local VM receipt\)\n/);
 });
+
+test('Linux VM receipt doctor must run inside the VM, not from the macOS host', () => {
+  const manifest = {
+    id: 's5',
+    platforms: { required: ['linux-vm'] },
+    safety: { target_services: [], allowed_cidrs: [], external_network: false },
+  };
+  let receiptChecks = 0;
+  assert.throws(() => doctorManifest(manifest, {
+    platform: 'darwin',
+    validateReceipt: () => { receiptChecks += 1; },
+  }), /checked from a Linux VM/);
+  assert.equal(receiptChecks, 0);
+});

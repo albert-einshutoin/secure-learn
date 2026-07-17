@@ -23,13 +23,17 @@ rejected.
 
 ## Issue and check a lab receipt
 
-Issue a short-lived receipt inside the same booted VM:
+Issue and validate a short-lived receipt inside the same booted VM:
 
 ```bash
 scripts/issue-vm-receipt s5 snapshot-001 s5-readiness.json
 export SECURE_LEARN_VM_RECEIPT=evidence/vm-receipts/s5-readiness.json
 scripts/learn doctor s5
 ```
+
+`scripts/learn doctor s5` must run inside that Linux VM. The macOS host cannot
+read or revalidate the guest's root-owned marker. Host-to-guest verification
+would require a separate authenticated adapter API, which is not implemented.
 
 Receipt files must be direct `.json` children of the ignored
 `evidence/vm-receipts/` directory. They bind the requested lab, current machine

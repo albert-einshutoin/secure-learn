@@ -56,6 +56,14 @@ function validationOptions(root, overrides = {}) {
     expectedLabId: 's5',
     now: NOW,
     identityHashes: { machine: HASH_A, boot: HASH_B },
+    validateAdapter: () => ({
+      marker: {
+        snapshot_id: 'snapshot-001',
+        provisioning_nonce: 'd'.repeat(64),
+        virtualization_provider: 'qemu-kvm',
+      },
+      markerSha256: 'c'.repeat(64),
+    }),
     ...overrides,
   };
 }
@@ -140,6 +148,64 @@ test('rejects a receipt copied from another VM boot', (t) => {
   assert.throws(() => validateVmReceipt(target, validationOptions(root, {
     identityHashes: { machine: HASH_A, boot: 'c'.repeat(64) },
   })), /current VM boot/);
+});
+
+test('receipt validation rechecks the current adapter marker and exact provenance binding', (t) => {
+  const tempRoot = makeRoot(t);
+  const target = writeReceipt(tempRoot);
+  let requestedSnapshot;
+  const options = validationOptions(tempRoot, {
+    validateAdapter: (snapshotId) => {
+      requestedSnapshot = snapshotId;
+      return {
+        marker: {
+          snapshot_id: snapshotId,
+          provisioning_nonce: 'd'.repeat(64),
+          virtualization_provider: 'qemu-kvm',
+        },
+        markerSha256: 'c'.repeat(64),
+      };
+    },
+  });
+  assert.doesNotThrow(() => validateVmReceipt(target, options));
+  assert.equal(requestedSnapshot, 'snapshot-001');
+
+  const mismatches = [
+    { markerSha256: 'e'.repeat(64) },
+    { marker: { snapshot_id: 'snapshot-002', provisioning_nonce: 'd'.repeat(64), virtualization_provider: 'qemu-kvm' } },
+    { marker: { snapshot_id: 'snapshot-001', provisioning_nonce: 'e'.repeat(64), virtualization_provider: 'qemu-kvm' } },
+    { marker: { snapshot_id: 'snapshot-001', provisioning_nonce: 'd'.repeat(64), virtualization_provider: 'vmware' } },
+  ];
+  for (const mismatch of mismatches) {
+    assert.throws(() => validateVmReceipt(target, validationOptions(tempRoot, {
+      validateAdapter: () => ({
+        marker: {
+          snapshot_id: 'snapshot-001',
+          provisioning_nonce: 'd'.repeat(64),
+          virtualization_provider: 'qemu-kvm',
+        },
+        markerSha256: 'c'.repeat(64),
+        ...mismatch,
+      }),
+    })), /current VM adapter/);
+  }
+});
+
+test('handwritten receipts fail when current adapter evidence is missing or unsafe', (t) => {
+  const failures = [
+    'VM adapter marker is missing.',
+    'VM adapter marker permissions are invalid.',
+    'No supported local virtual machine evidence was found.',
+    'VM adapter cannot run inside a container.',
+    'A cloud virtual machine is outside the local disposable VM contract.',
+  ];
+  for (const message of failures) {
+    const tempRoot = makeRoot(t);
+    const target = writeReceipt(tempRoot);
+    assert.throws(() => validateVmReceipt(target, validationOptions(tempRoot, {
+      validateAdapter: () => { throw new Error(message); },
+    })), new RegExp(message.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  }
 });
 
 test('issuer creates a Linux-only, lab-bound receipt without external commands', () => {

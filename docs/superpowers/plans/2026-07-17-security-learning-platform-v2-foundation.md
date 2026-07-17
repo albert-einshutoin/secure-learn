@@ -500,6 +500,12 @@ timestamps, oversized input, and non-canonical identifiers. Procfs identity
 files are bounded by bytes actually read because their reported size may be
 zero.
 
+Receipt issuance and `scripts/learn doctor s5|s6` both run inside the same
+Linux VM. Validation re-runs the current adapter marker, non-container local VM,
+provider, ownership, mode, age, snapshot, digest, and nonce checks. The macOS
+host cannot validate the guest's `/etc` marker; authenticated host-to-guest
+adapter transport is not implemented and must not be claimed.
+
 - [ ] **Step 5: Add CLI contract tests**
 
 Append to `test/curriculum-contract.test.js` using `spawnSync(process.execPath, ['scripts/learn', ...])` and assert list, show, validate, unknown lab, reserved-command exit codes, cwd independence, and generic rejection of control or oversized argv. Unit-test Docker spawn argv/options and Linux receipt issue, safe I/O, identity, lab, and time binding through explicit dependency injection.
