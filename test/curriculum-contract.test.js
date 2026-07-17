@@ -469,64 +469,31 @@ test('learner CLI separates unknown labs from reserved commands', () => {
   assert.equal(reserved.stderr, "Command 'attack' is reserved for the executable-lab slices.\n");
 });
 
-test('docker doctor test bypass is exact and unavailable in production', () => {
-  const bypass = runLearn(['doctor', 's1'], {
-    env: { ...process.env, NODE_ENV: 'test', SECURE_LEARN_SKIP_DOCKER_CHECK: '1' },
-  });
-  assert.equal(bypass.status, 0, bypass.stderr);
-  assert.match(bypass.stdout, /^Platform ready: docker-desktop\n/);
-  assert.match(bypass.stdout, /Allowed services: app\nAllowed CIDRs: 172\.23\.0\.0\/24\nExternal network: disabled\n$/);
-
+test('learner CLI ignores bypass variables and attacker-controlled PATH entries', () => {
   const fakeBin = fs.mkdtempSync(path.join(os.tmpdir(), 'secure-learn-fake-bin-'));
   const marker = path.join(fakeBin, 'executed');
   fs.writeFileSync(path.join(fakeBin, 'docker'), `#!/bin/sh\ntouch "${marker}"\n`, { mode: 0o755 });
-  const production = runLearn(['doctor', 's1'], {
+  const result = runLearn(['doctor', 's1'], {
     env: {
       ...process.env,
-      NODE_ENV: 'production',
+      NODE_ENV: 'test',
       SECURE_LEARN_SKIP_DOCKER_CHECK: '1',
       PATH: fakeBin,
     },
   });
   assert.equal(fs.existsSync(marker), false, 'doctor must not resolve docker from an attacker-controlled PATH');
-  assert.ok([0, 1].includes(production.status));
+  assert.doesNotMatch(fs.readFileSync(learnScript, 'utf8'), /SECURE_LEARN_SKIP_DOCKER_CHECK|NODE_ENV/);
+  const readiness = require('../scripts/lib/doctor').checkDockerDesktop();
+  assert.equal(result.status, readiness.ok ? 0 : 1, 'real Docker Desktop readiness alone determines the result');
   fs.rmSync(fakeBin, { recursive: true, force: true });
 });
 
-test('Docker doctor reports spawn failures without exposing environment secrets', () => {
-  const { checkDockerDesktop } = require('../scripts/learn');
-  const secret = 'do-not-print-this-secret';
-  const result = checkDockerDesktop({
-    env: { SECRET_VALUE: secret },
-    findDocker: () => '/definitely/missing/docker',
-  });
-  assert.equal(result.ok, false);
-  assert.match(result.message, /Docker Desktop is not ready/);
-  assert.doesNotMatch(result.message, new RegExp(secret));
-});
-
-test('Linux VM receipts must be bounded, private regular files inside the repository', (t) => {
-  const { validateVmReceipt } = require('../scripts/learn');
-  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'secure-learn-receipt-'));
-  const receiptDir = path.join(tempRoot, '.secure-learn', 'receipts');
-  fs.mkdirSync(receiptDir, { recursive: true, mode: 0o700 });
-  t.after(() => fs.rmSync(tempRoot, { recursive: true, force: true }));
-
-  const receipt = path.join(receiptDir, 'vm.json');
-  fs.writeFileSync(receipt, JSON.stringify({ version: 1, platform: 'linux-vm' }), { mode: 0o600 });
-  assert.doesNotThrow(() => validateVmReceipt(receipt, tempRoot));
-
-  const outside = path.join(tempRoot, 'outside.json');
-  fs.writeFileSync(outside, JSON.stringify({ version: 1, platform: 'linux-vm' }), { mode: 0o600 });
-  assert.throws(() => validateVmReceipt(outside, tempRoot), /trusted receipt directory/);
-
-  const link = path.join(receiptDir, 'link.json');
-  fs.symlinkSync(receipt, link);
-  assert.throws(() => validateVmReceipt(link, tempRoot), /symbolic link/);
-
-  fs.chmodSync(receipt, 0o666);
-  assert.throws(() => validateVmReceipt(receipt, tempRoot), /permissions/);
-  fs.chmodSync(receipt, 0o600);
-  fs.writeFileSync(receipt, Buffer.alloc(16 * 1024 + 1), { mode: 0o600 });
-  assert.throws(() => validateVmReceipt(receipt, tempRoot), /too large/);
+test('learner CLI rejects untrusted argv without reflecting it', () => {
+  for (const value of ['bad\nsecret', '\u001b[31msecret', 'x'.repeat(65)]) {
+    const result = runLearn([value]);
+    assert.equal(result.status, 2);
+    assert.equal(result.stdout, '');
+    assert.equal(result.stderr, 'Invalid command input.\n');
+    assert.doesNotMatch(result.stderr, /secret|\u001b|xxxx/);
+  }
 });

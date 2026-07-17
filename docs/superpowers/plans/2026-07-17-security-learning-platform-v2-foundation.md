@@ -410,8 +410,14 @@ git commit -m "feat(curriculum): inventory legacy labs honestly"
 
 **Files:**
 - Create: `scripts/lib/target-policy.js`
+- Create: `scripts/lib/doctor.js`
+- Create: `scripts/lib/vm-receipt.js`
 - Create: `test/target-policy.test.js`
+- Create: `test/doctor.test.js`
+- Create: `test/vm-receipt.test.js`
 - Create: `scripts/learn`
+- Create: `scripts/issue-vm-receipt`
+- Modify: `.gitignore`
 
 - [ ] **Step 1: Write failing safety tests**
 
@@ -449,7 +455,7 @@ Run `node --test test/target-policy.test.js`.
 
 - [ ] **Step 3: Implement strict IPv4 and service-name validation**
 
-Create `scripts/lib/target-policy.js` using `node:net.isIP`. Convert IPv4 addresses to unsigned integers and compare with each CIDR mask. Service names must exactly match `/^[a-z0-9][a-z0-9-]*$/` and a declared entry. Reject any target beginning with `-` or containing URL, shell, whitespace, slash, colon, or interpolation syntax.
+Create `scripts/lib/target-policy.js` using `node:net.isIP`. Convert IPv4 addresses to unsigned integers and compare with each CIDR mask. Service names must exactly match `/^[a-z0-9][a-z0-9-]*$/` and a declared entry. Reject any target beginning with `-` or containing URL, shell, whitespace, slash, colon, or interpolation syntax. Also reject all-numeric and alternate numeric-host spellings before operating-system name resolution can reinterpret them as IP addresses.
 
 Export only:
 
@@ -464,23 +470,26 @@ Create executable `scripts/learn` in Node.js. Implement:
 - `list`: tab-separated ID, maturity, platform, title.
 - `show <id>`: pretty JSON manifest.
 - `validate`: load catalogs and all manifests; print `Validated 15 lab manifests.`.
-- `doctor <id>`: validate the manifest, require `docker info` for Docker Desktop labs, require Linux plus `SECURE_LEARN_VM_RECEIPT` for Linux VM labs, and print the safety boundary.
+- `doctor <id>`: validate the manifest, require the fixed `desktop-linux` context and exact Docker Desktop server identity on macOS, require Linux plus a fresh lab-bound `SECURE_LEARN_VM_RECEIPT` for Linux VM labs, and print the safety boundary.
 - all other commands: exit 2 with `Command '<name>' is reserved for the executable-lab slices.`.
 
-Use `spawnSync` with argument arrays; never use `shell: true`.
+Use `spawnSync` with fixed executable candidates, argument arrays, a sanitized environment, bounded output and timeout; never use `shell: true`. Product code must not contain a readiness bypass. Tests inject process dependencies into the doctor module instead.
+
+The VM receipt is a local disposable-VM readiness receipt, not cryptographic attestation. `scripts/issue-vm-receipt <s5|s6> <snapshot-id> [receipt-path]` issues it inside Linux only from `/etc/machine-id`, the current boot ID, a cryptographic nonce, and a maximum four-hour validity window. Stored receipts live only below ignored `evidence/vm-receipts/`, use mode `0600`, and are opened with `O_NOFOLLOW` through one checked descriptor. The validator rejects unknown fields, another lab or VM boot, unsafe ancestry, symlinks, stale/future timestamps, oversized input, and non-canonical identifiers.
 
 - [ ] **Step 5: Add CLI contract tests**
 
-Append to `test/curriculum-contract.test.js` using `spawnSync(process.execPath, ['scripts/learn', ...])` and assert list, show, validate, unknown lab, and reserved-command exit codes. Set a test-only `SECURE_LEARN_SKIP_DOCKER_CHECK=1` for doctor and implement that bypass only when `NODE_ENV === 'test'`.
+Append to `test/curriculum-contract.test.js` using `spawnSync(process.execPath, ['scripts/learn', ...])` and assert list, show, validate, unknown lab, reserved-command exit codes, cwd independence, and generic rejection of control or oversized argv. Unit-test Docker spawn argv/options and Linux receipt issue, safe I/O, identity, lab, and time binding through explicit dependency injection.
 
 - [ ] **Step 6: Run tests and commit**
 
 Run:
 
 ```bash
-chmod +x scripts/learn
-node --test test/curriculum-contract.test.js test/target-policy.test.js
+chmod +x scripts/learn scripts/issue-vm-receipt
+node --test test/curriculum-contract.test.js test/target-policy.test.js test/doctor.test.js test/vm-receipt.test.js
 node --check scripts/learn
+node --check scripts/issue-vm-receipt
 ```
 
 Expected: all tests pass.
