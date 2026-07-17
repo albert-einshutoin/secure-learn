@@ -47,7 +47,6 @@ services:
     environment:
       - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
       - SERVER_NAME=blue-soc
-      - XPACK_SECURITY_ENABLED=false
       - TEAM=BLUE
     ports:
       - "127.0.0.1:5602:5601"
@@ -286,7 +285,7 @@ services:
       - target_logs:/var/log/app:ro
       - fail2ban_logs:/var/log/fail2ban:ro
       - filebeat_data:/usr/share/filebeat/data
-    command: filebeat -e -strict.perms=false
+    command: filebeat -e --strict.perms=false
     depends_on:
       siem-setup:
         condition: service_completed_successfully

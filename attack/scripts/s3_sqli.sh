@@ -59,8 +59,10 @@ for payload in "${sqli_payloads[@]}"; do
     echo "Payload: $payload"
     echo "Request: GET /users?id=$encoded_payload"
     
-    response=$(curl -s -w "\nHTTP_CODE:%{http_code}" \
-        "http://$TARGET:$TARGET_PORT/users?id=$encoded_payload")
+    if ! response=$(curl -s --max-time 5 -w "\nHTTP_CODE:%{http_code}" \
+        "http://$TARGET:$TARGET_PORT/users?id=$encoded_payload"); then
+        response=$'\nHTTP_CODE:000'
+    fi
     
     http_code=$(echo "$response" | grep "HTTP_CODE:" | cut -d: -f2)
     body=$(echo "$response" | grep -v "HTTP_CODE:")
@@ -113,8 +115,10 @@ for payload in "${search_payloads[@]}"; do
     echo "Search Payload: $payload"
     echo "Request: GET /users/search?name=$encoded_payload"
     
-    response=$(curl -s -w "\nHTTP_CODE:%{http_code}" \
-        "http://$TARGET:$TARGET_PORT/users/search?name=$encoded_payload")
+    if ! response=$(curl -s --max-time 5 -w "\nHTTP_CODE:%{http_code}" \
+        "http://$TARGET:$TARGET_PORT/users/search?name=$encoded_payload"); then
+        response=$'\nHTTP_CODE:000'
+    fi
     
     http_code=$(echo "$response" | grep "HTTP_CODE:" | cut -d: -f2)
     echo "Response: HTTP $http_code"

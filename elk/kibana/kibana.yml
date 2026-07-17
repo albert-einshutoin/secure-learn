@@ -8,8 +8,8 @@ server.port: 5601
 # Elasticsearch connection
 elasticsearch.hosts: ["http://elasticsearch:9200"]
 
-# Security settings (disabled for learning environment)
-xpack.security.enabled: false
+# Security-backed saved objects still require a stable local encryption key
+# even when Elasticsearch authentication is disabled for the isolated lab.
 xpack.encryptedSavedObjects.encryptionKey: "soclab-local-only-encryption-key-0001"
 
 # Monitoring
@@ -25,4 +25,3 @@ logging.root.level: info
 
 # i18n settings
 i18n.locale: "ja-JP"
-

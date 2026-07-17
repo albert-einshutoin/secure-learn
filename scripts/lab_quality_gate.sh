@@ -4,6 +4,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+REQUIRE_RUNTIME="${REQUIRE_RUNTIME:-0}"
 
 verify_generator_idempotency() {
   local generated_dir="$1"
@@ -92,6 +93,10 @@ if curl -fsS "$APP_HEALTH_URL" >/dev/null 2>&1; then
   BASE_URL="$APP_BASE_URL" "$ROOT_DIR/scripts/backend_hands_on_tests.sh"
   BASE_URL="$APP_BASE_URL" REQUESTS=10 CONCURRENCY=2 "$ROOT_DIR/scripts/load_hands_on_tests.sh"
 else
+  if [[ "$REQUIRE_RUNTIME" == "1" ]]; then
+    echo "Runtime verification is required, but App is not running at $APP_HEALTH_URL." >&2
+    exit 1
+  fi
   echo "App is not running at $APP_HEALTH_URL; skipping SRE smoke."
 fi
 
@@ -99,6 +104,10 @@ if curl -fsS "${ELASTICSEARCH_URL:-http://127.0.0.1:9200}/_cluster/health" >/dev
   && curl -fsS "${KIBANA_URL:-http://127.0.0.1:5601}/api/status" >/dev/null 2>&1; then
   "$ROOT_DIR/scripts/siem_e2e_check.sh"
 else
+  if [[ "$REQUIRE_RUNTIME" == "1" ]]; then
+    echo "Runtime verification is required, but Elasticsearch/Kibana are unavailable." >&2
+    exit 1
+  fi
   echo "Elasticsearch/Kibana are not running; skipping SIEM E2E check."
 fi
 

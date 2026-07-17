@@ -5,7 +5,11 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-COMPOSE=(docker compose -f "$ROOT_DIR/docker-compose.yml")
+if [[ -n "${COMPOSE_PROJECT_NAME:-}" ]]; then
+  COMPOSE=(docker compose --project-name "$COMPOSE_PROJECT_NAME" -f "$ROOT_DIR/docker-compose.yml")
+else
+  COMPOSE=(docker compose -f "$ROOT_DIR/docker-compose.yml")
+fi
 ELASTICSEARCH_URL="${ELASTICSEARCH_URL:-http://127.0.0.1:9200}"
 WAIT_SECONDS="${WAIT_SECONDS:-90}"
 SCENARIO="$(printf '%s' "${1:-S3}" | tr '[:lower:]' '[:upper:]')"

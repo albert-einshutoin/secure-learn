@@ -165,3 +165,23 @@ jobs:
 
       - name: Validate IPS rules
         run: docker run --rm secure-learn-suricata-ci -T -c /opt/soc-lab/suricata-ips.yaml
+
+  fresh-stack:
+    name: Fresh stack E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Build and verify an empty-volume stack
+        run: scripts/fresh_stack_e2e.sh
+
+      - name: Upload runtime evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fresh-stack-evidence
+          path: reports/fresh-stack
+          if-no-files-found: error
+          retention-days: 14

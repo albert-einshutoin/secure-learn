@@ -235,7 +235,6 @@ services:
     environment:
       - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
       - SERVER_NAME=soc-lab-kibana
-      - XPACK_SECURITY_ENABLED=false
     ports:
       - "127.0.0.1:5601:5601"
     volumes:
@@ -285,7 +284,7 @@ services:
       # Persist the registry so container recreation cannot duplicate-ingest
       # the entire Suricata history.
       - filebeat_data:/usr/share/filebeat/data
-    command: filebeat -e -strict.perms=false
+    command: filebeat -e --strict.perms=false
     depends_on:
       siem-setup:
         condition: service_completed_successfully
