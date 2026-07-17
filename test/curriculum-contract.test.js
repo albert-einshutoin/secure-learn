@@ -276,20 +276,20 @@ test('legacy inventory has exactly one manifest for S1-S15', () => {
 test('legacy inventory records its execution and maturity without overstatement', () => {
   const manifests = loadManifests(root);
   const expected = [
-    ['s1', 'Port Scan', 'soc', 'docker-lab', 'runnable', ['T1595'], 'attack/scripts/s1_portscan.sh', ['scripts/scenario_e2e_check.sh', ['S1']]],
-    ['s2', 'API Brute Force', 'appsec', 'docker-lab', 'runnable', ['T1110'], 'attack/scripts/s2_bruteforce.sh', ['scripts/scenario_e2e_check.sh', ['S2']]],
-    ['s3', 'SQL Injection Attempt', 'appsec', 'docker-lab', 'runnable', ['T1190'], 'attack/scripts/s3_sqli.sh', ['scripts/scenario_e2e_check.sh', ['S3']]],
-    ['s4', 'HTTP Denial of Service', 'soc', 'docker-lab', 'runnable', ['T1499'], 'attack/scripts/s4_dos.sh', ['scripts/scenario_e2e_check.sh', ['S4']]],
-    ['s5', 'Important File Tampering', 'dfir', 'host-assisted', 'external', ['T1565'], 'attack/scripts/s5_file_tamper.sh', null],
-    ['s6', 'Sudo Activity Detection', 'dfir', 'host-assisted', 'external', ['T1548.003'], 'attack/scripts/s6_privesc.sh', null],
-    ['s7', 'Cross-Layer Incident', 'soc', 'docker-lab', 'runnable', ['T1595', 'T1110', 'T1190'], 'attack/scripts/s7_lateral.sh', ['scripts/scenario_e2e_check.sh', ['S7']]],
-    ['s8', 'ARP Observation', 'foundation', 'docker-lab', 'runnable', ['T1046'], 'attack/scripts/s8_l2_arp_observe.sh', null],
-    ['s9', 'ICMP Reconnaissance', 'foundation', 'docker-lab', 'runnable', ['T1595'], 'attack/scripts/s9_l3_icmp_recon.sh', null],
-    ['s10', 'TCP State Observation', 'foundation', 'docker-lab', 'runnable', ['T1595'], 'attack/scripts/s10_l4_tcp_state.sh', null],
-    ['s11', 'Session Pressure', 'foundation', 'docker-lab', 'runnable', ['T1499'], 'attack/scripts/s11_l5_session_stress.sh', null],
-    ['s12', 'TLS Visibility Boundary', 'foundation', 'docker-lab', 'runnable', ['T1040', 'T1573'], 'attack/scripts/s12_l6_tls_boundary.sh', null],
-    ['s13', 'DNS Service Discovery', 'foundation', 'docker-lab', 'runnable', ['T1018'], 'attack/scripts/s13_l7_dns_observe.sh', null],
-    ['s14', 'SRE Incident Response', 'sre', 'operator-workflow', 'runnable', ['T1499'], 'scripts/incident_drill.sh', null],
+    ['s1', 'Port Scan', 'soc', 'docker-lab', 'runnable', ['T1595'], ['attack/scripts/s1_portscan.sh', []], ['scripts/scenario_e2e_check.sh', ['S1']]],
+    ['s2', 'API Brute Force', 'appsec', 'docker-lab', 'runnable', ['T1110'], ['attack/scripts/s2_bruteforce.sh', []], ['scripts/scenario_e2e_check.sh', ['S2']]],
+    ['s3', 'SQL Injection Attempt', 'appsec', 'docker-lab', 'runnable', ['T1190'], ['attack/scripts/s3_sqli.sh', []], ['scripts/scenario_e2e_check.sh', ['S3']]],
+    ['s4', 'HTTP Denial of Service', 'soc', 'docker-lab', 'runnable', ['T1499'], ['attack/scripts/s4_dos.sh', []], ['scripts/scenario_e2e_check.sh', ['S4']]],
+    ['s5', 'Important File Tampering', 'dfir', 'host-assisted', 'external', ['T1565'], ['attack/scripts/s5_file_tamper.sh', []], null],
+    ['s6', 'Sudo Activity Detection', 'dfir', 'host-assisted', 'external', ['T1548.003'], ['attack/scripts/s6_privesc.sh', []], null],
+    ['s7', 'Cross-Layer Incident', 'soc', 'docker-lab', 'runnable', ['T1595', 'T1110', 'T1190'], ['attack/scripts/s7_lateral.sh', []], ['scripts/scenario_e2e_check.sh', ['S7']]],
+    ['s8', 'ARP Observation', 'foundation', 'docker-lab', 'runnable', ['T1046'], ['attack/scripts/s8_l2_arp_observe.sh', []], null],
+    ['s9', 'ICMP Reconnaissance', 'foundation', 'docker-lab', 'runnable', ['T1595'], ['attack/scripts/s9_l3_icmp_recon.sh', []], null],
+    ['s10', 'TCP State Observation', 'foundation', 'docker-lab', 'runnable', ['T1595'], ['attack/scripts/s10_l4_tcp_state.sh', []], null],
+    ['s11', 'Session Pressure', 'foundation', 'docker-lab', 'runnable', ['T1499'], ['attack/scripts/s11_l5_session_stress.sh', []], null],
+    ['s12', 'TLS Visibility Boundary', 'foundation', 'docker-lab', 'runnable', ['T1040', 'T1573'], ['attack/scripts/s12_l6_tls_boundary.sh', []], null],
+    ['s13', 'DNS Service Discovery', 'foundation', 'docker-lab', 'runnable', ['T1018'], ['attack/scripts/s13_l7_dns_observe.sh', []], null],
+    ['s14', 'SRE Incident Response', 'sre', 'operator-workflow', 'runnable', ['T1499'], ['scripts/incident_drill.sh', []], null],
     ['s15', 'Integrated Capstone', 'governance', 'operator-workflow', 'documented', ['T1595', 'T1190', 'T1499'], null, null],
   ];
 
@@ -301,7 +301,9 @@ test('legacy inventory records its execution and maturity without overstatement'
       manifest.mode,
       manifest.maturity,
       manifest.standards.mitre_attack,
-      manifest.workflow.attack?.path ?? null,
+      manifest.workflow.attack
+        ? [manifest.workflow.attack.path, manifest.workflow.attack.args]
+        : null,
       manifest.workflow.verify
         ? [manifest.workflow.verify.path, manifest.workflow.verify.args]
         : null,
