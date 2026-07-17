@@ -1,8 +1,10 @@
+'use strict';
+
 const assert = require('node:assert/strict');
 const { createHash } = require('node:crypto');
 const test = require('node:test');
 
-const { classifyOutcome, createEvidence } = require('../scripts/lib/evidence');
+const { classifyOutcome, createEvidence, verifyEvidence } = require('../scripts/lib/evidence');
 
 const STAGES = [
   'environment',
@@ -28,7 +30,7 @@ function validInput(overrides = {}) {
     platform: 'docker-desktop',
     started_at: '2026-07-17T00:00:00Z',
     ended_at: '2026-07-17T00:01:00Z',
-    target: { service: 'app', endpoints: ['/health', '/api'] },
+    target: 'app',
     results: passingResults(),
     ...overrides,
   };
@@ -122,59 +124,45 @@ test('creates deterministic evidence hashes without hashing the hash field', () 
   assert.equal(sha256, recreated);
 });
 
-test('sorts nested object keys while preserving array order and semantic changes', () => {
-  const first = createEvidence(validInput({ target: { z: { b: 2, a: 1 }, a: ['first', 'second'] } }));
-  const reordered = createEvidence(validInput({ target: { a: ['first', 'second'], z: { a: 1, b: 2 } } }));
-  const reversedArray = createEvidence(validInput({ target: { a: ['second', 'first'], z: { a: 1, b: 2 } } }));
-
+test('sorts result keys deterministically while preserving meaningful changes', () => {
+  const first = createEvidence(validInput());
+  const reordered = createEvidence(validInput({ results: Object.fromEntries(Object.entries(passingResults()).reverse()) }));
+  const changedTarget = createEvidence(validInput({ target: 'api' }));
   assert.equal(first.sha256, reordered.sha256);
-  assert.notEqual(first.sha256, reversedArray.sha256);
-  assert.deepEqual(Object.keys(first.target), ['a', 'z']);
+  assert.notEqual(first.sha256, changedTarget.sha256);
 });
 
-test('normalizes Unicode to NFC and rejects normalized-key ambiguity', () => {
-  const decomposed = createEvidence(validInput({ target: { label: 'Cafe\u0301' } }));
-  const composed = createEvidence(validInput({ target: { label: 'Caf\u00e9' } }));
-  assert.equal(decomposed.sha256, composed.sha256);
-  assert.equal(decomposed.target.label, 'Caf\u00e9');
-
-  assert.throws(
-    () => createEvidence(validInput({ target: { 'Cafe\u0301': 1, 'Caf\u00e9': 2 } })),
-    /duplicate key after Unicode normalization/,
-  );
-});
-
-test('does not mutate or retain references from learner input', () => {
+test('does not mutate or retain references and deeply freezes the receipt', () => {
   const input = validInput();
   const original = structuredClone(input);
   const evidence = createEvidence(input);
   assert.deepEqual(input, original);
 
-  input.target.endpoints[0] = '/changed';
   input.results.attack = false;
-  assert.equal(evidence.target.endpoints[0], '/health');
+  assert.equal(evidence.results.attack, true);
+  assert.equal(Object.isFrozen(evidence), true);
+  assert.equal(Object.isFrozen(evidence.results), true);
+  assert.throws(() => { evidence.results.attack = false; }, TypeError);
+  assert.throws(() => { evidence.sha256 = '0'.repeat(64); }, TypeError);
   assert.equal(evidence.results.attack, true);
 });
 
-test('rejects unsupported JSON values, cycles, negative zero, and dangerous keys', () => {
+test('restricts target to an explicit local service or canonical IPv4 descriptor', () => {
+  for (const target of ['app', 'localhost', 'secure-learn-api', 'app.internal', '172.23.0.20']) {
+    assert.equal(createEvidence(validInput({ target })).target, target);
+  }
+  for (const target of ['', ' app', 'app ', 'APP', '-app', 'app-', 'http://app', 'user@app', 'app/path',
+    'app;id', '127.1', '0177.0.0.1', '2130706433', '256.1.1.1', 'Cafe\u0301']) {
+    assert.throws(() => createEvidence(validInput({ target })), /target/);
+  }
+});
+
+test('rejects unsupported target types and unknown schema fields without secret guessing', () => {
   for (const target of [undefined, Number.NaN, Infinity, -0, 1n, () => {}, Symbol('x')]) {
     assert.throws(() => createEvidence(validInput({ target })), /target/);
   }
-
-  const cyclic = {};
-  cyclic.self = cyclic;
-  assert.throws(() => createEvidence(validInput({ target: cyclic })), /cycle/);
-  assert.throws(() => createEvidence(validInput({ target: { api_token: 'do-not-store' } })), /secret-like field/);
-  assert.throws(() => createEvidence(validInput({ target: { apiKey: 'do-not-store' } })), /secret-like field/);
-  assert.throws(() => createEvidence(validInput({ target: { nested: undefined } })), /JSON-compatible/);
-  const accessor = {};
-  Object.defineProperty(accessor, 'service', { enumerable: true, get: () => 'app' });
-  assert.throws(() => createEvidence(validInput({ target: accessor })), /enumerable data property/);
-  assert.throws(
-    () => createEvidence(validInput({ target: JSON.parse('{"__proto__":{"polluted":true}}') })),
-    /dangerous field/,
-  );
-  assert.equal({}.polluted, undefined);
+  assert.throws(() => createEvidence(validInput({ target: {} })), /target/);
+  assert.throws(() => createEvidence({ ...validInput(), api_token: 'do-not-store' }), /unknown evidence field: api_token/);
 });
 
 test('validates strict root fields, canonical timestamps, and bounded duration', () => {
@@ -190,9 +178,65 @@ test('validates strict root fields, canonical timestamps, and bounded duration',
   assert.throws(() => createEvidence({ ...validInput(), note: 'x\ncontrol' }), /unknown evidence field: note/);
 });
 
-test('rejects non-plain objects and prototype-polluted input', () => {
+test('requires every field to be an own property and accepts null-prototype records', () => {
   const pollutedPrototype = { polluted: true };
   const input = Object.assign(Object.create(pollutedPrototype), validInput());
   assert.throws(() => createEvidence(input), /evidence input must be a plain object/);
-  assert.throws(() => createEvidence(validInput({ target: new Date() })), /target must be.*plain object/);
+
+  Object.prototype.environment = true;
+  Object.prototype.lab = 's1';
+  try {
+    const inheritedResult = passingResults();
+    delete inheritedResult.environment;
+    assert.throws(() => classifyOutcome(inheritedResult), /environment must be an own boolean field/);
+    const inheritedRoot = validInput();
+    delete inheritedRoot.lab;
+    assert.throws(() => createEvidence(inheritedRoot), /lab must be an own evidence field/);
+  } finally {
+    delete Object.prototype.environment;
+    delete Object.prototype.lab;
+  }
+
+  const nullResults = Object.assign(Object.create(null), passingResults());
+  const nullInput = Object.assign(Object.create(null), validInput({ results: nullResults }));
+  assert.equal(createEvidence(nullInput).outcome, 'verified');
+});
+
+test('verifies canonical receipts and returns false for integrity tampering', () => {
+  const evidence = createEvidence(validInput());
+  assert.equal(verifyEvidence(evidence), true);
+
+  for (const change of [
+    { outcome: 'control' },
+    { sha256: `${evidence.sha256.slice(0, 63)}${evidence.sha256.endsWith('0') ? '1' : '0'}` },
+    { target: 'api' },
+    { results: { ...evidence.results, attack: false } },
+  ]) {
+    assert.equal(verifyEvidence({ ...structuredClone(evidence), ...change }), false);
+  }
+});
+
+test('rejects malformed receipt shapes before integrity comparison', () => {
+  const evidence = structuredClone(createEvidence(validInput()));
+  const { sha256, ...missingHash } = evidence;
+  assert.throws(() => verifyEvidence(missingHash), /sha256 must be an own evidence field/);
+  assert.throws(() => verifyEvidence({ ...evidence, sha256: 'not-a-hash' }), /sha256/);
+  assert.throws(() => verifyEvidence({ ...evidence, extra: true }), /unknown evidence field: extra/);
+  assert.throws(() => verifyEvidence(null), /evidence must be a plain object/);
+});
+
+test('bounds creation and verification against an injectable valid clock', () => {
+  const now = Date.parse('2026-07-17T00:10:00Z');
+  const input = validInput({ ended_at: '2026-07-17T00:15:00Z' });
+  const boundary = createEvidence(input, { clock: () => now });
+  assert.equal(verifyEvidence(boundary, { clock: () => now }), true);
+  assert.equal(verifyEvidence(boundary, { clock: () => Date.parse('2027-07-17T00:00:00Z') }), true);
+
+  assert.throws(
+    () => createEvidence(validInput({ ended_at: '2026-07-17T00:15:00.001Z' }), { clock: () => now }),
+    /future/,
+  );
+  assert.throws(() => verifyEvidence(boundary, { clock: () => Date.parse('2026-07-17T00:09:59Z') }), /future/);
+  assert.throws(() => createEvidence(validInput(), { clock: () => Number.NaN }), /clock/);
+  assert.throws(() => createEvidence(validInput(), { clock: 'now' }), /clock/);
 });
