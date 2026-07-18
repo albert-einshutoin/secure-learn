@@ -410,6 +410,65 @@ test('artifact recovery scan count is capped', (t) => {
   }), /remaining artifact count=64\+/i);
 });
 
+for (const stage of ['lstat', 'opendir', 'read', 'close']) {
+  test(`initial recovery ${stage} failure is sanitized and fails closed`, (t) => {
+    const fixture = makeFixture(t);
+    const injected = makeScanFailureOperations(stage, 1);
+    let diagnostic;
+
+    assert.throws(() => generator.safePublishOutputs({
+      root: fixture.root,
+      outDir: fixture.outDir,
+      outputs: new Map([['index.html', 'new']]),
+      allowedPaths: new Set(['index.html']),
+      operations: injected.operations,
+    }), (error) => {
+      diagnostic = error;
+      return true;
+    });
+
+    assert.match(diagnostic.message, /recovery scan unavailable.*refusing/i);
+    assert.doesNotMatch(inspect(diagnostic), /scan-secret|private\/scan-path|\u001b/i);
+    assert.deepEqual(generatedArtifacts(fixture.outDir), []);
+    assert.equal(fs.existsSync(path.join(fixture.outDir, 'index.html')), false);
+    if (stage === 'read') assert.equal(injected.closeAttempts(), 1);
+  });
+
+  test(`cleanup recovery ${stage} failure preserves the unlink diagnostic`, (t) => {
+    const fixture = makeFixture(t);
+    const outputs = seededOutputs(fixture, 1);
+    const injected = makeScanFailureOperations(stage, 3);
+    let failedBackup;
+    let diagnostic;
+
+    assert.throws(() => generator.safePublishOutputs({
+      root: fixture.root,
+      outDir: fixture.outDir,
+      outputs,
+      allowedPaths: new Set(outputs.keys()),
+      operations: {
+        ...injected.operations,
+        unlinkSync(candidate) {
+          failedBackup = path.relative(fs.realpathSync(fixture.outDir), candidate);
+          fs.unlinkSync(candidate);
+          throw Object.assign(new Error('unlink-secret'), { code: 'EIO' });
+        },
+      },
+    }), (error) => {
+      diagnostic = error;
+      return true;
+    });
+
+    assert.match(diagnostic.message, /backup cleanup failed at unlink/i);
+    assert.match(diagnostic.message, new RegExp(escapeRegExp(failedBackup)));
+    assert.match(diagnostic.message, /\(EIO\)/);
+    assert.match(diagnostic.message, /remaining artifact scan=unavailable/i);
+    assert.doesNotMatch(inspect(diagnostic), /scan-secret|unlink-secret|private\/scan-path|\u001b/i);
+    assert.equal(fs.readFileSync(path.join(fixture.outDir, 'page-0.html'), 'utf8'), 'new-0');
+    if (stage === 'read') assert.equal(injected.closeAttempts(), 1);
+  });
+}
+
 test('S7 records an nmap exit 7 and continues the bounded event report', (t) => {
   const base = fs.mkdtempSync(path.join(os.tmpdir(), 's7-nonzero-'));
   t.after(() => fs.rmSync(base, { recursive: true, force: true }));
@@ -530,6 +589,44 @@ function generatedArtifacts(directory) {
 
 function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function makeScanFailureOperations(stage, failOnScan) {
+  let lstatCalls = 0;
+  let opendirCalls = 0;
+  let closeAttempts = 0;
+  const scanError = () => Object.assign(
+    new Error(`scan-secret ${stage} /private/scan-path \u001b[31m`),
+    { code: 'ESECRET' },
+  );
+
+  return {
+    closeAttempts: () => closeAttempts,
+    operations: {
+      lstatSync(candidate) {
+        lstatCalls += 1;
+        if (stage === 'lstat' && lstatCalls === failOnScan) throw scanError();
+        return fs.lstatSync(candidate);
+      },
+      opendirSync(directory) {
+        opendirCalls += 1;
+        if (stage === 'opendir' && opendirCalls === failOnScan) throw scanError();
+        const handle = fs.opendirSync(directory);
+        if (opendirCalls !== failOnScan || !['read', 'close'].includes(stage)) return handle;
+        return {
+          readSync() {
+            if (stage === 'read') throw scanError();
+            return handle.readSync();
+          },
+          closeSync() {
+            closeAttempts += 1;
+            handle.closeSync();
+            if (stage === 'close') throw scanError();
+          },
+        };
+      },
+    },
+  };
 }
 
 function writeExecutable(file, content) {
