@@ -239,6 +239,9 @@ test('curriculum foundation gate exposes honest learner and contribution contrac
   ]) {
     assert.match(template, label);
   }
+  assert.match(template, /`node --test test\/\*\.test\.js`/);
+  assert.match(template, /`scripts\/curriculum_check\.sh`/);
+  assert.doesNotMatch(template, /`node --test test\/product-readiness\.test\.js`/);
   assert.match(template, /N\/A[^\n]*(?:reason|理由)/i);
   assert.ok((template.match(/- \[ \]/g) || []).length >= 12);
 });

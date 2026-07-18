@@ -16,7 +16,8 @@ Describe the architecture, security boundary, and non-obvious tradeoffs. Call ou
 - [ ] Test was added or updated before the implementation (TDD)
 - [ ] `npm --prefix app run check`
 - [ ] `npm --prefix app test`
-- [ ] `node --test test/product-readiness.test.js`
+- [ ] `node --test test/*.test.js`
+- [ ] `scripts/curriculum_check.sh`
 - [ ] Relevant Compose and runtime flows were verified
 - [ ] Generated guides were regenerated and checked when applicable
 - [ ] `npm --prefix app audit --omit=dev --audit-level=high`
