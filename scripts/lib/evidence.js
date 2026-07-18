@@ -346,6 +346,12 @@ function verifyEvidence(receipt, context) {
   if (typeof receipt.sha256 !== 'string' || !SHA256.test(receipt.sha256)) {
     throw new TypeError('sha256 must be 64 lowercase hexadecimal characters');
   }
+  if (receipt.outcome === 'verified') {
+    // A plain SHA-256 can be recomputed by any caller. Until receipts carry
+    // canonical adapter provenance, accepting an all-true digest here would
+    // recreate the same false assurance that the closed issuer prevents.
+    throw new TypeError('verified evidence verification is closed until a canonical attested adapter exists');
+  }
 
   // Revalidate the public receipt as if it were new input. Old receipts remain
   // valid, while evidence beyond the same five-minute clock-skew bound fails.
