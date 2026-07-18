@@ -1,6 +1,7 @@
 'use strict';
 
 const fs = require('node:fs');
+const { randomBytes } = require('node:crypto');
 const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
@@ -38,8 +39,9 @@ const INFO_FORMAT = '{"operatingSystem":{{json .OperatingSystem}},"osType":{{jso
 const VERSION_FORMAT = '{"apiVersion":{{json .Server.APIVersion}},"os":{{json .Server.Os}},"version":{{json .Server.Version}}}';
 const MAX_DOCKER_OUTPUT = 64 * 1024;
 const MINIMUM_COMPOSE_VERSION = Object.freeze([2, 36, 0]);
+const MINIMUM_ENGINE_VERSION = Object.freeze([20, 10, 0]);
+const MINIMUM_API_VERSION = Object.freeze([1, 41]);
 const PROBE_COMPOSE_FILE = 'scripts/docker-doctor.compose.yml';
-const PROBE_PROJECT = 'secure-learn-doctor';
 
 function isAbsoluteForPlatform(value, platform) {
   return platform === 'win32' ? path.win32.isAbsolute(value) : path.posix.isAbsolute(value);
@@ -151,15 +153,25 @@ function socketMetadataMatches(contextHost, dependencies, context) {
   if (!contextHost.startsWith('unix://')) return false;
   const socketPath = contextHost.slice('unix://'.length);
   const expectedUid = dependencies.platform === 'linux' && context === 'default' ? 0 : dependencies.uid;
-  if (!Number.isSafeInteger(expectedUid) || expectedUid < 0) return false;
+  if (!Number.isSafeInteger(expectedUid) || expectedUid < 0
+    || !Number.isSafeInteger(dependencies.uid) || dependencies.uid < 0
+    || !Number.isSafeInteger(dependencies.gid) || dependencies.gid < 0
+    || !Array.isArray(dependencies.groups)
+    || dependencies.groups.some((group) => !Number.isSafeInteger(group) || group < 0)) return false;
   const stat = dependencies.lstat(socketPath);
-  return stat !== null
+  if (!(stat !== null
     && typeof stat === 'object'
     && typeof stat.isSocket === 'function'
     && stat.isSocket()
     && stat.uid === expectedUid
+    && Number.isSafeInteger(stat.gid)
     && Number.isInteger(stat.mode)
-    && (stat.mode & 0o022) === 0;
+    && (stat.mode & 0o002) === 0)) return false;
+
+  const callerGroups = new Set([dependencies.gid, ...dependencies.groups]);
+  if (!callerGroups.has(stat.gid)) return false;
+  if (stat.uid === dependencies.uid) return (stat.mode & 0o200) !== 0;
+  return (stat.mode & 0o020) !== 0;
 }
 
 function identityMatches(identity, platform) {
@@ -196,10 +208,27 @@ function serverMatches(server, identity) {
     && typeof server.apiVersion === 'string'
     && typeof server.os === 'string'
     && typeof server.version === 'string'
-    && /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/u.test(server.apiVersion)
+    && versionAtLeast(parseNumericVersion(server.apiVersion, 2), MINIMUM_API_VERSION)
     && server.os === 'linux'
-    && /^(?:0|[1-9]\d{0,5})\.(?:0|[1-9]\d{0,5})\.(?:0|[1-9]\d{0,5})(?:[-+][0-9A-Za-z.-]+)?$/u.test(server.version)
+    && versionAtLeast(parseNumericVersion(server.version, 3, true), MINIMUM_ENGINE_VERSION)
     && server.version === identity.serverVersion;
+}
+
+function parseNumericVersion(value, components, allowBuild = false) {
+  if (typeof value !== 'string') return null;
+  const part = '(?:0|[1-9]\\d{0,5})';
+  const suffix = allowBuild ? '(?:\\+[0-9A-Za-z.-]+)?' : '';
+  const match = new RegExp(`^${Array.from({ length: components }, () => `(${part})`).join('\\.')}${suffix}$`, 'u').exec(value);
+  return match ? match.slice(1, components + 1).map(Number) : null;
+}
+
+function versionAtLeast(actual, minimum) {
+  if (!actual || actual.length !== minimum.length) return false;
+  for (let index = 0; index < minimum.length; index += 1) {
+    if (actual[index] > minimum[index]) return true;
+    if (actual[index] < minimum[index]) return false;
+  }
+  return true;
 }
 
 function hasInterfaceNameCapability(config) {
@@ -211,9 +240,9 @@ function hasInterfaceNameCapability(config) {
     && networks.data_net?.interface_name === 'eth1';
 }
 
-function runInterfaceProbe(binary, context, dependencies) {
+function runInterfaceProbe(binary, context, projectName, dependencies) {
   const prefix = [
-    '--context', context, 'compose', '--project-name', PROBE_PROJECT,
+    '--context', context, 'compose', '--project-name', projectName,
     '-f', PROBE_COMPOSE_FILE,
   ];
   let probeError;
@@ -239,6 +268,8 @@ function checkDockerPlatform(options = {}) {
     platform,
     home: options.home || os.homedir(),
     uid: options.uid ?? (typeof process.getuid === 'function' ? process.getuid() : null),
+    gid: options.gid ?? (typeof process.getgid === 'function' ? process.getgid() : null),
+    groups: options.groups ?? (typeof process.getgroups === 'function' ? process.getgroups() : []),
     env: options.env || process.env,
     repositoryRoot: options.repositoryRoot || fs.realpathSync(path.resolve(__dirname, '../..')),
     findDocker: options.findDocker || (() => findDockerBinary(platform)),
@@ -287,7 +318,10 @@ function checkDockerPlatform(options = {}) {
       '--context', context, 'compose', '-f', 'docker-compose.yml', 'config', '--format', 'json',
     ], dependencies);
     if (!hasInterfaceNameCapability(JSON.parse(configOutput))) return failure;
-    runInterfaceProbe(binary, context, dependencies);
+    // A per-invocation project prevents one doctor cleanup from targeting a
+    // concurrent probe or a pre-existing project with a predictable name.
+    const projectName = `secure-learn-doctor-${randomBytes(8).toString('hex')}`;
+    runInterfaceProbe(binary, context, projectName, dependencies);
   } catch {
     // Docker output and errors may contain environment data; never reflect it.
     return failure;
