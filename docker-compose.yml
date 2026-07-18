@@ -46,13 +46,13 @@ services:
     networks:
       app_net:
         ipv4_address: 172.23.0.20
-        priority: 1000
+        interface_name: eth0
         aliases:
           - app
           - target-app
       data_net:
         ipv4_address: 172.25.0.20
-        priority: 100
+        interface_name: eth1
     sysctls:
       net.ipv4.ip_forward: "0"
     read_only: true

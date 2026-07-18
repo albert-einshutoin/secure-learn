@@ -39,6 +39,8 @@ test('base Compose uses hardened proxy-only host publishing without bridging att
   assert.deepEqual(Object.keys(services.kali.networks), ['app_net']);
   assert.deepEqual(Object.keys(services.db.networks), ['data_net']);
   assert.deepEqual(Object.keys(services['target-netns'].networks), ['app_net', 'data_net']);
+  assert.equal(services['target-netns'].networks.app_net.interface_name, 'eth0');
+  assert.equal(services['target-netns'].networks.data_net.interface_name, 'eth1');
   assert.equal(services['target-netns'].sysctls['net.ipv4.ip_forward'], '0');
   assert.equal(services.kali.ports, undefined);
   assert.equal(services.db.ports, undefined);

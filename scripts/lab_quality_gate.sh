@@ -76,7 +76,9 @@ echo "[5/12] Compose validation"
 docker compose -f "$ROOT_DIR/docker-compose.yml" config -q
 docker compose -f "$ROOT_DIR/docker-compose.yml" -f "$ROOT_DIR/docker-compose.alerting.yml" config -q
 docker compose -f "$ROOT_DIR/docker-compose.yml" -f "$ROOT_DIR/docker-compose.ips.yml" config -q
+docker compose -f "$ROOT_DIR/docker-compose.yml" -f "$ROOT_DIR/docker-compose.learning.yml" --profile '*' config -q
 docker compose -f "$ROOT_DIR/docker-compose.exercise.yml" config -q
+docker build -t secure-learn-host-publisher-quality "$ROOT_DIR/docker/host-publisher"
 
 echo
 echo "[6/12] Learning Docker phases"
