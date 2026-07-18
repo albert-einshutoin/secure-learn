@@ -58,8 +58,8 @@ function platformSpawn(calls, {
   };
 }
 
-function socketStat(uid, mode = 0o140700) {
-  return { uid, mode, isSocket: () => true };
+function socketStat(uid, gid = uid, mode = 0o140700) {
+  return { uid, gid, mode, isSocket: () => true };
 }
 
 const cases = [
@@ -115,10 +115,14 @@ for (const scenario of cases) {
       platform: scenario.platform,
       home: scenario.home,
       uid: scenario.uid,
+      gid: scenario.platform === 'darwin' ? 20 : 1000,
+      groups: scenario.platform === 'linux' && scenario.context === 'default' ? [999] : [20, 1000],
       repositoryRoot: root,
       env: {},
       findDocker: () => scenario.platform === 'win32' ? 'C:\\trusted\\docker.exe' : '/trusted/docker',
-      lstat: () => socketStat(scenario.platform === 'linux' && scenario.context === 'default' ? 0 : scenario.uid),
+      lstat: () => scenario.platform === 'linux' && scenario.context === 'default'
+        ? socketStat(0, 999, 0o140660)
+        : socketStat(scenario.uid, scenario.platform === 'darwin' ? 20 : scenario.uid),
       spawn: platformSpawn(calls, scenario),
     });
 
@@ -132,8 +136,12 @@ for (const scenario of cases) {
     assert.deepEqual(calls[3].argv, ['--context', scenario.context, 'version', '--format', VERSION_FORMAT]);
     assert.deepEqual(calls[4].argv, ['--context', scenario.context, 'compose', 'version', '--short']);
     assert.deepEqual(calls[5].argv, ['--context', scenario.context, 'compose', '-f', 'docker-compose.yml', 'config', '--format', 'json']);
-    assert.deepEqual(calls[6].argv, ['--context', scenario.context, 'compose', '--project-name', 'secure-learn-doctor', '-f', 'scripts/docker-doctor.compose.yml', 'up', '--abort-on-container-exit', '--exit-code-from', 'interface-probe']);
-    assert.deepEqual(calls[7].argv, ['--context', scenario.context, 'compose', '--project-name', 'secure-learn-doctor', '-f', 'scripts/docker-doctor.compose.yml', 'down', '--volumes', '--remove-orphans']);
+    const upProject = calls[6].argv[calls[6].argv.indexOf('--project-name') + 1];
+    const downProject = calls[7].argv[calls[7].argv.indexOf('--project-name') + 1];
+    assert.match(upProject, /^secure-learn-doctor-[a-f0-9]{16}$/u);
+    assert.equal(downProject, upProject);
+    assert.deepEqual(calls[6].argv, ['--context', scenario.context, 'compose', '--project-name', upProject, '-f', 'scripts/docker-doctor.compose.yml', 'up', '--abort-on-container-exit', '--exit-code-from', 'interface-probe']);
+    assert.deepEqual(calls[7].argv, ['--context', scenario.context, 'compose', '--project-name', upProject, '-f', 'scripts/docker-doctor.compose.yml', 'down', '--volumes', '--remove-orphans']);
     for (const call of calls) {
       assert.equal(call.options.cwd, root);
       assert.equal(call.options.shell, false);
@@ -157,10 +165,12 @@ function macOptions(overrides = {}) {
       platform: 'darwin',
       home: '/Users/student',
       uid: 501,
+      gid: 20,
+      groups: [20],
       env: {},
       repositoryRoot: root,
       findDocker: () => '/trusted/docker',
-      lstat: () => socketStat(501),
+      lstat: () => socketStat(501, 20),
       spawn: platformSpawn(calls, cases[0]),
       ...overrides,
     },
@@ -188,10 +198,12 @@ test('Docker doctor rejects remote, ambiguous, spoofed, old, and incapable engin
       platform,
       home: homes[platform],
       uid: 1000,
+      gid: 1000,
+      groups: platform === 'linux' ? [999] : [20, 1000],
       env: {},
       repositoryRoot: root,
       findDocker: () => platform === 'win32' ? 'C:\\trusted\\docker.exe' : '/trusted/docker',
-      lstat: () => socketStat(platform === 'linux' ? 0 : 1000),
+      lstat: () => platform === 'linux' ? socketStat(0, 999, 0o140660) : socketStat(1000, 20),
     };
     for (const contextHost of badHosts) {
       const result = checkDockerPlatform({
@@ -287,7 +299,7 @@ test('Linux context and socket must match the rootful or rootless ownership boun
   ]) {
     const calls = [];
     const result = checkDockerPlatform({
-      platform: 'linux', home: '/home/student', uid: 1000, env: {}, repositoryRoot: root,
+      platform: 'linux', home: '/home/student', uid: 1000, gid: 1000, groups: [999, 1000], env: {}, repositoryRoot: root,
       findDocker: () => '/trusted/docker',
       lstat: () => socketStat(uid),
       spawn: platformSpawn(calls, { context, contextHost, identity }),
@@ -296,16 +308,79 @@ test('Linux context and socket must match the rootful or rootless ownership boun
   }
 });
 
-test('POSIX Docker sockets reject symlinks, non-sockets, wrong owners, and unsafe write modes', () => {
+test('POSIX Docker sockets accept safe 0660 group access and reject unsafe metadata', () => {
+  const rootfulCalls = [];
+  assert.equal(checkDockerPlatform({
+    platform: 'linux', home: '/home/student', uid: 1000, gid: 1000, groups: [999], env: {},
+    repositoryRoot: root, findDocker: () => '/trusted/docker',
+    lstat: () => socketStat(0, 999, 0o140660),
+    spawn: platformSpawn(rootfulCalls, {
+      context: 'default', contextHost: 'unix:///var/run/docker.sock',
+      identity: { operatingSystem: 'Ubuntu 24.04', osType: 'linux', name: 'local', serverVersion: '27.5.1' },
+    }),
+  }).ok, true);
+
+  const rootlessCalls = [];
+  assert.equal(checkDockerPlatform({
+    platform: 'linux', home: '/home/student', uid: 1000, gid: 1000, groups: [], env: {},
+    repositoryRoot: root, findDocker: () => '/trusted/docker',
+    lstat: () => socketStat(1000, 1000, 0o140660),
+    spawn: platformSpawn(rootlessCalls, {
+      context: 'rootless', contextHost: 'unix:///run/user/1000/docker.sock',
+      identity: { operatingSystem: 'Ubuntu 24.04', osType: 'linux', name: 'local', serverVersion: '27.5.1' },
+    }),
+  }).ok, true);
+
   const invalidStats = [
-    { uid: 501, mode: 0o120700, isSocket: () => false },
-    { uid: 501, mode: 0o100700, isSocket: () => false },
-    socketStat(0),
-    socketStat(501, 0o140722),
+    { uid: 501, gid: 20, mode: 0o120700, isSocket: () => false },
+    { uid: 501, gid: 20, mode: 0o100700, isSocket: () => false },
+    socketStat(0, 20),
+    socketStat(501, 999),
+    socketStat(501, 20, 0o140777),
+    socketStat(501, 999, 0o140660),
   ];
   for (const stat of invalidStats) {
     const { options } = macOptions({ lstat: () => stat });
     assert.equal(checkDockerPlatform(options).ok, false);
+  }
+});
+
+test('runtime probes use invocation-scoped random projects with exact cleanup isolation', () => {
+  const invocations = [macOptions(), macOptions()];
+  for (const invocation of invocations) {
+    invocation.options.projectName = 'secure-learn-doctor';
+    invocation.options.env.SECURE_LEARN_DOCTOR_PROJECT = 'secure-learn-doctor';
+    assert.equal(checkDockerPlatform(invocation.options).ok, true);
+  }
+  const projects = invocations.map(({ calls }) => {
+    const up = calls.find(({ argv }) => argv.includes('up'));
+    const down = calls.find(({ argv }) => argv.includes('down'));
+    const upProject = up.argv[up.argv.indexOf('--project-name') + 1];
+    const downProject = down.argv[down.argv.indexOf('--project-name') + 1];
+    assert.equal(downProject, upProject);
+    assert.notEqual(upProject, 'secure-learn-doctor');
+    return upProject;
+  });
+  assert.notEqual(projects[0], projects[1]);
+});
+
+test('Docker Engine and API versions enforce the documented 20.10.0 and 1.41 minimums', () => {
+  for (const server of [
+    { apiVersion: '1.40', os: 'linux', version: '27.5.1' },
+    { apiVersion: '1.54', os: 'linux', version: '20.9.99' },
+    { apiVersion: '1.54', os: 'linux', version: '20.10.0-rc.1' },
+  ]) {
+    const calls = [];
+    const result = checkDockerPlatform({
+      platform: 'linux', home: '/home/student', uid: 1000, gid: 1000, groups: [999], env: {},
+      repositoryRoot: root, findDocker: () => '/trusted/docker',
+      lstat: () => socketStat(0, 999, 0o140660),
+      spawn: platformSpawn(calls, {
+        context: 'default', contextHost: 'unix:///var/run/docker.sock', server,
+        identity: { operatingSystem: 'Ubuntu 24.04', osType: 'linux', name: 'local', serverVersion: server.version },
+      }),
+    });
+    assert.equal(result.ok, false, JSON.stringify(server));
   }
 });
 
@@ -326,10 +401,13 @@ test('Docker doctor fails closed on missing CLI, spawn errors, malformed, and ov
   const base = {
     platform: 'darwin',
     home: '/Users/student',
+    uid: 501,
+    gid: 20,
+    groups: [20],
     env: {},
     repositoryRoot: root,
     findDocker: () => '/trusted/docker',
-    lstat: () => socketStat(501),
+    lstat: () => socketStat(501, 20),
   };
   assert.equal(checkDockerPlatform({ ...base, findDocker: () => null }).ok, false);
   for (const spawn of [
