@@ -12,6 +12,7 @@ SYFT_IMAGE='anchore/syft:v1.48.0@sha256:b4f1df79f97b817682d8b5ff941eb6bfe74f6172
 APP_IMAGE="secure-learn-app:$VERSION"
 SURICATA_IMAGE="secure-learn-suricata:$VERSION"
 IPS_IMAGE="secure-learn-ips-iptables:$VERSION"
+HOST_PUBLISHER_IMAGE="secure-learn-host-publisher:$VERSION"
 
 [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
   echo "VERSION must use semantic x.y.z form: $VERSION" >&2
@@ -23,7 +24,10 @@ mkdir -p "$OUTPUT_DIR"
 docker build -t "$APP_IMAGE" "$ROOT_DIR/app"
 docker build -t "$SURICATA_IMAGE" "$ROOT_DIR/suricata"
 docker build -t "$IPS_IMAGE" "$ROOT_DIR/docker/ips-iptables"
+docker build -t "$HOST_PUBLISHER_IMAGE" "$ROOT_DIR/docker/host-publisher"
 "$ROOT_DIR/scripts/verify_ips_helper.sh" "$IPS_IMAGE"
+docker run --rm --network none --cap-drop ALL --security-opt no-new-privileges:true --read-only \
+  "$HOST_PUBLISHER_IMAGE" -V >/dev/null
 
 scan_image() {
   local image="$1"
@@ -53,9 +57,11 @@ generate_sbom() {
 scan_image "$APP_IMAGE" "$OUTPUT_DIR/secure-learn-app-$VERSION.trivy.json"
 scan_image "$SURICATA_IMAGE" "$OUTPUT_DIR/secure-learn-suricata-$VERSION.trivy.json"
 scan_image "$IPS_IMAGE" "$OUTPUT_DIR/secure-learn-ips-iptables-$VERSION.trivy.json"
+scan_image "$HOST_PUBLISHER_IMAGE" "$OUTPUT_DIR/secure-learn-host-publisher-$VERSION.trivy.json"
 generate_sbom "$APP_IMAGE" "$OUTPUT_DIR/secure-learn-app-$VERSION.spdx.json"
 generate_sbom "$SURICATA_IMAGE" "$OUTPUT_DIR/secure-learn-suricata-$VERSION.spdx.json"
 generate_sbom "$IPS_IMAGE" "$OUTPUT_DIR/secure-learn-ips-iptables-$VERSION.spdx.json"
+generate_sbom "$HOST_PUBLISHER_IMAGE" "$OUTPUT_DIR/secure-learn-host-publisher-$VERSION.spdx.json"
 
 (
   cd "$OUTPUT_DIR"

@@ -60,6 +60,7 @@ jobs:
           echo "app=$(docker image inspect --format '{{.Id}}' secure-learn-app:${{ steps.version.outputs.version }})" >> "$GITHUB_OUTPUT"
           echo "suricata=$(docker image inspect --format '{{.Id}}' secure-learn-suricata:${{ steps.version.outputs.version }})" >> "$GITHUB_OUTPUT"
           echo "ips=$(docker image inspect --format '{{.Id}}' secure-learn-ips-iptables:${{ steps.version.outputs.version }})" >> "$GITHUB_OUTPUT"
+          echo "publisher=$(docker image inspect --format '{{.Id}}' secure-learn-host-publisher:${{ steps.version.outputs.version }})" >> "$GITHUB_OUTPUT"
 
       - name: Attest application SBOM
         uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4
@@ -81,6 +82,13 @@ jobs:
           subject-name: secure-learn-ips-iptables:${{ steps.version.outputs.version }}
           subject-digest: ${{ steps.images.outputs.ips }}
           sbom-path: release/secure-learn-ips-iptables-${{ steps.version.outputs.version }}.spdx.json
+
+      - name: Attest host publisher SBOM
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4
+        with:
+          subject-name: secure-learn-host-publisher:${{ steps.version.outputs.version }}
+          subject-digest: ${{ steps.images.outputs.publisher }}
+          sbom-path: release/secure-learn-host-publisher-${{ steps.version.outputs.version }}.spdx.json
 
       - name: Upload release evidence
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7

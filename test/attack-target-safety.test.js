@@ -361,14 +361,19 @@ test('CI and release evidence cover the privileged IPS helper image', () => {
   assert.match(releaseArtifacts, /"\$ROOT_DIR\/scripts\/verify_ips_helper\.sh" "\$IPS_IMAGE"/);
   assert.match(releaseArtifacts, /secure-learn-ips-iptables-\$VERSION\.trivy\.json/);
   assert.match(releaseArtifacts, /secure-learn-ips-iptables-\$VERSION\.spdx\.json/);
+  assert.match(releaseArtifacts, /HOST_PUBLISHER_IMAGE="secure-learn-host-publisher:\$VERSION"/);
+  assert.match(releaseArtifacts, /secure-learn-host-publisher-\$VERSION\.trivy\.json/);
+  assert.match(releaseArtifacts, /secure-learn-host-publisher-\$VERSION\.spdx\.json/);
   assert.match(releaseWorkflow, /scripts\/release_artifacts\.sh/);
   assert.match(releaseWorkflow, /ips=.*secure-learn-ips-iptables:/);
   assert.match(releaseWorkflow, /subject-name: secure-learn-ips-iptables:/);
   assert.match(releaseWorkflow, /sbom-path: release\/secure-learn-ips-iptables-\$\{\{ steps\.version\.outputs\.version \}\}\.spdx\.json/);
-  assert.match(releasePolicy, /three images/i);
+  assert.match(releaseWorkflow, /subject-name: secure-learn-host-publisher:/);
+  assert.match(releaseWorkflow, /sbom-path: release\/secure-learn-host-publisher-\$\{\{ steps\.version\.outputs\.version \}\}\.spdx\.json/);
+  assert.match(releasePolicy, /four images/i);
   assert.match(releasePolicy, /networkless.*NFQUEUE/i);
-  assert.match(releasePolicy, /three.*SBOM/i);
-  assert.match(releasePolicy, /three.*attestation/i);
+  assert.match(releasePolicy, /four.*SBOM/i);
+  assert.match(releasePolicy, /four.*attestation/i);
 });
 
 test('shared IPS verifier uses fixed Docker argv and rejects unsafe image references', (t) => {
