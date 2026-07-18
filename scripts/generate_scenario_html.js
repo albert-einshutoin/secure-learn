@@ -3376,7 +3376,9 @@ function publishTransaction(staged, operations) {
   try {
     removeArtifacts(journal.map((entry) => entry.backup).filter(Boolean), unlinkSync);
   } catch (error) {
-    const remaining = findPublicationArtifacts(staged[0].parent);
+    const rootEntry = staged.find((item) => path.basename(item.parent) !== 'assets');
+    const publicationRoot = rootEntry ? rootEntry.parent : path.dirname(staged[0].parent);
+    const remaining = findPublicationArtifacts(publicationRoot);
     throw new Error(
       `scenario publication committed but backup cleanup is incomplete; recovery required for: ${remaining.join(', ') || 'unknown artifact'}`,
       { cause: error },
