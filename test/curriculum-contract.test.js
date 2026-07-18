@@ -99,7 +99,7 @@ function validManifest() {
       regress: null,
     },
     evidence: {
-      required: ['attack-result', 'suricata-event'],
+      required: ['attack', 'telemetry'],
     },
     assessment: {
       mode: 'guided-only',
@@ -149,6 +149,7 @@ test('verified lab manifests require their complete quality workflow', () => {
     'verified lab requires workflow.remediate',
     'verified lab requires workflow.regress',
     'verified lab requires assessment.verifier',
+    'verified lab requires evidence.required to contain every evidence stage exactly once',
   ]);
 });
 
@@ -194,6 +195,7 @@ test('verified lab manifests require a safe attack workflow path', () => {
   manifest.workflow.remediate = { path: 'remediate/scripts/s1_remediate.sh', args: [] };
   manifest.workflow.regress = { path: 'regress/scripts/s1_regress.sh', args: [] };
   manifest.assessment.verifier = { path: 'assessment/scripts/s1_verify.sh', args: [] };
+  manifest.evidence.required = [...verifiedManifest().evidence.required];
 
   assert.deepEqual(validateManifest(manifest), [
     'verified lab requires workflow.attack',
@@ -253,10 +255,10 @@ test('lab manifest validator rejects malformed fields, unknown keys, and unsafe 
   assert.ok(errors.includes('manifest contains unknown field: extra'));
   assert.ok(errors.includes('workflow.attack.path must be a safe repository-relative path'));
   assert.deepEqual(errors.slice(-4), [
-    'verified lab requires workflow.verify',
     'verified lab requires workflow.remediate',
     'verified lab requires workflow.regress',
     'verified lab requires assessment.verifier',
+    'verified lab requires evidence.required to contain every evidence stage exactly once',
   ]);
 });
 
@@ -539,14 +541,14 @@ test('legacy manifests preserve platform, evidence, and safe workflow boundaries
 
     if (manifest.maturity === 'runnable') {
       assert.ok(manifest.workflow.attack, `${manifest.id} must declare an attack execution spec`);
-      assert.ok(manifest.evidence.required.includes('attack-result'));
+      assert.ok(manifest.evidence.required.includes('attack'));
     }
     if (endToEndChecked.has(manifest.id)) {
-      assert.ok(manifest.evidence.required.includes('application-or-network-event'));
-      assert.ok(manifest.evidence.required.includes('elasticsearch-event'));
+      assert.ok(manifest.evidence.required.includes('telemetry'));
+      assert.ok(manifest.evidence.required.includes('pipeline'));
     }
     if (hostAssisted.has(manifest.id)) {
-      assert.deepEqual(manifest.evidence.required, ['vm-receipt', 'audit-event', 'cleanup-result']);
+      assert.deepEqual(manifest.evidence.required, ['environment', 'safety', 'evidence', 'cleanup']);
       assert.deepEqual(manifest.safety.target_services, []);
       assert.deepEqual(manifest.safety.allowed_cidrs, []);
     } else if (manifest.id === 's14') {

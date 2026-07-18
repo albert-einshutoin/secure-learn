@@ -28,6 +28,18 @@ const SAFETY_FIELDS = ['target_services', 'allowed_cidrs', 'external_network'];
 const EVIDENCE_FIELDS = ['required'];
 const ASSESSMENT_FIELDS = ['mode', 'verifier'];
 const EXECUTION_SPEC_FIELDS = ['path', 'args'];
+const EVIDENCE_STAGES = Object.freeze([
+  'environment',
+  'safety',
+  'startup',
+  'attack',
+  'telemetry',
+  'pipeline',
+  'control',
+  'regression',
+  'evidence',
+  'cleanup',
+]);
 const SAFE_LOGICAL_PATH = /^(?!\/)(?!.*\/\/)(?!.*(?:^|\/)\.{1,2}(?:\/|$))[A-Za-z0-9._@+=,-]+(?:\/[A-Za-z0-9._@+=,-]+)*$/;
 const CONTROL_CHARACTER = /[\u0000-\u001F\u007F\u0080-\u009F]/;
 const MAGIC_FIELDS = new Set(['__proto__', 'constructor', 'prototype']);
@@ -106,6 +118,10 @@ function validateManifest(manifest) {
       }
       if (!isUsableExecutionSpec(Object.hasOwn(assessment, 'verifier') ? assessment.verifier : undefined)) {
         errors.push('verified lab requires assessment.verifier');
+      }
+      validateVerifiedExecutionIndependence(workflow, assessment, errors);
+      if (!hasEveryEvidenceStage(candidate.evidence)) {
+        errors.push('verified lab requires evidence.required to contain every evidence stage exactly once');
       }
     }
   }
@@ -256,6 +272,40 @@ function validateWorkflow(workflow, errors) {
 function validateEvidence(evidence, errors) {
   if (!validateObject(evidence, 'evidence', EVIDENCE_FIELDS, errors)) return;
   validateStringArray(evidence.required, 'evidence.required', errors, { minItems: 1 });
+  if (!Array.isArray(evidence.required)) return;
+  const seen = new Set();
+  for (const stage of evidence.required) {
+    if (typeof stage !== 'string') continue;
+    if (!EVIDENCE_STAGES.includes(stage)) {
+      errors.push(`evidence.required contains unknown stage: ${stage}`);
+    }
+    if (seen.has(stage)) errors.push('evidence.required must not contain duplicate stages');
+    seen.add(stage);
+  }
+}
+
+function hasEveryEvidenceStage(evidence) {
+  return isPlainObject(evidence)
+    && Array.isArray(evidence.required)
+    && evidence.required.length === EVIDENCE_STAGES.length
+    && EVIDENCE_STAGES.every((stage) => evidence.required.includes(stage));
+}
+
+function validateVerifiedExecutionIndependence(workflow, assessment, errors) {
+  const specs = [
+    ...WORKFLOW_FIELDS.map((field) => workflow[field]),
+    assessment.verifier,
+  ].filter(isUsableExecutionSpec);
+  const paths = specs.map((spec) => spec.path);
+  if (new Set(paths).size !== paths.length) {
+    errors.push('verified workflow execution paths must be distinct');
+  }
+  if (paths.includes('scripts/learn')) {
+    errors.push('verified workflow must not reuse the learn CLI');
+  }
+  if (paths.some((entry) => /(?:^|\/)(?:no[-_]?op|true)(?:\.[A-Za-z0-9]+)?$/iu.test(entry))) {
+    errors.push('verified workflow must not use a no-op execution path');
+  }
 }
 
 function validateAssessment(assessment, errors) {
@@ -390,4 +440,4 @@ function readJson(sourcePath) {
   return JSON.parse(fs.readFileSync(sourcePath, 'utf8'));
 }
 
-module.exports = { validateManifest, loadManifests, loadStandards };
+module.exports = { EVIDENCE_STAGES, validateManifest, loadManifests, loadStandards };

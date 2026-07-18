@@ -43,7 +43,7 @@
   },
   "evidence": {
     "required": [
-      "capstone-report"
+      "evidence"
     ]
   },
   "assessment": {

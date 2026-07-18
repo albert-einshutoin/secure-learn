@@ -2,11 +2,18 @@
 
 const assert = require('node:assert/strict');
 const { createHash } = require('node:crypto');
+const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
 const test = require('node:test');
 
 const { loadManifests } = require('../scripts/lib/curriculum');
-const { classifyOutcome, createEvidence, verifyEvidence } = require('../scripts/lib/evidence');
+const {
+  classifyOutcome,
+  createEvidence,
+  runVerifiedEvidence,
+  verifyEvidence,
+} = require('../scripts/lib/evidence');
 
 const STAGES = [
   'environment',
@@ -50,7 +57,7 @@ function validInput(overrides = {}) {
     started_at: '2026-07-17T00:00:00Z',
     ended_at: '2026-07-17T00:01:00Z',
     target: 'app',
-    results: passingResults(),
+    results: { ...passingResults(), cleanup: false },
     ...overrides,
   };
 }
@@ -145,7 +152,7 @@ test('creates deterministic evidence hashes without hashing the hash field', () 
 
 test('caller booleans cannot promote runnable or unobserved verified manifests', () => {
   assert.throws(
-    () => createEvidence(validInput(), context()),
+    () => createEvidence(validInput({ results: passingResults() }), context()),
     /verified outcome requires a trusted runner observation/,
   );
 
@@ -158,18 +165,64 @@ test('caller booleans cannot promote runnable or unobserved verified manifests',
   verifiedManifest.evidence.required = [...STAGES];
 
   assert.throws(
-    () => createEvidence(validInput(), { manifest: verifiedManifest }),
+    () => createEvidence(validInput({ results: passingResults() }), { manifest: verifiedManifest }),
     /trusted runner observation/,
   );
   assert.throws(
-    () => createEvidence(validInput(), { manifest: verifiedManifest, observation: { trusted: true } }),
+    () => createEvidence(validInput({ results: passingResults() }), { manifest: verifiedManifest, observation: { trusted: true } }),
     /trusted runner observation|unknown context field/,
+  );
+});
+
+test('trusted runner issues verified evidence only after independent process observations', (t) => {
+  const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'secure-learn-evidence-runner-'));
+  t.after(() => fs.rmSync(fixtureRoot, { recursive: true, force: true }));
+  fs.mkdirSync(path.join(fixtureRoot, 'curriculum', 'labs'), { recursive: true });
+
+  const manifest = structuredClone(S1_MANIFEST);
+  manifest.maturity = 'verified';
+  manifest.evidence.required = [...STAGES];
+  const commands = {
+    attack: ['runner/attack.sh', ['startup', 'attack']],
+    verify: ['runner/verify.sh', ['telemetry', 'pipeline']],
+    remediate: ['runner/remediate.sh', ['control']],
+    regress: ['runner/regress.sh', ['regression']],
+    verifier: ['runner/assess.sh', ['evidence', 'cleanup']],
+  };
+  fs.mkdirSync(path.join(fixtureRoot, 'runner'));
+  for (const [name, [relativePath, stages]] of Object.entries(commands)) {
+    const observations = Object.fromEntries(stages.map((stage) => [stage, true]));
+    const script = `#!/bin/sh\nprintf '%s\\n' '${JSON.stringify({ observations })}'\n`;
+    fs.writeFileSync(path.join(fixtureRoot, relativePath), script, { mode: 0o755 });
+    const spec = { path: relativePath, args: [] };
+    if (name === 'verifier') manifest.assessment.verifier = spec;
+    else manifest.workflow[name] = spec;
+  }
+  fs.writeFileSync(
+    path.join(fixtureRoot, 'curriculum', 'labs', 's1.json'),
+    JSON.stringify(manifest),
+  );
+  const loaded = loadManifests(fixtureRoot)[0];
+  const receipt = runVerifiedEvidence(
+    validInput({ results: passingResults() }),
+    { manifest: loaded },
+  );
+  assert.equal(receipt.outcome, 'verified');
+  assert.equal(verifyEvidence(receipt, { manifest: loaded }), true);
+
+  const attackPath = path.join(fixtureRoot, commands.attack[0]);
+  fs.unlinkSync(attackPath);
+  fs.symlinkSync(path.join(fixtureRoot, commands.verify[0]), attackPath);
+  assert.throws(
+    () => runVerifiedEvidence(validInput({ results: passingResults() }), { manifest: loaded }),
+    /symlink/,
   );
 });
 
 test('sorts result keys deterministically while preserving meaningful changes', () => {
   const first = createReceipt(validInput());
-  const reordered = createReceipt(validInput({ results: Object.fromEntries(Object.entries(passingResults()).reverse()) }));
+  const reorderedResults = { ...passingResults(), cleanup: false };
+  const reordered = createReceipt(validInput({ results: Object.fromEntries(Object.entries(reorderedResults).reverse()) }));
   const changedTarget = createReceipt(validInput({ target: '172.23.0.20' }));
   assert.equal(first.sha256, reordered.sha256);
   assert.notEqual(first.sha256, changedTarget.sha256);
@@ -337,9 +390,9 @@ test('requires every field to be an own property and accepts null-prototype reco
     }
   }
 
-  const nullResults = Object.assign(Object.create(null), passingResults());
+  const nullResults = Object.assign(Object.create(null), { ...passingResults(), cleanup: false });
   const nullInput = Object.assign(Object.create(null), validInput({ results: nullResults }));
-  assert.equal(createReceipt(nullInput).outcome, 'verified');
+  assert.equal(createReceipt(nullInput).outcome, 'cleanup');
 });
 
 test('verifies canonical receipts and returns false for integrity tampering', () => {

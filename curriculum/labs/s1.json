@@ -47,9 +47,9 @@
   },
   "evidence": {
     "required": [
-      "attack-result",
-      "application-or-network-event",
-      "elasticsearch-event"
+      "attack",
+      "telemetry",
+      "pipeline"
     ]
   },
   "assessment": {

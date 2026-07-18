@@ -167,6 +167,12 @@ HTMLガイドは `docs/learning-phases/index.html` と `docs/scenario-guides/ind
 
 `verified` への昇格には、マニフェスト上の攻撃、検証、修正、回帰、assessment verifierに加え、証跡の10ステージをすべて成功させる必要があります。10ステージは environment（環境）、safety（安全境界）、startup（起動）、attack（攻撃）、telemetry（観測）、pipeline（収集経路）、control（制御・remediation）、regression（回帰）、evidence（証跡の完全性 / evidence integrity）、cleanup（クリーンアップ）です。未実行・省略・失敗を成功として扱いません。
 
+`evidence.required` には上記の既知ステージ名だけを重複なく記載します。`verified` は10ステージすべてを要求し、attack / verify / remediate / regress / assessment verifier は互いに異なる実行ファイルでなければなりません。`scripts/learn` やno-opを品質ステージとして流用するマニフェストは検証時に拒否されます。
+
+`createEvidence` に呼び出し側が成功booleanを渡すだけでは `verified` receiptを発行できません。`runVerifiedEvidence` が、検証済みマニフェストから読み取った独立プロセスをshellなしで起動し、各プロセスのstage別JSON観測を確認した場合だけ、プロセス内の非公開capabilityを使って発行します。この境界は「レビュー済みリポジトリのrunnerが実行結果を観測した」というローカルAPI契約です。secret環境変数や共有トークンを信頼根拠にしません。
+
+receiptの `sha256` は、正規化された内容が発行後に変わったことを検出するためのtamper-evidenceです。署名でも、発行者の身元や実行環境の真正性を証明するcryptographic attestationでもありません。第三者に真正性を証明する用途では、別途署名鍵と検証可能な署名チェーンが必要です。
+
 ```bash
 # 全ラボの成熟度・必須プラットフォームを一覧表示
 scripts/learn list

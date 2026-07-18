@@ -44,7 +44,7 @@
   },
   "evidence": {
     "required": [
-      "attack-result"
+      "attack"
     ]
   },
   "assessment": {

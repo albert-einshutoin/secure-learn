@@ -149,7 +149,7 @@ workflow:
   remediate: tests/remediation.test.js
   regress: tests/regression.test.js
 evidence:
-  required: [attack-result, app-event, authorization-denial, regression-test]
+  required: [environment, safety, startup, attack, telemetry, pipeline, control, regression, evidence, cleanup]
 assessment:
   mode: hidden-answer
   verifier: assess.sh
@@ -165,6 +165,12 @@ The exact schema may add descriptive fields, but it must preserve these security
 - `external`: faithful execution requires Linux VM, real cloud, hardware, or an organizational process.
 
 Maturity is monotonic only when its required evidence exists. A missing or skipped required job cannot produce `verified` status.
+
+The evidence SHA-256 is tamper-evidence over canonical receipt content. It is
+not a signature, proof of issuer identity, or cryptographic attestation of the
+runtime. In the keyless local model, only the repository runner can create the
+process-private observation capability used by the verified-evidence API; a
+caller-provided boolean or secret environment variable is not an observation.
 
 ## Track Scope
 

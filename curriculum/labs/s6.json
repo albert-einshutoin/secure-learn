@@ -41,9 +41,10 @@
   },
   "evidence": {
     "required": [
-      "vm-receipt",
-      "audit-event",
-      "cleanup-result"
+      "environment",
+      "safety",
+      "evidence",
+      "cleanup"
     ]
   },
   "assessment": {
