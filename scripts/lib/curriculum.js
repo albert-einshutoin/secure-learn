@@ -264,9 +264,7 @@ function validatePlatforms(platforms, errors) {
       seen.add(value);
     }
   }
-  if (platforms.required.some((value) => platforms.optional.includes(value))) {
-    errors.push('platforms.required and platforms.optional must not overlap');
-  }
+  if (platforms.optional.length !== 0) errors.push('platforms.optional is reserved and must be empty');
   if (platforms.required.includes('linux-vm') && platforms.required.length !== 1) {
     errors.push('linux-vm cannot be combined with Docker platform alternatives');
   }

@@ -191,7 +191,7 @@ scripts/learn validate
 scripts/learn doctor s3
 ```
 
-Dockerラボの `platforms.required` は累積要件ではなく、**実行時にいずれか1つを満たす代替候補（one-of）** です。現在は `docker-desktop-macos`、`docker-desktop-windows`、`docker-engine-linux` を明示しています。
+Dockerラボの `platforms.required` は累積要件ではなく、**実行時にいずれか1つを満たす代替候補（one-of）** です。現在は `docker-desktop-macos`、`docker-desktop-windows`、`docker-engine-linux` を明示しています。意味論を曖昧にしないため `platforms.optional` は予約済みの空配列です。
 
 `scripts/learn doctor <id>` は現在のOSに対応する候補がmanifestにあることを確認したうえで、macOS/WindowsではローカルDocker Desktop、Linuxではローカルまたはrootless Docker Engineだけを許可します。SSH/TCP/cloud contextや未知のsocketを拒否し、Docker Compose 2.36.0以上を数値比較し、`interface_name` が `eth0` / `eth1` として実際に解釈されることまで検査します。
 

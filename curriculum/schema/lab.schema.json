@@ -39,7 +39,7 @@
       "description": "required is a one-of runtime contract: exactly one listed host platform must match the learner environment; entries are alternatives, not cumulative prerequisites.",
       "properties": {
         "required": { "$ref": "#/$defs/requiredPlatformAlternatives" },
-        "optional": { "$ref": "#/$defs/platformArray" }
+        "optional": { "$ref": "#/$defs/emptyPlatformArray" }
       }
     },
     "standards": {
@@ -164,7 +164,17 @@
     "requiredPlatformAlternatives": {
       "allOf": [
         { "$ref": "#/$defs/platformArray" },
-        { "type": "array", "minItems": 1 }
+        { "type": "array", "minItems": 1 },
+        {
+          "if": { "contains": { "const": "linux-vm" } },
+          "then": { "maxItems": 1 }
+        }
+      ]
+    },
+    "emptyPlatformArray": {
+      "allOf": [
+        { "$ref": "#/$defs/platformArray" },
+        { "type": "array", "maxItems": 0 }
       ]
     },
     "stringArray": {
