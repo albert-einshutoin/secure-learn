@@ -229,7 +229,7 @@ test('S7 records an nmap exit 7 and continues the bounded event report', (t) => 
   writeExecutable(path.join(bin, 'curl'), `#!/bin/sh
 case " $* " in
   *" -o /dev/null "*) printf '429' ;;
-  *" -I "*) printf 'HTTP/1.1 200 OK\\nSet-Cookie: session=super-secret\\n' ;;
+  *" -I "*) printf 'HTTP/1.1 301 redirect-secret\\r\\nLocation: /next\\r\\nHTTP/2 200 super-secret-reason\\r\\nSet-Cookie: token=cookie-secret\\r\\nX-Probe: \\033[31mansi-secret\\033[0m\\r\\n' ;;
   *) printf '\\nHTTP_CODE:401\\n' ;;
 esac
 exit 28
@@ -253,8 +253,12 @@ exit 28
   const report = fs.readFileSync(path.join(results, reports[0]), 'utf8');
   assert.match(report, /exit status[^\n]*7/i);
   assert.match(report, /curl exit 28/i);
+  assert.match(report, /^HTTP\/2 200$/m);
   assert.match(report, /Phase 6: DoS Attempt/);
-  assert.doesNotMatch(report, /admin:admin|user:user|guest:guest|super-secret|Set-Cookie/i);
+  assert.doesNotMatch(
+    report,
+    /admin:admin|user:user|guest:guest|redirect-secret|super-secret|cookie-secret|ansi-secret|Set-Cookie|\u001b/i,
+  );
 });
 
 test('parallel S7 runs never follow a predictable report symlink or share evidence', async (t) => {
