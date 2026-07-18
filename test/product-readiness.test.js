@@ -150,6 +150,95 @@ test('the local quality gate checks generator idempotency on a dirty branch', ()
   assert.doesNotMatch(gate, /git -C "\$ROOT_DIR" diff --exit-code -- docs\//);
 });
 
+test('curriculum foundation gate is enforced locally and in CI before generated outputs', () => {
+  const gate = read('scripts/lab_quality_gate.sh');
+  const workflow = read('.github/workflows/ci.yml');
+  const rootTests = gate.indexOf('node --test test/*.test.js');
+  const firstDockerCommand = gate.search(/^\s*docker\b/m);
+  const curriculumCheck = gate.indexOf('scripts/curriculum_check.sh');
+  const firstHtmlGeneration = Math.min(
+    ...[
+      gate.indexOf('scripts/generate_learning_phase_html.js'),
+      gate.indexOf('scripts/generate_scenario_html.js'),
+    ].filter((index) => index >= 0),
+  );
+
+  assert.ok(rootTests >= 0, 'the local gate must run every root contract test');
+  assert.ok(rootTests < firstDockerCommand, 'root contract tests must run before Docker builds or validation');
+  assert.ok(curriculumCheck >= 0, 'the local gate must run the canonical curriculum check');
+  assert.ok(curriculumCheck < firstHtmlGeneration, 'curriculum validation must precede generated HTML checks');
+  assert.deepEqual(
+    [...gate.matchAll(/\[(\d+)\/(\d+)\]/g)].map((match) => `${match[1]}/${match[2]}`),
+    Array.from({ length: 12 }, (_, index) => `${index + 1}/12`),
+  );
+
+  const composeJob = workflow.match(/\n  compose:\n[\s\S]*?(?=\n  docs:)/)?.[0] || '';
+  assert.match(composeJob, /name:\s*Product and curriculum contract tests\s*\n\s*run:\s*scripts\/curriculum_check\.sh/);
+  assert.doesNotMatch(composeJob, /Product readiness regression tests|node --test test\/product-readiness\.test\.js/);
+
+  const docsJob = workflow.match(/\n  docs:\n[\s\S]*?(?=\n  suricata:)/)?.[0] || '';
+  const generateCoverage = docsJob.indexOf('node scripts/generate_curriculum_coverage.js');
+  const diffCoverage = docsJob.indexOf('git diff --exit-code -- docs/curriculum/coverage.md');
+  const worldClass = docsJob.indexOf('scripts/world_class_curriculum_check.sh');
+  assert.ok(generateCoverage >= 0 && generateCoverage < diffCoverage);
+  assert.ok(diffCoverage < worldClass);
+});
+
+test('curriculum foundation gate exposes honest learner and contribution contracts', () => {
+  const readme = read('README.md');
+  const template = read('.github/PULL_REQUEST_TEMPLATE.md');
+
+  assert.match(readme, /\[.*(?:Coverage|カバレッジ).*\]\(docs\/curriculum\/coverage\.md\)/i);
+  for (const command of [
+    'scripts/learn list',
+    'scripts/learn show s3',
+    'scripts/learn validate',
+    'scripts/learn doctor s3',
+  ]) {
+    assert.match(readme, new RegExp(command.replaceAll('/', '\\/')));
+  }
+  for (const maturity of ['documented', 'runnable', 'verified', 'external']) {
+    assert.match(readme, new RegExp('\\| `' + maturity + '` \\|'));
+  }
+  for (const requirement of [
+    /environment|環境/i,
+    /safety|安全/i,
+    /startup|起動/i,
+    /attack|攻撃/i,
+    /telemetry|観測/i,
+    /pipeline/i,
+    /control|remediation|修正/i,
+    /regression|回帰/i,
+    /assessment|評価/i,
+    /evidence integrity|証跡の完全性/i,
+    /cleanup|クリーンアップ/i,
+  ]) {
+    assert.match(readme, requirement);
+  }
+  assert.match(readme, /Docker Desktop[\s\S]*scripts\/learn doctor/i);
+  assert.match(readme, /Linux VM[\s\S]*scripts\/learn doctor/i);
+  assert.match(readme, /S5[^\n]*S6[^\n]*(?:operator-attested|運用者)/i);
+  assert.match(readme, /not cryptographic|暗号学的[^\n]*(?:証明|attestation)/i);
+  assert.match(readme, /verified[^\n]*(?:0件|0 labs|存在し)/i);
+  assert.doesNotMatch(readme, /S1-S15[^\n]*(?:verified|検証済み)/i);
+
+  for (const label of [
+    /affected lab IDs|対象ラボID/i,
+    /platform|プラットフォーム/i,
+    /maturity transition|成熟度の変更/i,
+    /manifest.*schema.*standards|マニフェスト.*スキーマ.*標準/i,
+    /attack target boundary|攻撃対象境界/i,
+    /evidence stages|証跡ステージ/i,
+    /cleanup evidence|クリーンアップ証跡/i,
+    /generated coverage|生成カバレッジ/i,
+    /generated outputs|生成物/i,
+  ]) {
+    assert.match(template, label);
+  }
+  assert.match(template, /N\/A[^\n]*(?:reason|理由)/i);
+  assert.ok((template.match(/- \[ \]/g) || []).length >= 12);
+});
+
 test('public product copy matches the remediated API and avoids job-level guarantees', () => {
   const publicCopy = [
     read('README.md'),
