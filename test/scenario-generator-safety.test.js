@@ -31,7 +31,7 @@ test('safe publisher refuses symlinks and non-regular destinations before writin
   assert.equal(fs.readdirSync(fixture.outDir).some((name) => name.includes('.tmp')), false);
 });
 
-test('safe publisher stages every output before atomic publication', (t) => {
+test('safe publisher stages every output before transactional publication', (t) => {
   const fixture = makeFixture(t);
   fs.writeFileSync(path.join(fixture.outDir, 'index.html'), 'old');
   fs.mkdirSync(path.join(fixture.assetDir, 'scenario.css'));
@@ -183,7 +183,7 @@ case " $* " in
   *" -I "*) printf 'HTTP/1.1 200 OK\\n' ;;
   *) printf '\\nHTTP_CODE:401\\n' ;;
 esac
-exit 0
+exit 28
 `);
 
   const run = spawnSync('/bin/bash', [path.join(__dirname, '..', 'attack/scripts/s7_lateral.sh')], {
@@ -202,6 +202,7 @@ exit 0
   assert.equal(reports.length, 1);
   const report = fs.readFileSync(path.join(results, reports[0]), 'utf8');
   assert.match(report, /exit status[^\n]*7/i);
+  assert.match(report, /curl exit 28/i);
   assert.match(report, /Phase 6: DoS Attempt/);
   assert.doesNotMatch(report, /admin:admin|user:user|guest:guest/);
 });
