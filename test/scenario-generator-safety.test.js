@@ -4,6 +4,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { spawn, spawnSync } = require('node:child_process');
 const test = require('node:test');
+const { inspect } = require('node:util');
 
 const generator = require('../scripts/generate_scenario_html');
 
@@ -210,12 +211,18 @@ test('safe publisher fails closed when committed backup cleanup is incomplete', 
     assert.equal(fs.readFileSync(path.join(fixture.outDir, relative), 'utf8'), content);
   }
   assert.ok(generatedArtifacts(fixture.outDir).some((name) => name.endsWith('.backup')));
+  let retryError;
   assert.throws(() => generator.safePublishOutputs({
     root: fixture.root,
     outDir: fixture.outDir,
     outputs: assetFirstOutputs,
     allowedPaths: new Set(assetFirstOutputs.keys()),
-  }), /recovery|required|artifact/i);
+  }), (error) => {
+    retryError = error;
+    return true;
+  });
+  assert.match(retryError.message, /remaining artifact count=1/i);
+  assert.doesNotMatch(retryError.message, /page-0|scenario\.css|\.backup/i);
 });
 
 test('safe publisher preserves the failed cleanup target when unlink races with artifact removal', (t) => {
@@ -247,8 +254,160 @@ test('safe publisher preserves the failed cleanup target when unlink races with 
   assert.match(diagnostic.message, /EIO/);
   assert.doesNotMatch(diagnostic.message, /sensitive cleanup detail/);
   assert.doesNotMatch(diagnostic.message, /unknown artifact/i);
+  assert.equal(diagnostic.cause, undefined);
+  assert.doesNotMatch(inspect(diagnostic), /sensitive cleanup detail/);
   assert.deepEqual(generatedArtifacts(fixture.outDir), []);
   assert.equal(fs.readFileSync(path.join(fixture.outDir, 'page-0.html'), 'utf8'), 'new-0');
+});
+
+test('cleanup diagnostics sanitize unknown error codes across child stderr', (t) => {
+  const childSource = `
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const generator = require(${JSON.stringify(path.join(__dirname, '..', 'scripts', 'generate_scenario_html.js'))});
+const base = fs.mkdtempSync(path.join(os.tmpdir(), 'scenario-child-'));
+const root = path.join(base, 'repo');
+const outDir = path.join(root, 'docs', 'scenario-guides');
+fs.mkdirSync(path.join(outDir, 'assets'), { recursive: true });
+fs.writeFileSync(path.join(outDir, 'index.html'), 'old');
+try {
+  generator.safePublishOutputs({
+    root,
+    outDir,
+    outputs: new Map([['index.html', 'new']]),
+    allowedPaths: new Set(['index.html']),
+    operations: { unlinkSync() {
+      throw Object.assign(new Error('child-secret-path=/private/token'), { code: '\\u001b[31mSECRET_CODE' });
+    } },
+  });
+} catch (error) {
+  console.error(error);
+} finally {
+  fs.rmSync(base, { recursive: true, force: true });
+}
+`;
+  const run = spawnSync(process.execPath, ['-e', childSource], { encoding: 'utf8', maxBuffer: 4096 });
+  t.after(() => assert.equal(run.error, undefined));
+
+  assert.equal(run.status, 0, run.stderr);
+  assert.match(run.stderr, /backup cleanup failed at unlink.*\(UNKNOWN\)/i);
+  assert.doesNotMatch(run.stderr, /child-secret|private\/token|SECRET_CODE|\u001b/i);
+  assert.ok(Buffer.byteLength(run.stderr) <= 1024, `stderr was ${Buffer.byteLength(run.stderr)} bytes`);
+});
+
+test('cleanup diagnostics identify the nth failed backup and count only remaining artifacts', (t) => {
+  const fixture = makeFixture(t);
+  const outputs = seededOutputs(fixture, 3);
+  const attempted = [];
+  let diagnostic;
+
+  assert.throws(() => generator.safePublishOutputs({
+    root: fixture.root,
+    outDir: fixture.outDir,
+    outputs,
+    allowedPaths: new Set(outputs.keys()),
+    operations: {
+      unlinkSync(candidate) {
+        attempted.push(path.relative(fs.realpathSync(fixture.outDir), candidate));
+        fs.unlinkSync(candidate);
+        if (attempted.length === 2) throw Object.assign(new Error('nth secret'), { code: 'EIO' });
+      },
+    },
+  }), (error) => {
+    diagnostic = error;
+    return true;
+  });
+
+  assert.equal(attempted.length, 2);
+  assert.match(diagnostic.message, new RegExp(escapeRegExp(attempted[1])));
+  assert.doesNotMatch(diagnostic.message, new RegExp(escapeRegExp(attempted[0])));
+  assert.match(diagnostic.message, /remaining artifact count=1/i);
+  assert.equal(generatedArtifacts(fixture.outDir).filter((name) => name.endsWith('.backup')).length, 1);
+});
+
+test('assets-only cleanup diagnostics retain a safe relative target', (t) => {
+  const fixture = makeFixture(t);
+  const destination = path.join(fixture.assetDir, 'scenario.css');
+  fs.writeFileSync(destination, 'old');
+  let diagnostic;
+
+  assert.throws(() => generator.safePublishOutputs({
+    root: fixture.root,
+    outDir: fixture.outDir,
+    outputs: new Map([['assets/scenario.css', 'new']]),
+    allowedPaths: new Set(['assets/scenario.css']),
+    operations: {
+      unlinkSync(candidate) {
+        fs.unlinkSync(candidate);
+        throw Object.assign(new Error('asset secret'), { code: 'EIO' });
+      },
+    },
+  }), (error) => {
+    diagnostic = error;
+    return true;
+  });
+
+  assert.match(diagnostic.message, /for assets\/\.scenario\.css\.[a-f0-9.-]+\.backup \(EIO\)/i);
+  assert.match(diagnostic.message, /remaining artifact count=0/i);
+  assert.doesNotMatch(inspect(diagnostic), /asset secret/i);
+});
+
+test('ENOENT after backup removal is treated as a completed cleanup race', (t) => {
+  const fixture = makeFixture(t);
+  const outputs = seededOutputs(fixture, 1);
+
+  generator.safePublishOutputs({
+    root: fixture.root,
+    outDir: fixture.outDir,
+    outputs,
+    allowedPaths: new Set(outputs.keys()),
+    operations: {
+      unlinkSync(candidate) {
+        fs.unlinkSync(candidate);
+        throw Object.assign(new Error('already gone'), { code: 'ENOENT' });
+      },
+    },
+  });
+
+  assert.deepEqual(generatedArtifacts(fixture.outDir), []);
+  assert.equal(fs.readFileSync(path.join(fixture.outDir, 'page-0.html'), 'utf8'), 'new-0');
+});
+
+test('artifact recovery scans expose only bounded counts', (t) => {
+  const fixture = makeFixture(t);
+  const ansiArtifact = '.artifact-\u001b[31msecret.backup';
+  const oversizedArtifact = `.${'x'.repeat(246)}.backup`;
+  fs.writeFileSync(path.join(fixture.outDir, ansiArtifact), 'artifact');
+  fs.writeFileSync(path.join(fixture.assetDir, oversizedArtifact), 'artifact');
+  let diagnostic;
+
+  assert.throws(() => generator.safePublishOutputs({
+    root: fixture.root,
+    outDir: fixture.outDir,
+    outputs: new Map([['index.html', 'new']]),
+    allowedPaths: new Set(['index.html']),
+  }), (error) => {
+    diagnostic = error;
+    return true;
+  });
+
+  assert.match(diagnostic.message, /remaining artifact count=2/i);
+  assert.doesNotMatch(diagnostic.message, /artifact-|secret|x{16}|\u001b/i);
+});
+
+test('artifact recovery scan count is capped', (t) => {
+  const fixture = makeFixture(t);
+  for (let index = 0; index < 70; index += 1) {
+    fs.writeFileSync(path.join(fixture.outDir, `.artifact-${index}.backup`), 'artifact');
+  }
+
+  assert.throws(() => generator.safePublishOutputs({
+    root: fixture.root,
+    outDir: fixture.outDir,
+    outputs: new Map([['index.html', 'new']]),
+    allowedPaths: new Set(['index.html']),
+  }), /remaining artifact count=64\+/i);
 });
 
 test('S7 records an nmap exit 7 and continues the bounded event report', (t) => {
