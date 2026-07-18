@@ -176,7 +176,7 @@ trusted runnerは `attack` から `startup, attack`、`verify` から `telemetry
 receiptの `sha256` は、正規化された内容が発行後に変わったことを検出するためのtamper-evidenceです。署名でも、発行者の身元や実行環境の真正性を証明するcryptographic attestationでもありません。第三者に真正性を証明する用途では、別途署名鍵と検証可能な署名チェーンが必要です。
 
 ```bash
-# 全ラボの成熟度・必須プラットフォームを一覧表示
+# 全ラボの成熟度・対応プラットフォーム候補を一覧表示
 scripts/learn list
 
 # 1ラボの検証済みマニフェストを表示
@@ -189,7 +189,11 @@ scripts/learn validate
 scripts/learn doctor s3
 ```
 
-macOSのDockerラボでは `scripts/learn doctor <id>` がDocker Desktopの固定コンテキストとサーバーを確認します。S5/S6はmacOSホストやDockerコンテナではなく、使い捨てLinux VM内部でreceiptを発行し、同じVM内で `scripts/learn doctor s5` または `scripts/learn doctor s6` を実行します。このreceiptは運用者が確認した **operator-attested** なローカル安全制御であり、ハイパーバイザーのスナップショット取得を暗号学的に証明するもの（not cryptographic attestation）ではありません。発行手順と限界は [Disposable Linux VM Adapter](docs/vm-adapter.md) を参照してください。
+Dockerラボの `platforms.required` は累積要件ではなく、**実行時にいずれか1つを満たす代替候補（one-of）** です。現在は `docker-desktop-macos`、`docker-desktop-windows`、`docker-engine-linux` を明示しています。
+
+`scripts/learn doctor <id>` は現在のOSに対応する候補がmanifestにあることを確認したうえで、macOS/WindowsではローカルDocker Desktop、Linuxではローカルまたはrootless Docker Engineだけを許可します。SSH/TCP/cloud contextや未知のsocketを拒否し、Docker Compose 2.36.0以上を数値比較し、`interface_name` が `eth0` / `eth1` として実際に解釈されることまで検査します。
+
+S5/S6は通常のDockerホストやDockerコンテナではなく、使い捨てLinux VM内部でreceiptを発行し、同じVM内で `scripts/learn doctor s5` または `scripts/learn doctor s6` を実行します。このreceiptは運用者が確認した **operator-attested** なローカル安全制御であり、ハイパーバイザーのスナップショット取得を暗号学的に証明するもの（not cryptographic attestation）ではありません。発行手順と限界は [Disposable Linux VM Adapter](docs/vm-adapter.md) を参照してください。
 
 ## 学習ドキュメントの使い方
 

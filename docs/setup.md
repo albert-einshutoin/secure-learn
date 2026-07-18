@@ -17,7 +17,7 @@
 |----------|--------------------------|------------------------|
 | macOS | Docker Desktop 4.42.0以上 | `desktop-linux` と `$HOME/.docker/run/docker.sock` |
 | Windows | Docker Desktop 4.42.0以上 | `desktop-linux` と `dockerDesktopLinuxEngine` named pipe |
-| Linux | ローカルまたはrootless Docker Engine | `/var/run/docker.sock` または実行ユーザーの `/run/user/<uid>/docker.sock` |
+| Linux | ローカルまたはrootless Docker Engine 20.10以上 | `/var/run/docker.sock` または実行ユーザーの `/run/user/<uid>/docker.sock` |
 
 全OSでDocker Compose 2.36.0以上が必要です。`interface_name` を解釈できないComposeではIDSの監視interfaceを決定できないため、doctorはバージョン番号だけでなく、リポジトリのCompose設定を実際に構文展開して `eth0` / `eth1` の固定も確認します。
 
