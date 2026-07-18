@@ -24,6 +24,12 @@ const composeConfig = JSON.stringify({
 function platformSpawn(calls, { contextHost, identity, composeVersion = '2.36.0', config = composeConfig }) {
   return (binary, argv, options) => {
     calls.push({ binary, argv, options });
+    if (argv[0] === 'context' && argv[1] === 'show') {
+      const context = contextHost.startsWith('unix:///run/user/') ? 'rootless'
+        : contextHost === 'unix:///var/run/docker.sock' ? 'default'
+          : 'desktop-linux';
+      return { status: 0, stdout: `${context}\n`, stderr: '' };
+    }
     if (argv[0] === 'context') {
       return { status: 0, stdout: `${JSON.stringify(contextHost)}\n`, stderr: '' };
     }
@@ -64,7 +70,7 @@ const cases = [
     platform: 'linux',
     home: '/home/student',
     uid: 1000,
-    context: 'default',
+    context: 'rootless',
     contextHost: 'unix:///var/run/docker.sock',
     identity: { operatingSystem: 'Ubuntu 24.04', osType: 'linux', name: 'student-workstation' },
     expectedPlatform: 'docker-engine-linux',
@@ -96,13 +102,14 @@ for (const scenario of cases) {
     });
 
     assert.deepEqual(result, { ok: true, platform: scenario.expectedPlatform, message: `Platform ready: ${scenario.expectedPlatform}` });
-    assert.equal(calls.length, 4);
-    assert.deepEqual(calls[0].argv, [
+    assert.equal(calls.length, 5);
+    assert.deepEqual(calls[0].argv, ['context', 'show']);
+    assert.deepEqual(calls[1].argv, [
       'context', 'inspect', scenario.context, '--format', '{{json .Endpoints.docker.Host}}',
     ]);
-    assert.deepEqual(calls[1].argv, ['--context', scenario.context, 'info', '--format', INFO_FORMAT]);
-    assert.deepEqual(calls[2].argv, ['--context', scenario.context, 'compose', 'version', '--short']);
-    assert.deepEqual(calls[3].argv, ['--context', scenario.context, 'compose', '-f', 'docker-compose.yml', 'config', '--format', 'json']);
+    assert.deepEqual(calls[2].argv, ['--context', scenario.context, 'info', '--format', INFO_FORMAT]);
+    assert.deepEqual(calls[3].argv, ['--context', scenario.context, 'compose', 'version', '--short']);
+    assert.deepEqual(calls[4].argv, ['--context', scenario.context, 'compose', '-f', 'docker-compose.yml', 'config', '--format', 'json']);
     for (const call of calls) {
       assert.equal(call.options.cwd, root);
       assert.equal(call.options.shell, false);
@@ -171,6 +178,25 @@ test('Docker doctor rejects remote, ambiguous, spoofed, old, and incapable engin
       });
       assert.equal(result.ok, false, `${platform} must fail closed for ${JSON.stringify(override)}`);
     }
+  }
+});
+
+test('Docker doctor rejects an active remote or unknown context before engine inspection', () => {
+  for (const [platform, activeContext] of [['darwin', 'production'], ['win32', 'ssh-prod'], ['linux', 'cloud']]) {
+    let calls = 0;
+    const result = checkDockerPlatform({
+      platform,
+      home: platform === 'win32' ? 'C:\\Users\\student' : platform === 'darwin' ? '/Users/student' : '/home/student',
+      uid: 1000,
+      repositoryRoot: root,
+      findDocker: () => platform === 'win32' ? 'C:\\trusted\\docker.exe' : '/trusted/docker',
+      spawn: () => {
+        calls += 1;
+        return { status: 0, stdout: `${activeContext}\n`, stderr: '' };
+      },
+    });
+    assert.equal(result.ok, false);
+    assert.equal(calls, 1);
   }
 });
 
