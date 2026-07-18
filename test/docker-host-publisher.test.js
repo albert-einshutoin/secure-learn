@@ -48,6 +48,13 @@ test('base Compose uses hardened proxy-only host publishing without bridging att
 
   assert.deepEqual(Object.keys(services['app-publisher'].networks), ['app_net', 'host_access']);
   assert.deepEqual(Object.keys(services['db-publisher'].networks), ['data_net', 'host_access']);
+  assert.deepEqual(
+    Object.entries(services)
+      .filter(([, service]) => service.networks?.host_access)
+      .map(([name]) => name)
+      .sort(),
+    ['app-publisher', 'db-publisher'],
+  );
   assertHardenedPublisher(services['app-publisher'], 3000, '172.23.0.20:3000');
   assertHardenedPublisher(services['db-publisher'], 15432, '172.25.0.40:5432');
   assert.equal(services['app-publisher'].ports[0].host_ip, '127.0.0.1');
@@ -64,8 +71,19 @@ test('learning edge and Redis are exposed only through hardened publishers', () 
   assert.equal(services['learning-redis'].ports, undefined);
   assert.deepEqual(Object.keys(services['learning-edge-publisher'].networks), ['app_net', 'host_access']);
   assert.deepEqual(Object.keys(services['learning-redis-publisher'].networks), ['app_net', 'host_access']);
+  assert.deepEqual(
+    Object.entries(services)
+      .filter(([, service]) => service.networks?.host_access)
+      .map(([name]) => name)
+      .sort(),
+    ['app-publisher', 'db-publisher', 'learning-edge-publisher', 'learning-redis-publisher'],
+  );
   assertHardenedPublisher(services['learning-edge-publisher'], 8080, '172.23.0.50:8080');
   assertHardenedPublisher(services['learning-redis-publisher'], 6380, '172.23.0.60:6379');
+  assert.equal(services['learning-edge-publisher'].ports[0].host_ip, '127.0.0.1');
+  assert.equal(services['learning-edge-publisher'].ports[0].published, '8080');
+  assert.equal(services['learning-redis-publisher'].ports[0].host_ip, '127.0.0.1');
+  assert.equal(services['learning-redis-publisher'].ports[0].published, '6380');
 });
 
 test('host publisher image is immutable, non-root, and installs no runtime dependencies', () => {
