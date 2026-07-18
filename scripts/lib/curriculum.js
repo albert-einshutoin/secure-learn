@@ -23,6 +23,12 @@ const MATURITY_VALUES = ['documented', 'runnable', 'verified', 'external'];
 const MODE_VALUES = ['docker-lab', 'host-assisted', 'operator-workflow', 'design-exercise'];
 const WORKFLOW_FIELDS = ['attack', 'verify', 'remediate', 'regress'];
 const PLATFORM_FIELDS = ['required', 'optional'];
+const PLATFORM_VALUES = Object.freeze([
+  'docker-desktop-macos',
+  'docker-desktop-windows',
+  'docker-engine-linux',
+  'linux-vm',
+]);
 const STANDARD_FIELDS = ['mitre_attack', 'owasp_api', 'cwe', 'nist_csf'];
 const SAFETY_FIELDS = ['target_services', 'allowed_cidrs', 'external_network'];
 const EVIDENCE_FIELDS = ['required'];
@@ -242,8 +248,28 @@ function validateStringArray(value, label, errors, { minItems = 0 } = {}) {
 
 function validatePlatforms(platforms, errors) {
   if (!validateObject(platforms, 'platforms', PLATFORM_FIELDS, errors)) return;
-  validateStringArray(platforms.required, 'platforms.required', errors);
+  // `required` is a one-of runtime contract: a learner must satisfy exactly
+  // one declared alternative, not install every listed host platform.
+  validateStringArray(platforms.required, 'platforms.required', errors, { minItems: 1 });
   validateStringArray(platforms.optional, 'platforms.optional', errors);
+  if (!Array.isArray(platforms.required) || !Array.isArray(platforms.optional)) return;
+  for (const [field, values] of [['required', platforms.required], ['optional', platforms.optional]]) {
+    const seen = new Set();
+    for (const value of values) {
+      if (typeof value !== 'string') continue;
+      if (!PLATFORM_VALUES.includes(value)) {
+        errors.push(`platforms.${field} contains unsupported platform: ${value}`);
+      }
+      if (seen.has(value)) errors.push(`platforms.${field} must not contain duplicates`);
+      seen.add(value);
+    }
+  }
+  if (platforms.required.some((value) => platforms.optional.includes(value))) {
+    errors.push('platforms.required and platforms.optional must not overlap');
+  }
+  if (platforms.required.includes('linux-vm') && platforms.required.length !== 1) {
+    errors.push('linux-vm cannot be combined with Docker platform alternatives');
+  }
 }
 
 function validateStandards(standards, errors) {
@@ -440,4 +466,4 @@ function readJson(sourcePath) {
   return JSON.parse(fs.readFileSync(sourcePath, 'utf8'));
 }
 
-module.exports = { EVIDENCE_STAGES, validateManifest, loadManifests, loadStandards };
+module.exports = { EVIDENCE_STAGES, PLATFORM_VALUES, validateManifest, loadManifests, loadStandards };

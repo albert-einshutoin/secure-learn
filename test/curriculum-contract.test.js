@@ -140,6 +140,32 @@ test('lab manifest validator rejects unsupported maturity and external networkin
   ]);
 });
 
+test('platform alternatives use a closed one-of host contract', () => {
+  assert.deepEqual(validateManifest(validManifest()), []);
+
+  const unsupported = validManifest();
+  unsupported.platforms.required = ['docker-desktop'];
+  assert.ok(validateManifest(unsupported).includes(
+    'platforms.required contains unsupported platform: docker-desktop',
+  ));
+
+  const duplicate = validManifest();
+  duplicate.platforms.required.push('docker-engine-linux');
+  assert.ok(validateManifest(duplicate).includes('platforms.required must not contain duplicates'));
+
+  const overlap = validManifest();
+  overlap.platforms.optional = ['docker-engine-linux'];
+  assert.ok(validateManifest(overlap).includes(
+    'platforms.required and platforms.optional must not overlap',
+  ));
+
+  const mixedVm = validManifest();
+  mixedVm.platforms.required = ['linux-vm', 'docker-engine-linux'];
+  assert.ok(validateManifest(mixedVm).includes(
+    'linux-vm cannot be combined with Docker platform alternatives',
+  ));
+});
+
 test('verified lab manifests require their complete quality workflow', () => {
   const manifest = validManifest();
   manifest.maturity = 'verified';
@@ -686,8 +712,8 @@ test('learner CLI ignores bypass variables and attacker-controlled PATH entries'
   });
   assert.equal(fs.existsSync(marker), false, 'doctor must not resolve docker from an attacker-controlled PATH');
   assert.doesNotMatch(fs.readFileSync(learnScript, 'utf8'), /SECURE_LEARN_SKIP_DOCKER_CHECK|NODE_ENV/);
-  const readiness = require('../scripts/lib/doctor').checkDockerDesktop();
-  assert.equal(result.status, readiness.ok ? 0 : 1, 'real Docker Desktop readiness alone determines the result');
+  const readiness = require('../scripts/lib/doctor').checkDockerPlatform();
+  assert.equal(result.status, readiness.ok ? 0 : 1, 'real local Docker readiness alone determines the result');
   fs.rmSync(fakeBin, { recursive: true, force: true });
 });
 

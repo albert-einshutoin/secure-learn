@@ -36,9 +36,10 @@
       "type": "object",
       "additionalProperties": false,
       "required": ["required", "optional"],
+      "description": "required is a one-of runtime contract: exactly one listed host platform must match the learner environment; entries are alternatives, not cumulative prerequisites.",
       "properties": {
-        "required": { "$ref": "#/$defs/stringArray" },
-        "optional": { "$ref": "#/$defs/stringArray" }
+        "required": { "$ref": "#/$defs/requiredPlatformAlternatives" },
+        "optional": { "$ref": "#/$defs/platformArray" }
       }
     },
     "standards": {
@@ -146,6 +147,26 @@
     }
   ],
   "$defs": {
+    "platform": {
+      "type": "string",
+      "enum": [
+        "docker-desktop-macos",
+        "docker-desktop-windows",
+        "docker-engine-linux",
+        "linux-vm"
+      ]
+    },
+    "platformArray": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/platform" }
+    },
+    "requiredPlatformAlternatives": {
+      "allOf": [
+        { "$ref": "#/$defs/platformArray" },
+        { "type": "array", "minItems": 1 }
+      ]
+    },
     "stringArray": {
       "type": "array",
       "items": { "type": "string", "minLength": 1 }

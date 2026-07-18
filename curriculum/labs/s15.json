@@ -7,7 +7,9 @@
   "maturity": "documented",
   "platforms": {
     "required": [
-      "docker-desktop"
+      "docker-desktop-macos",
+      "docker-desktop-windows",
+      "docker-engine-linux"
     ],
     "optional": []
   },

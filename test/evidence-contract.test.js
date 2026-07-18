@@ -53,7 +53,7 @@ function validInput(overrides = {}) {
   return {
     lab: 's1',
     manifest_version: 1,
-    platform: 'docker-desktop',
+    platform: 'docker-desktop-macos',
     started_at: '2026-07-17T00:00:00Z',
     ended_at: '2026-07-17T00:01:00Z',
     target: 'app',
@@ -321,7 +321,7 @@ test('binds targets to the trusted manifest safety boundary', () => {
 });
 
 test('binds platform to the trusted manifest platform contract', () => {
-  assert.equal(createReceipt(validInput({ platform: 'docker-desktop' })).platform, 'docker-desktop');
+  assert.equal(createReceipt(validInput({ platform: 'docker-desktop-macos' })).platform, 'docker-desktop-macos');
   for (const platform of ['windows', 'cloud', 'local-linux-vm', 'linux-vm']) {
     assert.throws(() => createReceipt(validInput({ platform })), /platform must be declared by trusted manifest/);
   }
@@ -331,7 +331,7 @@ test('binds platform to the trusted manifest platform contract', () => {
     /prohibited target/,
   );
   assert.throws(
-    () => createEvidence(validInput({ lab: 's5', platform: 'docker-desktop' }), { manifest: S5_MANIFEST }),
+    () => createEvidence(validInput({ lab: 's5', platform: 'docker-desktop-macos' }), { manifest: S5_MANIFEST }),
     /platform must be declared by trusted manifest/,
   );
 
