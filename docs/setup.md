@@ -13,8 +13,15 @@
 
 ### 必要なソフトウェア
 
-- Docker Engine 20.10以上
-- Docker Compose 2.36.0以上（macOS/WindowsはDocker Desktop 4.42.0以上）
+| ホストOS | 対応するローカル実行環境 | doctorが許可する接続先 |
+|----------|--------------------------|------------------------|
+| macOS | Docker Desktop 4.42.0以上 | `desktop-linux` と `$HOME/.docker/run/docker.sock` |
+| Windows | Docker Desktop 4.42.0以上 | `desktop-linux` と `dockerDesktopLinuxEngine` named pipe |
+| Linux | ローカルまたはrootless Docker Engine | `/var/run/docker.sock` または実行ユーザーの `/run/user/<uid>/docker.sock` |
+
+全OSでDocker Compose 2.36.0以上が必要です。`interface_name` を解釈できないComposeではIDSの監視interfaceを決定できないため、doctorはバージョン番号だけでなく、リポジトリのCompose設定を実際に構文展開して `eth0` / `eth1` の固定も確認します。
+
+SSH、TCP、HTTP(S)、cloud context、列挙されていないUnix socket／named pipeはローカル教材の安全境界外であり、doctorが拒否します。
 - Git
 
 ## インストール
@@ -39,6 +46,9 @@ cp .env.example .env
 ### 3. Docker Composeで起動
 
 ```bash
+# 現在のOSに対応するローカルengine、Compose、interface_nameを検査
+scripts/learn doctor s1
+
 # Phase 1: 基本環境
 docker compose up -d --build
 
