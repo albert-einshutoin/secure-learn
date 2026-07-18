@@ -488,7 +488,12 @@ test('runtime verification is mandatory in CI and can be required locally', () =
 test('release contract includes version, changelog, SBOM, and vulnerability scanning', () => {
   assert.match(read('VERSION').trim(), /^\d+\.\d+\.\d+$/);
   assert.match(read('CHANGELOG.md'), /## \[1\.0\.0\]/);
-  assert.match(read('docs/release-policy.md'), /SBOM/i);
+  const releasePolicy = read('docs/release-policy.md');
+  assert.match(releasePolicy, /SBOM/i);
+  assert.match(releasePolicy, /release_artifacts\.sh/);
+  assert.match(releasePolicy, /Docker socket/i);
+  assert.match(releasePolicy, /host-equivalent|Docker daemon/i);
+  assert.match(releasePolicy, /release tooling only/i);
 
   const workflow = read('.github/workflows/release.yml');
   assert.match(workflow, /tags:\s*\n\s+- ['"]v\*['"]/);
