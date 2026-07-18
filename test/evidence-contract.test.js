@@ -28,7 +28,8 @@ const STAGES = [
   'cleanup',
 ];
 
-const manifests = loadManifests(path.resolve(__dirname, '..'));
+const repositoryRoot = path.resolve(__dirname, '..');
+const manifests = loadManifests(repositoryRoot);
 const S1_MANIFEST = manifests.find((manifest) => manifest.id === 's1');
 const S5_MANIFEST = manifests.find((manifest) => manifest.id === 's5');
 const S14_MANIFEST = manifests.find((manifest) => manifest.id === 's14');
@@ -153,7 +154,7 @@ test('creates deterministic evidence hashes without hashing the hash field', () 
 test('caller booleans cannot promote runnable or unobserved verified manifests', () => {
   assert.throws(
     () => createEvidence(validInput({ results: passingResults() }), context()),
-    /verified outcome requires a trusted runner observation/,
+    /verified outcome issuance is closed/,
   );
 
   const verifiedManifest = structuredClone(S1_MANIFEST);
@@ -166,15 +167,19 @@ test('caller booleans cannot promote runnable or unobserved verified manifests',
 
   assert.throws(
     () => createEvidence(validInput({ results: passingResults() }), { manifest: verifiedManifest }),
-    /trusted runner observation/,
+    /verified outcome issuance is closed/,
   );
   assert.throws(
     () => createEvidence(validInput({ results: passingResults() }), { manifest: verifiedManifest, observation: { trusted: true } }),
-    /trusted runner observation|unknown context field/,
+    /verified outcome issuance is closed|unknown context field/,
   );
 });
 
 test('verified issuance stays closed for arbitrary roots, caller results, claimed platforms, and PATH interpreters', (t) => {
+  const attackFixture = JSON.parse(fs.readFileSync(
+    path.join(repositoryRoot, 'test', 'fixtures', 'evidence-invalid', 'printf-only-verified-runner.json'),
+    'utf8',
+  ));
   const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'secure-learn-evidence-runner-'));
   t.after(() => fs.rmSync(fixtureRoot, { recursive: true, force: true }));
   fs.mkdirSync(path.join(fixtureRoot, 'curriculum', 'labs'), { recursive: true });
@@ -200,7 +205,7 @@ test('verified issuance stays closed for arbitrary roots, caller results, claime
   fs.mkdirSync(path.join(fixtureRoot, 'runner'));
   for (const [name, [relativePath, stages]] of Object.entries(commands)) {
     const observations = Object.fromEntries(stages.map((stage) => [stage, true]));
-    const script = `#!/usr/bin/env bash\nprintf '%s\\n' '${JSON.stringify({ observations })}'\n`;
+    const script = `#!${attackFixture.interpreter}\nprintf '%s\\n' '${JSON.stringify({ observations })}'\n`;
     fs.writeFileSync(path.join(fixtureRoot, relativePath), script, { mode: 0o755 });
     const spec = { path: relativePath, args: [] };
     if (name === 'verifier') manifest.assessment.verifier = spec;
@@ -217,8 +222,8 @@ test('verified issuance stays closed for arbitrary roots, caller results, claime
     assert.throws(
       () => runVerifiedEvidence(
         validInput({
-          platform: 'docker-desktop-windows',
-          results: passingResults(),
+          platform: attackFixture.claimed_platform,
+          results: attackFixture.results,
         }),
         { manifest: loaded },
       ),

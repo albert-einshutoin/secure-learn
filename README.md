@@ -169,13 +169,13 @@ HTMLガイドは `docs/learning-phases/index.html` と `docs/scenario-guides/ind
 
 `evidence.required` には上記の既知ステージ名だけを重複なく記載します。`verified` は10ステージすべてを要求し、attack / verify / remediate / regress / assessment verifier は互いに異なる実行ファイルでなければなりません。`scripts/learn` やno-opを品質ステージとして流用するマニフェストは検証時に拒否されます。
 
-`createEvidence` に呼び出し側が成功booleanを渡すだけでは `verified` receiptを発行できません。`runVerifiedEvidence` が、検証済みマニフェストから読み取った独立プロセスをshellなしで起動し、各プロセスのstage別JSON観測を確認した場合だけ、プロセス内の非公開capabilityを使って発行します。この境界は「レビュー済みリポジトリのrunnerが実行結果を観測した」というローカルAPI契約です。secret環境変数や共有トークンを信頼根拠にしません。
+`createEvidence` に呼び出し側が成功booleanを渡すだけでは `verified` receiptを発行できません。さらに、verified labが0件の現在は `runVerifiedEvidence` も常にfail closedで、verified receiptの公開発行API/CLIはありません。任意のtemp repository、自己申告platform/results、環境変数や共有secret、workflowが出力した `true` を信頼境界にしないための意図的なexperimental closureです。runnable / external / documentedのreceiptは、失敗した最初のstageを記録できますが、verifiedには昇格しません。
 
-trusted runnerは `attack` から `startup, attack`、`verify` から `telemetry, pipeline`、`remediate` から `control`、`regress` から `regression`、assessment verifierから `evidence, cleanup` を観測します。各実行ファイルは、標準出力に `{"observations":{"stage":true}}` 形式の単一JSONだけを返し、非ゼロ終了、stderr、欠落stage、余分なstageはfail closedになります。マニフェストは `loadManifests` が付与するimmutableな `sourcePath` を持つ必要があり、runnerはリポジトリ外path、symlink、非実行ファイルを拒否します。
+将来このclosureを解除するには、lab固有のattested adapterが必要です。そのadapterはevidence module自身から固定したcanonical repository rootだけを使い、manifest sourceのcanonical bindingとattack / verify / remediate / regress / assessment verifierの各content SHA-256をreceiptへ含めます。platform/environmentはdoctorの実観測、safetyはmanifest target policyの実行前観測に結合し、semantic artifact digestと前後状態をstage間で相関させなければなりません。子プロセスは固定interpreterとminimal環境で起動し、`PATH`、`DOCKER_HOST`、`DOCKER_CONTEXT`、`BASH_ENV`、`ENV`、`NODE_OPTIONS`、`LD_PRELOAD`、`DYLD_*` をcallerから継承せず、timeout時は子孫process groupまで終了することを解除条件とします。
 
 receiptの `sha256` は、正規化された内容が発行後に変わったことを検出するためのtamper-evidenceです。署名でも、発行者の身元や実行環境の真正性を証明するcryptographic attestationでもありません。第三者に真正性を証明する用途では、別途署名鍵と検証可能な署名チェーンが必要です。
 
-したがって `verifyEvidence(...) === true` が保証するのは、trusted manifestとの内容整合性とSHA-256の一致までです。保存済みreceiptが本当にtrusted runnerから発行されたことはオフライン検証できず、書き込み権限を持つ利用者が同じ形式とdigestを再構成することも防ぎません。runner由来の真正性が必要な配布・監査境界では、このkeyless receipt単体を使わないでください。
+したがって既存の非verified receiptで `verifyEvidence(...) === true` が保証するのは、trusted manifestとの内容整合性とSHA-256の一致までです。保存済みreceiptの発行者や実行環境はオフライン検証できず、書き込み権限を持つ利用者が同じ形式とdigestを再構成することも防ぎません。真正性が必要な配布・監査境界では、このkeyless receipt単体を使わないでください。
 
 ```bash
 # 全ラボの成熟度・対応プラットフォーム候補を一覧表示

@@ -1,8 +1,5 @@
 const { createHash, timingSafeEqual } = require('node:crypto');
-const fs = require('node:fs');
-const path = require('node:path');
-const { spawnSync } = require('node:child_process');
-const { EVIDENCE_STAGES, validateManifest } = require('./curriculum');
+const { validateManifest } = require('./curriculum');
 const { assertAllowedTarget } = require('./target-policy');
 
 const FAILURE_STAGES = Object.freeze([
@@ -39,14 +36,6 @@ const CANONICAL_UTC = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/u;
 const SAFE_IDENTIFIER = /^[a-z][a-z0-9-]{0,63}$/u;
 const DNS_LABEL = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/u;
 const SHA256 = /^[a-f0-9]{64}$/u;
-const TRUSTED_OBSERVATIONS = new WeakSet();
-const RUNNER_PLAN = Object.freeze([
-  ['attack', ['startup', 'attack']],
-  ['verify', ['telemetry', 'pipeline']],
-  ['remediate', ['control']],
-  ['regress', ['regression']],
-  ['verifier', ['evidence', 'cleanup']],
-]);
 
 function isPlainRecord(value) {
   if (value === null || typeof value !== 'object') return false;
@@ -321,11 +310,11 @@ function deepFreeze(value) {
   return value;
 }
 
-function createEvidenceInternal(input, context, observation) {
+function createEvidenceInternal(input, context) {
   const trusted = readContext(context);
   const baseBody = canonicalizeInput(input, trusted.now);
-  if (baseBody.outcome === 'verified' && !TRUSTED_OBSERVATIONS.has(observation)) {
-    throw new TypeError('verified outcome requires a trusted runner observation');
+  if (baseBody.outcome === 'verified') {
+    throw new TypeError('verified outcome issuance is closed until a canonical attested adapter exists');
   }
   assertManifestBinding(baseBody, trusted.manifest);
   const policy = canonicalizeTargetPolicy(baseBody.target, trusted.manifest.safety);
@@ -335,110 +324,16 @@ function createEvidenceInternal(input, context, observation) {
 }
 
 function createEvidence(input, context) {
-  return createEvidenceInternal(input, context, undefined);
+  return createEvidenceInternal(input, context);
 }
 
-function repositoryRootForManifest(manifest) {
-  const descriptor = Object.getOwnPropertyDescriptor(manifest, 'sourcePath');
-  if (!descriptor || descriptor.enumerable || descriptor.writable || descriptor.configurable
-    || typeof descriptor.value !== 'string') {
-    throw new TypeError('trusted runner requires an immutable loaded manifest sourcePath');
-  }
-  const sourcePath = fs.realpathSync(descriptor.value);
-  const root = fs.realpathSync(path.resolve(path.dirname(sourcePath), '..', '..'));
-  const expectedDirectory = path.join(root, 'curriculum', 'labs');
-  if (path.dirname(sourcePath) !== expectedDirectory) {
-    throw new TypeError('manifest sourcePath must be inside curriculum/labs');
-  }
-  return root;
-}
-
-function resolveTrustedExecutable(root, logicalPath) {
-  const candidate = path.resolve(root, logicalPath);
-  const relative = path.relative(root, candidate);
-  if (relative === '' || relative.startsWith('..') || path.isAbsolute(relative)) {
-    throw new TypeError('trusted workflow path escapes repository root');
-  }
-
-  // realpath alone would accept an in-repository symlink. Walk every component
-  // so a reviewed manifest cannot be redirected after validation.
-  let current = root;
-  for (const component of relative.split(path.sep)) {
-    current = path.join(current, component);
-    const stat = fs.lstatSync(current);
-    if (stat.isSymbolicLink()) throw new TypeError('trusted workflow path must not contain symlinks');
-  }
-  const stat = fs.statSync(candidate);
-  if (!stat.isFile() || (stat.mode & 0o111) === 0) {
-    throw new TypeError('trusted workflow path must be an executable regular file');
-  }
-  return candidate;
-}
-
-function parseRunnerObservation(stdout, expectedStages) {
-  let payload;
-  try {
-    payload = JSON.parse(stdout);
-  } catch {
-    throw new TypeError('trusted workflow must emit one JSON observation');
-  }
-  if (!isPlainRecord(payload)) throw new TypeError('trusted workflow observation must be a plain object');
-  assertExactOwnFields(payload, ['observations'], 'runner observation');
-  if (!isPlainRecord(payload.observations)) {
-    throw new TypeError('trusted workflow observations must be a plain object');
-  }
-  assertExactOwnFields(payload.observations, expectedStages, 'runner observations');
-  for (const stage of expectedStages) {
-    if (payload.observations[stage] !== true) {
-      throw new TypeError(`trusted workflow did not observe stage: ${stage}`);
-    }
-  }
-}
-
-function runVerifiedEvidence(input, context) {
-  const trusted = readContext(context);
-  if (trusted.manifest.maturity !== 'verified') {
-    throw new TypeError('trusted runner requires manifest maturity verified');
-  }
-  if (trusted.manifest.evidence.required.length !== EVIDENCE_STAGES.length
-    || !EVIDENCE_STAGES.every((stage) => trusted.manifest.evidence.required.includes(stage))) {
-    throw new TypeError('trusted runner requires the complete evidence stage contract');
-  }
-
-  // Fail closed before starting any manifest process. In particular, target
-  // validation must precede attack execution rather than being deferred until
-  // receipt construction.
-  const preflightBody = canonicalizeInput(input, trusted.now);
-  assertManifestBinding(preflightBody, trusted.manifest);
-  const preflightPolicy = canonicalizeTargetPolicy(preflightBody.target, trusted.manifest.safety);
-  if (!preflightPolicy.allowed) throw new TypeError('prohibited target for trusted safety policy');
-
-  const root = repositoryRootForManifest(trusted.manifest);
-  for (const [name, expectedStages] of RUNNER_PLAN) {
-    const spec = name === 'verifier'
-      ? trusted.manifest.assessment.verifier
-      : trusted.manifest.workflow[name];
-    const executable = resolveTrustedExecutable(root, spec.path);
-    const result = spawnSync(executable, [...spec.args], {
-      cwd: root,
-      encoding: 'utf8',
-      env: process.env,
-      maxBuffer: 1024 * 1024,
-      shell: false,
-      timeout: 5 * 60 * 1000,
-    });
-    if (result.error || result.signal || result.status !== 0 || result.stderr !== '') {
-      throw new TypeError(`trusted workflow failed at ${name}`);
-    }
-    parseRunnerObservation(result.stdout, expectedStages);
-  }
-
-  // The capability is deliberately neither serializable nor caller-created.
-  // It only proves that this module observed the reviewed workflow processes;
-  // the resulting SHA-256 remains an integrity digest, not a signature.
-  const observation = Object.freeze({});
-  TRUSTED_OBSERVATIONS.add(observation);
-  return createEvidenceInternal(input, { manifest: trusted.manifest, now: () => trusted.now }, observation);
+function runVerifiedEvidence() {
+  // Verified issuance remains deliberately unavailable until a canonical lab
+  // adapter can bind actual platform/safety observations, semantic artifacts,
+  // manifest identity, and all five executable content digests into a receipt.
+  // Closing before touching caller input also prevents product API or
+  // environment-based dependency injection from becoming a trust boundary.
+  throw new TypeError('verified evidence issuance is closed until a canonical attested adapter exists');
 }
 
 function verifyEvidence(receipt, context) {

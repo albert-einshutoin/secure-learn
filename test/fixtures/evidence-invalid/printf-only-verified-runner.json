@@ -1,0 +1,16 @@
+{
+  "claimed_platform": "docker-desktop-windows",
+  "interpreter": "/usr/bin/env bash",
+  "results": {
+    "environment": true,
+    "safety": true,
+    "startup": true,
+    "attack": true,
+    "telemetry": true,
+    "pipeline": true,
+    "control": true,
+    "regression": true,
+    "evidence": true,
+    "cleanup": true
+  }
+}

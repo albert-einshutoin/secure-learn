@@ -168,9 +168,21 @@ Maturity is monotonic only when its required evidence exists. A missing or skipp
 
 The evidence SHA-256 is tamper-evidence over canonical receipt content. It is
 not a signature, proof of issuer identity, or cryptographic attestation of the
-runtime. In the keyless local model, only the repository runner can create the
-process-private observation capability used by the verified-evidence API; a
-caller-provided boolean or secret environment variable is not an observation.
+runtime. Because there are currently no verified labs or canonical attested
+adapters, verified receipt issuance is closed. A caller-provided boolean,
+platform, temporary repository, process stdout, or secret environment variable
+is not an observation.
+
+Reopening issuance requires a lab-specific adapter rooted from the physical
+evidence module location, with no product API or environment-based dependency
+injection. Its receipt provenance must bind the canonical manifest source and
+the SHA-256 content digest of attack, verify, remediate, regress, and assessment
+verifier executables. Actual platform and environment observations must come
+from the platform doctor, safety from a pre-execution target-policy observation,
+and semantic success from correlated pre/post state and artifact digests rather
+than a boolean stdout claim. Child processes must use fixed interpreters and a
+minimal allowlisted environment, exclude caller PATH and execution-control
+variables, and terminate the complete descendant process group on timeout.
 
 ## Track Scope
 
