@@ -184,32 +184,37 @@ test('safe publisher rolls back published files when directory fsync fails', (t)
 
 test('safe publisher fails closed when committed backup cleanup is incomplete', (t) => {
   const fixture = makeFixture(t);
-  const outputs = seededOutputs(fixture, 2);
+  const outputs = seededOutputs(fixture, 1);
+  fs.writeFileSync(path.join(fixture.assetDir, 'scenario.css'), 'old-css');
+  const assetFirstOutputs = new Map([
+    ['assets/scenario.css', 'new-css'],
+    ...outputs,
+  ]);
   let cleanupAttempts = 0;
 
   assert.throws(() => generator.safePublishOutputs({
     root: fixture.root,
     outDir: fixture.outDir,
-    outputs,
-    allowedPaths: new Set(outputs.keys()),
+    outputs: assetFirstOutputs,
+    allowedPaths: new Set(assetFirstOutputs.keys()),
     operations: {
       unlinkSync(candidate) {
         cleanupAttempts += 1;
-        if (cleanupAttempts === 1) throw Object.assign(new Error('unlink fault'), { code: 'EIO' });
+        if (cleanupAttempts === 2) throw Object.assign(new Error('unlink fault'), { code: 'EIO' });
         return fs.unlinkSync(candidate);
       },
     },
-  }), /committed|cleanup|recovery/i);
+  }), /page-0\.html.*\.backup/i);
 
-  for (const [relative, content] of outputs) {
+  for (const [relative, content] of assetFirstOutputs) {
     assert.equal(fs.readFileSync(path.join(fixture.outDir, relative), 'utf8'), content);
   }
   assert.ok(generatedArtifacts(fixture.outDir).some((name) => name.endsWith('.backup')));
   assert.throws(() => generator.safePublishOutputs({
     root: fixture.root,
     outDir: fixture.outDir,
-    outputs,
-    allowedPaths: new Set(outputs.keys()),
+    outputs: assetFirstOutputs,
+    allowedPaths: new Set(assetFirstOutputs.keys()),
   }), /recovery|required|artifact/i);
 });
 
