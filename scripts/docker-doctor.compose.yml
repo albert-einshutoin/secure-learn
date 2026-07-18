@@ -5,8 +5,9 @@ services:
       - sh
       - -ec
       - |
-        ip -o -4 addr show dev eth0 | grep -F 'inet 172.30.251.10/24 ' >/dev/null
-        ip -o -4 addr show dev eth1 | grep -F 'inet 172.30.252.10/24 ' >/dev/null
+        test -d /sys/class/net/eth0
+        test -d /sys/class/net/eth1
+        test ! -e /sys/class/net/eth2
     read_only: true
     cap_drop:
       - ALL
@@ -15,19 +16,11 @@ services:
     networks:
       doctor_app:
         interface_name: eth0
-        ipv4_address: 172.30.251.10
       doctor_data:
         interface_name: eth1
-        ipv4_address: 172.30.252.10
 
 networks:
   doctor_app:
     internal: true
-    ipam:
-      config:
-        - subnet: 172.30.251.0/24
   doctor_data:
     internal: true
-    ipam:
-      config:
-        - subnet: 172.30.252.0/24
