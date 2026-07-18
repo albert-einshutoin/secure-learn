@@ -867,11 +867,12 @@ docker compose -f docker-compose.exercise.yml config -q
 docker compose -f docker-compose.yml -f docker-compose.ips.yml config -q
 docker compose -f docker-compose.yml -f docker-compose.learning.yml config -q
 docker compose -f docker-compose.yml -f docker-compose.alerting.yml config -q
+scripts/fresh_stack_e2e.sh
 git diff --check main...HEAD
 git status --short --branch
 ```
 
-Expected: audits and tests pass; Compose is valid; only intentional branch commits differ from main; worktree is clean.
+Expected: audits and tests pass; Compose is valid; the fresh stack proves Docker Desktop/Linux host publishing without opening attack or data-plane egress, route bypasses remain blocked, and Suricata observes the application path on `eth0`; only intentional branch commits differ from main; worktree is clean.
 
 - [x] **Step 3: Review dangerous execution paths**
 
@@ -911,6 +912,7 @@ docker compose -f docker-compose.exercise.yml config -q
 docker compose -f docker-compose.yml -f docker-compose.ips.yml config -q
 docker compose -f docker-compose.yml -f docker-compose.learning.yml config -q
 docker compose -f docker-compose.yml -f docker-compose.alerting.yml config -q
+scripts/fresh_stack_e2e.sh
 git diff --check main...HEAD
 ```
 
