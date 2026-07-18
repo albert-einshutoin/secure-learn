@@ -171,7 +171,7 @@ scripts/learn list
 # 1ラボの検証済みマニフェストを表示
 scripts/learn show s3
 
-# 全マニフェスト、標準カタログ、生成カバレッジを検証
+# 全マニフェストと標準カタログを検証
 scripts/learn validate
 
 # 実行前にプラットフォームと攻撃対象の安全境界を診断
