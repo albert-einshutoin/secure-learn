@@ -108,6 +108,23 @@ function validManifest() {
   };
 }
 
+function verifiedManifest() {
+  const manifest = validManifest();
+  manifest.maturity = 'verified';
+  manifest.workflow = {
+    attack: { path: 'attack/scripts/s1_attack.sh', args: [] },
+    verify: { path: 'verify/scripts/s1_verify.sh', args: [] },
+    remediate: { path: 'remediate/scripts/s1_remediate.sh', args: [] },
+    regress: { path: 'regress/scripts/s1_regress.sh', args: [] },
+  };
+  manifest.evidence.required = [
+    'environment', 'safety', 'startup', 'attack', 'telemetry',
+    'pipeline', 'control', 'regression', 'evidence', 'cleanup',
+  ];
+  manifest.assessment.verifier = { path: 'assessment/scripts/s1_assess.sh', args: [] };
+  return manifest;
+}
+
 test('lab manifest validator accepts the runnable contract', () => {
   assert.deepEqual(validateManifest(validManifest()), []);
 });
@@ -133,6 +150,40 @@ test('verified lab manifests require their complete quality workflow', () => {
     'verified lab requires workflow.regress',
     'verified lab requires assessment.verifier',
   ]);
+});
+
+test('verified workflow identities must be independent and cannot reuse learn or no-op entrypoints', () => {
+  const duplicate = verifiedManifest();
+  duplicate.workflow.verify.path = duplicate.workflow.attack.path;
+  assert.ok(validateManifest(duplicate).includes(
+    'verified workflow execution paths must be distinct',
+  ));
+
+  const learnReuse = verifiedManifest();
+  learnReuse.workflow.verify = { path: 'scripts/learn', args: ['validate'] };
+  assert.ok(validateManifest(learnReuse).includes(
+    'verified workflow must not reuse the learn CLI',
+  ));
+
+  const noOp = verifiedManifest();
+  noOp.workflow.remediate = { path: 'scripts/no-op.sh', args: [] };
+  assert.ok(validateManifest(noOp).includes(
+    'verified workflow must not use a no-op execution path',
+  ));
+});
+
+test('evidence.required is a unique known-stage contract and verified requires every stage', () => {
+  assert.deepEqual(validateManifest(verifiedManifest()), []);
+
+  const unknown = verifiedManifest();
+  unknown.evidence.required = ['attack', 'attack-result'];
+  const unknownErrors = validateManifest(unknown);
+  assert.ok(unknownErrors.includes('evidence.required contains unknown stage: attack-result'));
+  assert.ok(unknownErrors.includes('verified lab requires evidence.required to contain every evidence stage exactly once'));
+
+  const duplicate = verifiedManifest();
+  duplicate.evidence.required.push('attack');
+  assert.ok(validateManifest(duplicate).includes('evidence.required must not contain duplicate stages'));
 });
 
 test('verified lab manifests require a safe attack workflow path', () => {

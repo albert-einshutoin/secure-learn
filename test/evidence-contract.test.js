@@ -143,6 +143,30 @@ test('creates deterministic evidence hashes without hashing the hash field', () 
   assert.equal(sha256, recreated);
 });
 
+test('caller booleans cannot promote runnable or unobserved verified manifests', () => {
+  assert.throws(
+    () => createEvidence(validInput(), context()),
+    /verified outcome requires a trusted runner observation/,
+  );
+
+  const verifiedManifest = structuredClone(S1_MANIFEST);
+  verifiedManifest.maturity = 'verified';
+  verifiedManifest.workflow.verify = { path: 'verify/scripts/s1_verify.sh', args: [] };
+  verifiedManifest.workflow.remediate = { path: 'remediate/scripts/s1_remediate.sh', args: [] };
+  verifiedManifest.workflow.regress = { path: 'regress/scripts/s1_regress.sh', args: [] };
+  verifiedManifest.assessment.verifier = { path: 'assessment/scripts/s1_assess.sh', args: [] };
+  verifiedManifest.evidence.required = [...STAGES];
+
+  assert.throws(
+    () => createEvidence(validInput(), { manifest: verifiedManifest }),
+    /trusted runner observation/,
+  );
+  assert.throws(
+    () => createEvidence(validInput(), { manifest: verifiedManifest, observation: { trusted: true } }),
+    /trusted runner observation|unknown context field/,
+  );
+});
+
 test('sorts result keys deterministically while preserving meaningful changes', () => {
   const first = createReceipt(validInput());
   const reordered = createReceipt(validInput({ results: Object.fromEntries(Object.entries(passingResults()).reverse()) }));
