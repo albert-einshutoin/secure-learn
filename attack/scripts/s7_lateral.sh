@@ -41,9 +41,21 @@ echo "Delay between phases: ${DELAY}s"
 echo "Start Time: $(date -Iseconds)"
 echo ""
 
-# Create output directory
+# Create one private, exclusive run directory. The PID and shell nonce keep
+# same-second runs separate, while mkdir refuses a pre-positioned symlink or
+# existing path instead of following/truncating it.
 mkdir -p "$OUTPUT_DIR"
-REPORT_FILE="$OUTPUT_DIR/s7_lateral_$(date +%Y%m%d_%H%M%S).md"
+if [[ -L "$OUTPUT_DIR" || ! -d "$OUTPUT_DIR" ]]; then
+    echo "ERROR: S7 output directory must be a real directory." >&2
+    exit 73
+fi
+umask 077
+REPORT_RUN_DIR="$OUTPUT_DIR/s7_lateral_$(date +%Y%m%d_%H%M%S)_$$_${RANDOM}"
+if ! mkdir "$REPORT_RUN_DIR"; then
+    echo "ERROR: Could not create an exclusive S7 report directory." >&2
+    exit 73
+fi
+REPORT_FILE="$REPORT_RUN_DIR/report.md"
 
 # Start report
 cat > "$REPORT_FILE" << EOF
@@ -104,7 +116,14 @@ if service_headers=$(curl -s -I -H "Host: $TARGET" "http://$TARGET_IP:$TARGET_PO
 else
     service_exit=$?
 fi
-printf '%s\n' "$service_headers" | head -10 | tee -a "$REPORT_FILE" || true
+# Preserve only the non-sensitive HTTP status line. Raw headers can include
+# Set-Cookie or proxy credentials and therefore must not enter public evidence.
+service_status_line="${service_headers%%$'\n'*}"
+service_status_line="${service_status_line%$'\r'}"
+if [[ ! "$service_status_line" =~ ^HTTP/[0-9.]+[[:space:]][0-9]{3}([[:space:]].*)?$ ]]; then
+    service_status_line="HTTP status unavailable"
+fi
+printf '%s\n' "$service_status_line" | tee -a "$REPORT_FILE"
 echo "**Command exit**: $service_exit" >> "$REPORT_FILE"
 
 echo ""
@@ -297,7 +316,7 @@ cat >> "$REPORT_FILE" << EOF
 | Phase | Event Type | Observation |
 |-------|-------------|--------|
 | 1 | Port Scan | Command exit=$scan_exit; inspect output |
-| 2 | Service Enumeration | Attempted; inspect captured headers |
+| 2 | Service Enumeration | Attempted; inspect sanitized status line |
 | 3 | Auth Attempts | $auth_observation |
 | 4 | SQL Injection | Attempted |
 | 5 | Path Traversal | Attempted |

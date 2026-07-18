@@ -3239,6 +3239,10 @@ function safePublishOutputs({
   allowedPaths,
   operations = {},
 }) {
+  const expectedOutputDirectory = path.join(path.resolve(repositoryRoot), 'docs', 'scenario-guides');
+  if (path.resolve(outputDirectory) !== expectedOutputDirectory) {
+    throw new Error('output directory must be the fixed docs/scenario-guides path');
+  }
   const rootReal = safeDirectory(repositoryRoot, 'repository root');
   const outReal = bootstrapContainedDirectory(
     repositoryRoot,

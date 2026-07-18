@@ -211,7 +211,8 @@ exit 28
   });
 
   assert.equal(run.status, 0, run.stderr || run.stdout);
-  const reports = fs.readdirSync(results).filter((name) => name.endsWith('.md'));
+  const reports = fs.readdirSync(results, { recursive: true })
+    .filter((name) => name.endsWith('report.md'));
   assert.equal(reports.length, 1);
   const report = fs.readFileSync(path.join(results, reports[0]), 'utf8');
   assert.match(report, /exit status[^\n]*7/i);
