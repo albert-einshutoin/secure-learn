@@ -218,6 +218,39 @@ test('safe publisher fails closed when committed backup cleanup is incomplete', 
   }), /recovery|required|artifact/i);
 });
 
+test('safe publisher preserves the failed cleanup target when unlink races with artifact removal', (t) => {
+  const fixture = makeFixture(t);
+  const outputs = seededOutputs(fixture, 1);
+  let removedBackup;
+  let diagnostic;
+
+  assert.throws(() => generator.safePublishOutputs({
+    root: fixture.root,
+    outDir: fixture.outDir,
+    outputs,
+    allowedPaths: new Set(outputs.keys()),
+    operations: {
+      unlinkSync(candidate) {
+        removedBackup = path.relative(fs.realpathSync(fixture.outDir), candidate);
+        fs.unlinkSync(candidate);
+        throw Object.assign(new Error('sensitive cleanup detail must not be reflected'), { code: 'EIO' });
+      },
+    },
+  }), (error) => {
+    diagnostic = error;
+    return true;
+  });
+
+  assert.ok(removedBackup.endsWith('.backup'));
+  assert.match(diagnostic.message, /backup cleanup failed at unlink/i);
+  assert.match(diagnostic.message, new RegExp(escapeRegExp(removedBackup)));
+  assert.match(diagnostic.message, /EIO/);
+  assert.doesNotMatch(diagnostic.message, /sensitive cleanup detail/);
+  assert.doesNotMatch(diagnostic.message, /unknown artifact/i);
+  assert.deepEqual(generatedArtifacts(fixture.outDir), []);
+  assert.equal(fs.readFileSync(path.join(fixture.outDir, 'page-0.html'), 'utf8'), 'new-0');
+});
+
 test('S7 records an nmap exit 7 and continues the bounded event report', (t) => {
   const base = fs.mkdtempSync(path.join(os.tmpdir(), 's7-nonzero-'));
   t.after(() => fs.rmSync(base, { recursive: true, force: true }));
@@ -334,6 +367,10 @@ function generatedArtifacts(directory) {
   return fs.readdirSync(directory, { recursive: true })
     .filter((name) => /\.tmp$|\.backup$|\.scenario-generator\.lock$/.test(name))
     .sort();
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function writeExecutable(file, content) {
