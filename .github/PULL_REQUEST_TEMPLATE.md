@@ -21,6 +21,20 @@ Describe the architecture, security boundary, and non-obvious tradeoffs. Call ou
 - [ ] Generated guides were regenerated and checked when applicable
 - [ ] `npm --prefix app audit --omit=dev --audit-level=high`
 
+## Lab contract evidence
+
+ラボを変更しないPRは各欄を `N/A` とし、理由を記載してください。
+
+- [ ] 対象ラボID (affected lab IDs):
+- [ ] プラットフォーム (platform: Docker Desktop / Linux VM / N/A):
+- [ ] 成熟度の変更 (maturity transition, before → after):
+- [ ] manifest / schema / standards の変更と互換性を確認した
+- [ ] 攻撃対象境界 (attack target boundary) がラボ所有の対象だけに限定される
+- [ ] 証跡ステージ (evidence stages) の成否と未実行項目を記録した
+- [ ] クリーンアップ証跡 (cleanup evidence) を添付またはN/A理由を記載した
+- [ ] 生成カバレッジ (generated coverage) を更新・検証した
+- [ ] ドキュメント生成物 (generated outputs) を更新・検証した
+
 ## Safety and OSS quality
 
 - [ ] Host ports remain restricted to localhost

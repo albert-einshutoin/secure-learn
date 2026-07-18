@@ -173,8 +173,12 @@ test('curriculum foundation gate is enforced locally and in CI before generated 
   );
 
   const composeJob = workflow.match(/\n  compose:\n[\s\S]*?(?=\n  docs:)/)?.[0] || '';
-  assert.match(composeJob, /name:\s*Product and curriculum contract tests\s*\n\s*run:\s*scripts\/curriculum_check\.sh/);
-  assert.doesNotMatch(composeJob, /Product readiness regression tests|node --test test\/product-readiness\.test\.js/);
+  const ciRootTests = composeJob.indexOf('node --test test/*.test.js');
+  const ciCurriculumCheck = composeJob.indexOf('scripts/curriculum_check.sh');
+  assert.match(composeJob, /name:\s*Product and curriculum contract tests/);
+  assert.ok(ciRootTests >= 0, 'CI must retain non-curriculum root product and safety tests');
+  assert.ok(ciRootTests < ciCurriculumCheck, 'CI must finish root contracts before the canonical curriculum check');
+  assert.doesNotMatch(composeJob, /Product readiness regression tests/);
 
   const docsJob = workflow.match(/\n  docs:\n[\s\S]*?(?=\n  suricata:)/)?.[0] || '';
   const generateCoverage = docsJob.indexOf('node scripts/generate_curriculum_coverage.js');

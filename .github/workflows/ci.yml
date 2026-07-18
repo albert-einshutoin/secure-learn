@@ -111,8 +111,10 @@ jobs:
         with:
           node-version: 24
 
-      - name: Product readiness regression tests
-        run: node --test test/product-readiness.test.js
+      - name: Product and curriculum contract tests
+        run: |
+          node --test test/*.test.js
+          scripts/curriculum_check.sh
 
       - name: Validate base compose
         run: docker compose config -q

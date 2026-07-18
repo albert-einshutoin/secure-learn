@@ -149,6 +149,37 @@ scripts/world_class_hands_on_check.sh all
 
 HTMLガイドは `docs/learning-phases/index.html` と `docs/scenario-guides/index.html` から辿れます。各ページに「抽象的に何を学ぶか」「具体例」「Hands-on Flow」「合格証跡」を入れています。
 
+### ラボの選択と成熟度
+
+ラボの実行可否は説明文ではなく、検証済みの `curriculum/labs/` マニフェストを正とします。現在の件数とプラットフォームは [Curriculum Coverage](docs/curriculum/coverage.md) で確認できます。
+
+| 成熟度 | 意味 |
+|--------|------|
+| `documented` | 手順と学習目標はあるが、再現可能な実行契約はまだない |
+| `runnable` | 攻撃・演習の入口を実行できるが、全結果を自動検証する状態ではない |
+| `verified` | マニフェストと自動評価が、後述する完全な検証契約を満たす |
+| `external` | Docker Desktop外の明示された環境でのみ実行する。現状は使い捨てLinux VMが対象 |
+
+現時点の旧来ラボに `verified` は0件です。`runnable` は「実行できる」を表し、「期待する防御結果まで自動検証済み」を意味しません。
+
+`verified` への昇格には、マニフェスト上の攻撃、検証、修正、回帰、assessment verifierに加え、証跡の10ステージをすべて成功させる必要があります。10ステージは environment（環境）、safety（安全境界）、startup（起動）、attack（攻撃）、telemetry（観測）、pipeline（収集経路）、control（制御・remediation）、regression（回帰）、evidence（証跡の完全性 / evidence integrity）、cleanup（クリーンアップ）です。未実行・省略・失敗を成功として扱いません。
+
+```bash
+# 全ラボの成熟度・必須プラットフォームを一覧表示
+scripts/learn list
+
+# 1ラボの検証済みマニフェストを表示
+scripts/learn show s3
+
+# 全マニフェスト、標準カタログ、生成カバレッジを検証
+scripts/learn validate
+
+# 実行前にプラットフォームと攻撃対象の安全境界を診断
+scripts/learn doctor s3
+```
+
+macOSのDockerラボでは `scripts/learn doctor <id>` がDocker Desktopの固定コンテキストとサーバーを確認します。S5/S6はmacOSホストやDockerコンテナではなく、使い捨てLinux VM内部でreceiptを発行し、同じVM内で `scripts/learn doctor s5` または `scripts/learn doctor s6` を実行します。このreceiptは運用者が確認した **operator-attested** なローカル安全制御であり、ハイパーバイザーのスナップショット取得を暗号学的に証明するもの（not cryptographic attestation）ではありません。発行手順と限界は [Disposable Linux VM Adapter](docs/vm-adapter.md) を参照してください。
+
 ## 学習ドキュメントの使い方
 
 このリポジトリは、READMEだけを読む教材ではなく、HTMLガイド、カリキュラムMarkdown、runbook、テンプレートを行き来しながら学ぶ構成です。迷ったら、次の順番で進めてください。

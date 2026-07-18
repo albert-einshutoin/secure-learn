@@ -47,7 +47,14 @@ echo "============================================"
 echo "Root: $ROOT_DIR"
 echo
 
-echo "[1/10] App install/build/unit tests/audit"
+echo "[1/12] Root product and curriculum contract tests"
+(
+  cd "$ROOT_DIR"
+  node --test test/*.test.js
+)
+
+echo
+echo "[2/12] App install/build/unit tests/audit"
 (
   cd "$ROOT_DIR/app"
   npm ci
@@ -57,18 +64,22 @@ echo "[1/10] App install/build/unit tests/audit"
 
 echo
 echo
-echo "[2/10] App Docker image build"
+echo "[3/12] Curriculum manifest and coverage contracts"
+"$ROOT_DIR/scripts/curriculum_check.sh"
+
+echo
+echo "[4/12] App Docker image build"
 docker build -t secure-learn-app-quality "$ROOT_DIR/app"
 
 echo
-echo "[3/10] Compose validation"
+echo "[5/12] Compose validation"
 docker compose -f "$ROOT_DIR/docker-compose.yml" config -q
 docker compose -f "$ROOT_DIR/docker-compose.yml" -f "$ROOT_DIR/docker-compose.alerting.yml" config -q
 docker compose -f "$ROOT_DIR/docker-compose.yml" -f "$ROOT_DIR/docker-compose.ips.yml" config -q
 docker compose -f "$ROOT_DIR/docker-compose.exercise.yml" config -q
 
 echo
-echo "[4/10] Learning Docker phases"
+echo "[6/12] Learning Docker phases"
 node --check "$ROOT_DIR/scripts/generate_learning_phase_html.js"
 verify_generator_idempotency \
   "$ROOT_DIR/docs/learning-phases" \
@@ -76,21 +87,21 @@ verify_generator_idempotency \
 "$ROOT_DIR/scripts/learning_phase_check.sh"
 
 echo
-echo "[5/10] Bash syntax"
-find "$ROOT_DIR/attack/scripts" "$ROOT_DIR/scripts" -type f -name '*.sh' -print0 | xargs -0 bash -n
+echo "[7/12] Bash syntax"
+find "$ROOT_DIR/attack/scripts" "$ROOT_DIR/scripts" "$ROOT_DIR/elk" -type f -name '*.sh' -print0 | xargs -0 bash -n
 
 echo
-echo "[6/10] Suricata rule parser"
+echo "[8/12] Suricata rule parser"
 docker build -t secure-learn-suricata-quality "$ROOT_DIR/suricata"
 docker run --rm secure-learn-suricata-quality -T -c /opt/soc-lab/suricata.yaml
 docker run --rm secure-learn-suricata-quality -T -c /opt/soc-lab/suricata-ips.yaml
 
 echo
-echo "[7/10] Kubernetes static check"
+echo "[9/12] Kubernetes static check"
 "$ROOT_DIR/scripts/k8s_static_check.sh"
 
 echo
-echo "[8/10] Scenario HTML guides"
+echo "[10/12] Scenario HTML guides"
 node --check "$ROOT_DIR/scripts/generate_scenario_html.js"
 verify_generator_idempotency \
   "$ROOT_DIR/docs/scenario-guides" \
@@ -98,11 +109,11 @@ verify_generator_idempotency \
 "$ROOT_DIR/scripts/scenario_html_check.sh"
 
 echo
-echo "[9/10] Git whitespace check"
+echo "[11/12] Git whitespace check"
 git -C "$ROOT_DIR" diff --check
 
 echo
-echo "[10/10] Optional runtime smoke"
+echo "[12/12] Optional runtime smoke"
 if curl -fsS "$APP_HEALTH_URL" >/dev/null 2>&1; then
   APP_URL="$APP_HEALTH_URL" "$ROOT_DIR/scripts/sre_smoke.sh"
   BASE_URL="$APP_BASE_URL" "$ROOT_DIR/scripts/backend_hands_on_tests.sh"
