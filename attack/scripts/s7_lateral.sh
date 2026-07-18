@@ -116,13 +116,16 @@ if service_headers=$(curl -s -I -H "Host: $TARGET" "http://$TARGET_IP:$TARGET_PO
 else
     service_exit=$?
 fi
-# Preserve only the non-sensitive HTTP status line. Raw headers can include
-# Set-Cookie or proxy credentials and therefore must not enter public evidence.
-service_status_line="${service_headers%%$'\n'*}"
-service_status_line="${service_status_line%$'\r'}"
-if [[ ! "$service_status_line" =~ ^HTTP/[0-9.]+[[:space:]][0-9]{3}([[:space:]].*)?$ ]]; then
-    service_status_line="HTTP status unavailable"
-fi
+# Parse every response block but retain only the protocol and three-digit code.
+# curl can return a redirect chain, so the last syntactically valid status wins;
+# reason phrases, headers, control data, and malformed lines are never emitted.
+service_status_line="HTTP status unavailable"
+while IFS= read -r candidate_status; do
+    candidate_status="${candidate_status%$'\r'}"
+    if [[ "$candidate_status" =~ ^HTTP/([0-9]+(\.[0-9]+)?)[[:space:]]+([0-9]{3})([[:space:]].*)?$ ]]; then
+        service_status_line="HTTP/${BASH_REMATCH[1]} ${BASH_REMATCH[3]}"
+    fi
+done <<< "$service_headers"
 printf '%s\n' "$service_status_line" | tee -a "$REPORT_FILE"
 echo "**Command exit**: $service_exit" >> "$REPORT_FILE"
 
