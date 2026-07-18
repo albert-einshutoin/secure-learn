@@ -6,6 +6,14 @@ const test = require('node:test');
 
 const root = path.resolve(__dirname, '..');
 
+function runProcessCounter(input) {
+  return spawnSync('bash', [path.join(root, 'scripts/lib/count_publisher_processes.sh')], {
+    cwd: root,
+    encoding: 'utf8',
+    input,
+  });
+}
+
 function composeConfig(files) {
   const args = ['compose', '--profile', 'capstone'];
   for (const file of files) args.push('-f', path.join(root, file));
@@ -109,15 +117,41 @@ test('all build-time Alpine packages are pinned exactly', () => {
   assert.match(ipsDockerfile, /^RUN apk add --no-cache iptables=1\.8\.11-r1$/m);
 });
 
-test('publisher pressure probe is fixed to loopback and the bounded CI contract', () => {
-  const probe = fs.readFileSync(path.join(root, 'scripts/lib/publisher_connection_limit_probe.js'), 'utf8');
+test('publisher process counter parses portable docker top output and fails closed', () => {
+  const linux = runProcessCounter('PID PPID COMMAND\n100 0 socat\n101 100 socat\n102 100 socat\n');
+  assert.equal(linux.status, 0, linux.stderr);
+  assert.equal(linux.stdout, '3 2\n');
+
+  const spaced = runProcessCounter('  PID   PPID   COMMAND\n  200   0      socat\n  201   200    socat\n');
+  assert.equal(spaced.status, 0, spaced.stderr);
+  assert.equal(spaced.stdout, '2 1\n');
+
+  for (const invalid of [
+    '',
+    'PID PPID COMMAND\n',
+    'PID PPID COMMAND\nabc 0 socat\n',
+    'PID PPID COMMAND\n100 0 sh\n',
+    'PID PPID COMMAND\n100 0 socat\n101 100 sleep\n',
+  ]) {
+    assert.notEqual(runProcessCounter(invalid).status, 0, `accepted ${JSON.stringify(invalid)}`);
+  }
+});
+
+test('publisher pressure gate uses Kali bash FDs and host-side sampled docker top evidence', () => {
   const freshStack = fs.readFileSync(path.join(root, 'scripts/fresh_stack_e2e.sh'), 'utf8');
 
-  assert.match(probe, /TARGET_HOST = '127\.0\.0\.1'/);
-  assert.match(probe, /TARGET_PORT = 3000/);
-  assert.match(probe, /CONNECTIONS = 70/);
-  assert.doesNotMatch(probe, /process\.argv|child_process|exec\(|spawn\(/);
-  assert.match(freshStack, /publisher_pid_count <= 80/);
-  assert.match(freshStack, /publisher_child_count <= 64/);
+  assert.doesNotMatch(freshStack, /exec -T app-publisher[^\n]*\/proc|publisher_connection_limit_probe\.js/);
+  assert.match(freshStack, /docker top "\$container_id" -eo pid,ppid,comm/);
+  assert.match(freshStack, /count_publisher_processes\.sh/);
+  assert.match(freshStack, /exec -T kali bash/);
+  assert.match(freshStack, /\/dev\/tcp\/172\.23\.0\.10\/3000/);
+  assert.match(freshStack, /requested=70/);
+  assert.match(freshStack, /seq 1 5/);
+  assert.match(freshStack, /max_publisher_pids <= 80/);
+  assert.match(freshStack, /max_publisher_children <= 64/);
+  assert.match(freshStack, /max_publisher_children >= 10/);
+  assert.match(freshStack, /opened_connections >= 65/);
   assert.match(freshStack, /Application after publisher pressure/);
+  assert.match(freshStack, /"samples":\[/);
+  assert.match(freshStack, /"recovered":true/);
 });
