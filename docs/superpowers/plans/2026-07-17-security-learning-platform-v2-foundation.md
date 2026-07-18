@@ -831,7 +831,7 @@ git commit -m "ci(curriculum): enforce manifest-based readiness"
 **Files:**
 - Modify only files required to fix discovered defects.
 
-- [ ] **Step 1: Verify spec coverage**
+- [x] **Step 1: Verify spec coverage**
 
 Confirm this slice implements:
 
@@ -846,23 +846,34 @@ Confirm this slice implements:
 - corrected public taxonomy;
 - local and CI enforcement.
 
-- [ ] **Step 2: Run security and repository checks**
+- [x] **Step 2: Run security and repository checks**
 
 Run:
 
 ```bash
 npm --prefix app audit --omit=dev --audit-level=high
+npm --prefix app run typecheck
+npm --prefix app test
+npm --prefix app run build
 node --test test/*.test.js
 scripts/curriculum_check.sh
+scripts/world_class_curriculum_check.sh
+scripts/world_class_hands_on_check.sh
+scripts/learning_phase_check.sh
 scripts/k8s_static_check.sh
+REQUIRE_RUNTIME=0 scripts/lab_quality_gate.sh
 docker compose config -q
+docker compose -f docker-compose.exercise.yml config -q
+docker compose -f docker-compose.yml -f docker-compose.ips.yml config -q
+docker compose -f docker-compose.yml -f docker-compose.learning.yml config -q
+docker compose -f docker-compose.yml -f docker-compose.alerting.yml config -q
 git diff --check main...HEAD
 git status --short --branch
 ```
 
 Expected: audits and tests pass; Compose is valid; only intentional branch commits differ from main; worktree is clean.
 
-- [ ] **Step 3: Review dangerous execution paths**
+- [x] **Step 3: Review dangerous execution paths**
 
 Run:
 
@@ -872,7 +883,7 @@ rg -n "shell:\s*true|exec\(|eval\(|child_process|docker\.sock|network_mode:\s*ho
 
 Expected: the learner CLI has no `shell: true`, `exec`, or `eval`; any existing Docker socket use remains outside the launcher and is documented for release tooling only.
 
-- [ ] **Step 4: Record completion**
+- [x] **Step 4: Record completion**
 
 Add a changelog entry describing the foundation without claiming the later AppSec, Kubernetes, DFIR, Linux, or cloud labs are implemented.
 
@@ -891,9 +902,15 @@ The foundation slice is complete only when:
 scripts/curriculum_check.sh
 node --test test/*.test.js
 scripts/world_class_curriculum_check.sh
+scripts/world_class_hands_on_check.sh
 scripts/learning_phase_check.sh
 scripts/k8s_static_check.sh
+REQUIRE_RUNTIME=0 scripts/lab_quality_gate.sh
 docker compose config -q
+docker compose -f docker-compose.exercise.yml config -q
+docker compose -f docker-compose.yml -f docker-compose.ips.yml config -q
+docker compose -f docker-compose.yml -f docker-compose.learning.yml config -q
+docker compose -f docker-compose.yml -f docker-compose.alerting.yml config -q
 git diff --check main...HEAD
 ```
 

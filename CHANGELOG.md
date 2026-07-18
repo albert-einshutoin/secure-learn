@@ -4,10 +4,24 @@ All notable changes to Secure Learn are documented here. This project follows [S
 
 ## [Unreleased]
 
+### Added
+
+- Added versioned OWASP API Security 2023 and MITRE ATT&CK Enterprise v19 catalogs plus one validated manifest for each legacy S1-S15 scenario. The inventory truth is 12 `runnable`, 2 `external`, 1 `documented`, and **0 `verified`**; runnable content is not presented as verified.
+- Added the dependency-free `scripts/learn` discovery, validation, and platform-doctor interface, including operator-attested disposable Linux VM readiness receipts for host-assisted S5 and S6.
+- Added deterministic outcome classification, policy-bound evidence hashing, and generated curriculum coverage so maturity claims are reproducible from tracked manifests.
+
 ### Changed
 
+- Corrected public OWASP API and MITRE ATT&CK taxonomy, scenario semantics, and generated guides while retaining the existing public S1-S15 URLs.
+- Enforced manifest, coverage, taxonomy, generator-idempotency, and safety contracts in the canonical local quality gate and CI.
 - Stage all release evidence on a draft before publication so immutable releases never expose a partial asset set.
 - Run JavaScript/TypeScript CodeQL as a required CI gate and remove the incomplete regular-expression sanitization it identified.
+
+### Security
+
+- Bound learner attack targets to manifest-declared services and private CIDRs, kept learner execution on fixed argv boundaries, and isolated generated evidence with restrictive permissions and ignored runtime paths.
+- Included the digest-pinned IPS helper in build verification, Trivy reports, SPDX SBOMs, and release checksums, and documented the Docker socket as a trusted release-tooling-only exception.
+- This foundation does not claim executable AppSec, Kubernetes, DFIR, Linux, or cloud expansion labs; those remain follow-up slices until their own verification workflows satisfy the `verified` contract.
 
 ## [1.0.0] - 2026-07-17
 
