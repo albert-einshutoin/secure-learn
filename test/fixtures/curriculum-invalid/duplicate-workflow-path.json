@@ -1,0 +1,6 @@
+{
+  "set": {
+    "workflow.verify.path": "attack/scripts/s1_attack.sh"
+  },
+  "expected": "verified workflow execution paths must be distinct"
+}

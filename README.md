@@ -171,6 +171,8 @@ HTMLガイドは `docs/learning-phases/index.html` と `docs/scenario-guides/ind
 
 `createEvidence` に呼び出し側が成功booleanを渡すだけでは `verified` receiptを発行できません。`runVerifiedEvidence` が、検証済みマニフェストから読み取った独立プロセスをshellなしで起動し、各プロセスのstage別JSON観測を確認した場合だけ、プロセス内の非公開capabilityを使って発行します。この境界は「レビュー済みリポジトリのrunnerが実行結果を観測した」というローカルAPI契約です。secret環境変数や共有トークンを信頼根拠にしません。
 
+trusted runnerは `attack` から `startup, attack`、`verify` から `telemetry, pipeline`、`remediate` から `control`、`regress` から `regression`、assessment verifierから `evidence, cleanup` を観測します。各実行ファイルは、標準出力に `{"observations":{"stage":true}}` 形式の単一JSONだけを返し、非ゼロ終了、stderr、欠落stage、余分なstageはfail closedになります。マニフェストは `loadManifests` が付与するimmutableな `sourcePath` を持つ必要があり、runnerはリポジトリ外path、symlink、非実行ファイルを拒否します。
+
 receiptの `sha256` は、正規化された内容が発行後に変わったことを検出するためのtamper-evidenceです。署名でも、発行者の身元や実行環境の真正性を証明するcryptographic attestationでもありません。第三者に真正性を証明する用途では、別途署名鍵と検証可能な署名チェーンが必要です。
 
 ```bash

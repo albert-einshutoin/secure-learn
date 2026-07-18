@@ -1,0 +1,6 @@
+{
+  "set": {
+    "workflow.remediate.path": "scripts/no_op.sh"
+  },
+  "expected": "verified workflow must not use a no-op execution path"
+}

@@ -120,14 +120,15 @@
           "workflow": {
             "type": "object",
             "properties": {
-              "verify": { "$ref": "#/$defs/executionSpec" },
-              "remediate": { "$ref": "#/$defs/executionSpec" },
-              "regress": { "$ref": "#/$defs/executionSpec" }
+              "attack": { "$ref": "#/$defs/verifiedExecutionSpec" },
+              "verify": { "$ref": "#/$defs/verifiedExecutionSpec" },
+              "remediate": { "$ref": "#/$defs/verifiedExecutionSpec" },
+              "regress": { "$ref": "#/$defs/verifiedExecutionSpec" }
             }
           },
           "assessment": {
             "type": "object",
-            "properties": { "verifier": { "$ref": "#/$defs/executionSpec" } }
+            "properties": { "verifier": { "$ref": "#/$defs/verifiedExecutionSpec" } }
           },
           "evidence": {
             "type": "object",
@@ -194,6 +195,18 @@
           }
         }
       }
+    },
+    "verifiedExecutionSpec": {
+      "allOf": [
+        { "$ref": "#/$defs/executionSpec" },
+        {
+          "properties": {
+            "path": {
+              "pattern": "^(?!scripts/learn$)(?!.*(?:no[-_]?op|true)(?:\\.[A-Za-z0-9]+)?$).+$"
+            }
+          }
+        }
+      ]
     },
     "nullableExecutionSpec": {
       "anyOf": [

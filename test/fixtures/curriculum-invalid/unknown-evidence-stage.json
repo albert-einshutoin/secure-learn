@@ -1,0 +1,6 @@
+{
+  "set": {
+    "evidence.required": ["environment", "safety", "startup", "attack", "telemetry", "pipeline", "control", "regression", "evidence", "signed-by-caller"]
+  },
+  "expected": "evidence.required contains unknown stage: signed-by-caller"
+}

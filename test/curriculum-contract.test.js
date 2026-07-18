@@ -187,6 +187,33 @@ test('evidence.required is a unique known-stage contract and verified requires e
   assert.ok(validateManifest(duplicate).includes('evidence.required must not contain duplicate stages'));
 });
 
+test('CI negative fixtures reject verified workflow and evidence shortcuts', () => {
+  const fixtureDirectory = path.join(root, 'test', 'fixtures', 'curriculum-invalid');
+  const fixtureNames = fs.readdirSync(fixtureDirectory).sort();
+  assert.deepEqual(fixtureNames, [
+    'duplicate-workflow-path.json',
+    'learn-cli-reuse.json',
+    'no-op-workflow.json',
+    'unknown-evidence-stage.json',
+  ]);
+
+  for (const fixtureName of fixtureNames) {
+    const fixture = JSON.parse(fs.readFileSync(path.join(fixtureDirectory, fixtureName), 'utf8'));
+    const manifest = verifiedManifest();
+    for (const [propertyPath, value] of Object.entries(fixture.set)) {
+      const segments = propertyPath.split('.');
+      const final = segments.pop();
+      let destination = manifest;
+      for (const segment of segments) destination = destination[segment];
+      destination[final] = value;
+    }
+    assert.ok(
+      validateManifest(manifest).includes(fixture.expected),
+      `${fixtureName} must fail with ${fixture.expected}`,
+    );
+  }
+});
+
 test('verified lab manifests require a safe attack workflow path', () => {
   const manifest = validManifest();
   manifest.maturity = 'verified';

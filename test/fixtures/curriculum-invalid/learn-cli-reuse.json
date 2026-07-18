@@ -1,0 +1,6 @@
+{
+  "set": {
+    "assessment.verifier.path": "scripts/learn"
+  },
+  "expected": "verified workflow must not reuse the learn CLI"
+}

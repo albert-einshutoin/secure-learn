@@ -113,6 +113,7 @@ jobs:
 
       - name: Product and curriculum contract tests
         run: |
+          node --test --test-name-pattern='CI negative fixtures' test/curriculum-contract.test.js
           node --test test/*.test.js
           scripts/curriculum_check.sh
 
