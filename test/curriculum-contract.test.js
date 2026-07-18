@@ -153,10 +153,10 @@ test('platform alternatives use a closed one-of host contract', () => {
   duplicate.platforms.required.push('docker-engine-linux');
   assert.ok(validateManifest(duplicate).includes('platforms.required must not contain duplicates'));
 
-  const overlap = validManifest();
-  overlap.platforms.optional = ['docker-engine-linux'];
-  assert.ok(validateManifest(overlap).includes(
-    'platforms.required and platforms.optional must not overlap',
+  const ambiguousOptional = validManifest();
+  ambiguousOptional.platforms.optional = ['docker-engine-linux'];
+  assert.ok(validateManifest(ambiguousOptional).includes(
+    'platforms.optional is reserved and must be empty',
   ));
 
   const mixedVm = validManifest();
