@@ -15,11 +15,11 @@
 
 | ホストOS | 対応するローカル実行環境 | doctorが許可する接続先 |
 |----------|--------------------------|------------------------|
-| macOS | Docker Desktop 4.42.0以上 | `desktop-linux` と `$HOME/.docker/run/docker.sock` |
-| Windows | Docker Desktop 4.42.0以上 | `desktop-linux` と `dockerDesktopLinuxEngine` named pipe |
-| Linux | ローカルまたはrootless Docker Engine 20.10以上 | `/var/run/docker.sock` または実行ユーザーの `/run/user/<uid>/docker.sock` |
+| macOS | Docker Desktop 4.42.0以上を導入目安 | `desktop-linux` と `$HOME/.docker/run/docker.sock` |
+| Windows | Docker Desktop 4.42.0以上を導入目安 | `desktop-linux` と `dockerDesktopLinuxEngine` named pipe |
+| Linux | ローカルまたはrootless Docker Engine 20.10.0以上（API 1.41以上） | `/var/run/docker.sock` または実行ユーザーの `/run/user/<uid>/docker.sock` |
 
-全OSで正式版Docker Compose 2.36.0以上が必要です。`interface_name` を解釈できないComposeではIDSの監視interfaceを決定できないため、doctorはバージョン番号、Compose設定の構文展開、一時コンテナ内のinterface/IP実測を確認します。一時projectは成功・失敗を問わずcleanupされます。
+全OSでDocker Engine 20.10.0／API 1.41と正式版Docker Compose 2.36.0以上が必要です。Docker Desktop 4.42.0は対応Composeを同梱する導入目安であり、doctorはDesktop製品バージョンではなくEngine/APIとruntime capabilityを直接判定します。`interface_name` を解釈できないComposeではIDSの監視interfaceを決定できないため、doctorはバージョン番号、Compose設定の構文展開、一時コンテナ内のinterface/IP実測を確認します。一時projectは呼出ごとのランダム名で分離され、成功・失敗を問わず同じ完全一致名だけがcleanupされます。
 
 `DOCKER_HOST` / `DOCKER_CONTEXT`、SSH、TCP、HTTP(S)、cloud context、列挙されていないUnix socket／named pipeはローカル教材の安全境界外であり、doctorが拒否します。POSIX socketは種別、所有者、modeも検査しますが、socket peerやDocker daemonの真正性を暗号学的にattestするものではありません。
 - Git
