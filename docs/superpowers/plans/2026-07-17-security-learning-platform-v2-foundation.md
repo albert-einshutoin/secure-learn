@@ -64,7 +64,7 @@ Do not add new attack labs in this foundation slice. Its job is to make later la
 - Create: `curriculum/standards/mitre-attack-v19.json`
 - Test: `test/curriculum-contract.test.js`
 
-- [ ] **Step 1: Write the failing standards tests**
+- [x] **Step 1: Write the failing standards tests**
 
 Create `test/curriculum-contract.test.js` with these initial tests:
 
@@ -107,7 +107,7 @@ test('MITRE catalog pins Enterprise ATT&CK v19 tactics and supported techniques'
 });
 ```
 
-- [ ] **Step 2: Run the tests and verify missing-file failures**
+- [x] **Step 2: Run the tests and verify missing-file failures**
 
 Run:
 
@@ -117,7 +117,7 @@ node --test test/curriculum-contract.test.js
 
 Expected: both tests fail with `ENOENT` for files under `curriculum/standards/`.
 
-- [ ] **Step 3: Add the complete OWASP API catalog**
+- [x] **Step 3: Add the complete OWASP API catalog**
 
 Create `curriculum/standards/owasp-api-2023.json`:
 
@@ -141,7 +141,7 @@ Create `curriculum/standards/owasp-api-2023.json`:
 }
 ```
 
-- [ ] **Step 4: Add the pinned MITRE subset catalog**
+- [x] **Step 4: Add the pinned MITRE subset catalog**
 
 Create `curriculum/standards/mitre-attack-v19.json` with the 15 tactics asserted above and this technique map:
 
@@ -162,7 +162,7 @@ Create `curriculum/standards/mitre-attack-v19.json` with the 15 tactics asserted
 
 Wrap it with `framework`, `version`, `source`, `tactics`, and `techniques` fields matching the test.
 
-- [ ] **Step 5: Run tests and commit**
+- [x] **Step 5: Run tests and commit**
 
 Run:
 
@@ -187,7 +187,7 @@ git commit -m "fix(curriculum): pin current security standards"
 - Create: `scripts/lib/curriculum.js`
 - Modify: `test/curriculum-contract.test.js`
 
-- [ ] **Step 1: Add failing validator tests**
+- [x] **Step 1: Add failing validator tests**
 
 Append:
 
@@ -242,13 +242,13 @@ test('verified maturity requires attack, verification, remediation, regression, 
 });
 ```
 
-- [ ] **Step 2: Verify the module-not-found failure**
+- [x] **Step 2: Verify the module-not-found failure**
 
 Run `node --test test/curriculum-contract.test.js`.
 
 Expected: failure with `Cannot find module '../scripts/lib/curriculum'`.
 
-- [ ] **Step 3: Create the documented JSON Schema**
+- [x] **Step 3: Create the documented JSON Schema**
 
 Create `curriculum/schema/lab.schema.json` with draft 2020-12, `additionalProperties: false`, and required top-level fields:
 
@@ -263,7 +263,7 @@ Constrain maturity to `documented`, `runnable`, `verified`, or `external`; mode 
 
 Define each `workflow` field and `assessment.verifier` as `null` or an executionSpec: `{ path: string, args: string[] }`. `path` must use the repository-relative logical-path constraint; `args` must reject NUL and control characters. `runnable` and `verified` manifests require `workflow.attack` to be a non-null, valid executionSpec; `verified` additionally requires non-null valid executionSpecs for verify, remediate, regress, and assessment verifier. Express these same rules with JSON Schema `if`/`then` and runtime validation, and keep their fixture corpus aligned so the two contracts do not drift. Execution is downstream work: its runner must pass `path` and `args` to `spawnSync`/equivalent argv APIs with `shell: false`, never concatenate a command string.
 
-- [ ] **Step 4: Implement a dependency-free validator**
+- [x] **Step 4: Implement a dependency-free validator**
 
 Create `scripts/lib/curriculum.js` exporting `validateManifest`, `loadManifests`, and `loadStandards`. The validator must:
 
@@ -308,7 +308,7 @@ Before semantic validation, recursively inspect property descriptors without inv
 
 `loadManifests(root)` reads only `curriculum/labs/*.json`, attaches a non-enumerable source path for diagnostics, rejects duplicate IDs, and sorts numeric `s` IDs before named future labs. `loadStandards(root)` returns sets of valid OWASP and MITRE IDs.
 
-- [ ] **Step 5: Run all contract tests and commit**
+- [x] **Step 5: Run all contract tests and commit**
 
 Run:
 
@@ -333,7 +333,7 @@ git commit -m "feat(curriculum): validate lab maturity contracts"
 - Create: `curriculum/labs/s1.json` through `curriculum/labs/s15.json`
 - Modify: `test/curriculum-contract.test.js`
 
-- [ ] **Step 1: Add failing inventory and standards tests**
+- [x] **Step 1: Add failing inventory and standards tests**
 
 Append tests that call `loadManifests(root)` and assert:
 
@@ -358,13 +358,13 @@ test('legacy inventory does not overstate behavioral verification', () => {
 
 Add a standards-reference test that rejects every OWASP or MITRE ID absent from the catalogs.
 
-- [ ] **Step 2: Verify the empty-inventory failure**
+- [x] **Step 2: Verify the empty-inventory failure**
 
 Run `node --test test/curriculum-contract.test.js`.
 
 Expected: inventory assertion receives `[]` instead of S1-S15.
 
-- [ ] **Step 3: Create the 15 manifests using this exact inventory**
+- [x] **Step 3: Create the 15 manifests using this exact inventory**
 
 All manifests use `version: 1`, `external_network: false`, required platform `docker-desktop` unless shown as `linux-vm`, and optional platforms `[]`.
 Execution entries are structured `{"path":"...","args":[...]}` argv specifications. Task 3 records these declarations only; the downstream runner must use `spawnSync`/equivalent argv APIs with `shell: false`, so shell metacharacters remain literal arguments.
@@ -391,7 +391,7 @@ For all `runnable` manifests, set `workflow.remediate`, `workflow.regress`, and 
 
 S14 is the one host-operated runnable workflow: its target service is `localhost` and its only allowed CIDR is the exact endpoint `127.0.0.1/32`. All attack-container scenarios retain the enumerated `app` / `172.23.0.0/24` boundary.
 
-- [ ] **Step 4: Run the inventory tests and commit**
+- [x] **Step 4: Run the inventory tests and commit**
 
 Run:
 
@@ -425,7 +425,7 @@ git commit -m "feat(curriculum): inventory legacy labs honestly"
 - Create: `docs/vm-adapter.md`
 - Modify: `.gitignore`
 
-- [ ] **Step 1: Write failing safety tests**
+- [x] **Step 1: Write failing safety tests**
 
 Create `test/target-policy.test.js`:
 
@@ -455,11 +455,11 @@ test('rejects loopback, public, link-local, undeclared private, URLs, and comman
 });
 ```
 
-- [ ] **Step 2: Verify module-not-found failure**
+- [x] **Step 2: Verify module-not-found failure**
 
 Run `node --test test/target-policy.test.js`.
 
-- [ ] **Step 3: Implement strict IPv4 and service-name validation**
+- [x] **Step 3: Implement strict IPv4 and service-name validation**
 
 Create `scripts/lib/target-policy.js` using `node:net.isIP`. Convert IPv4 addresses to unsigned integers and compare with each CIDR mask. Service names must exactly match `/^[a-z0-9][a-z0-9-]*$/` and a declared entry. Reject any target beginning with `-` or containing URL, shell, whitespace, slash, colon, or interpolation syntax. Also reject all-numeric and alternate numeric-host spellings before operating-system name resolution can reinterpret them as IP addresses.
 
@@ -469,7 +469,7 @@ Export only:
 module.exports = { assertAllowedTarget, ipv4InCidr };
 ```
 
-- [ ] **Step 4: Write the initial learner CLI**
+- [x] **Step 4: Write the initial learner CLI**
 
 Create executable `scripts/learn` in Node.js. Implement:
 
@@ -511,11 +511,11 @@ provider, ownership, mode, age, snapshot, digest, and nonce checks. The macOS
 host cannot validate the guest's `/etc` marker; authenticated host-to-guest
 adapter transport is not implemented and must not be claimed.
 
-- [ ] **Step 5: Add CLI contract tests**
+- [x] **Step 5: Add CLI contract tests**
 
 Append to `test/curriculum-contract.test.js` using `spawnSync(process.execPath, ['scripts/learn', ...])` and assert list, show, validate, unknown lab, reserved-command exit codes, cwd independence, and generic rejection of control or oversized argv. Unit-test Docker spawn argv/options and Linux receipt issue, safe I/O, identity, lab, and time binding through explicit dependency injection.
 
-- [ ] **Step 6: Run tests and commit**
+- [x] **Step 6: Run tests and commit**
 
 Run:
 
@@ -543,7 +543,7 @@ git commit -m "feat(cli): add safe curriculum discovery"
 - Create: `test/evidence-contract.test.js`
 - Modify: `.gitignore`
 
-- [ ] **Step 1: Write failing evidence tests**
+- [x] **Step 1: Write failing evidence tests**
 
 Create `test/evidence-contract.test.js`:
 
@@ -585,17 +585,17 @@ The input and result fields must be exact own properties; inherited values never
 `createEvidence(input, { manifest, now? })` and `verifyEvidence(receipt, { manifest, now? })` require trusted context. The complete manifest must pass `validateManifest`; passing a detached safety object is forbidden. Its `id` and `version` must exactly match the evidence `lab` and `manifest_version`, and the evidence `platform` must be an exact member of `manifest.platforms.required` or `manifest.platforms.optional`. `now` is an optional millisecond clock function for deterministic tests. Both reject evidence ending more than five minutes in the future, while historical evidence remains verifiable when the caller supplies the corresponding trusted historical manifest version. A malformed receipt throws `TypeError`; a structurally valid receipt whose outcome, body, policy, or lowercase SHA-256 was altered returns `false`.
 The receipt contains a `target_policy` snapshot derived only from `manifest.safety` in its hash. Service and CIDR arrays are copied and sorted by code point without mutating the manifest, so manifest order does not change the hash. Verification requires this embedded canonical snapshot to match the independently supplied trusted manifest; a permissive embedded policy cannot authorize itself.
 
-- [ ] **Step 2: Verify module-not-found failure**
+- [x] **Step 2: Verify module-not-found failure**
 
 Run `node --test test/evidence-contract.test.js`.
 
-- [ ] **Step 3: Implement stable serialization and ordered failure classification**
+- [x] **Step 3: Implement stable serialization and ordered failure classification**
 
 Create `scripts/lib/evidence.js`. `classifyOutcome` checks in this order: environment, safety, startup, attack, telemetry, pipeline, control, regression, evidence, cleanup, then verified. `createEvidence` reuses `validateManifest` and `assertAllowedTarget`, snapshots only the trusted manifest safety boundary, sorts object keys, computes SHA-256 over the evidence without `sha256`, and returns a recursively frozen object with `outcome`, `target_policy`, and `sha256`. `verifyEvidence` strictly revalidates the canonical receipt against the independently supplied matching manifest, recomputes its outcome and hash, and uses a timing-safe digest comparison. Keep dependencies one-way from evidence to curriculum and target policy.
 
 Add comments explaining why failure ordering is stable and why the hash excludes its own field.
 
-- [ ] **Step 4: Ignore learner evidence**
+- [x] **Step 4: Ignore learner evidence**
 
 Add:
 
@@ -606,7 +606,7 @@ evidence/results/
 
 Keep the existing `reports/` rule. Do not ignore `evidence/schema`, `docs/templates`, or tracked release artifacts.
 
-- [ ] **Step 5: Run tests and commit**
+- [x] **Step 5: Run tests and commit**
 
 Run `node --test test/evidence-contract.test.js` and expect the complete evidence contract suite to pass.
 
@@ -627,7 +627,7 @@ git commit -m "feat(evidence): classify and hash learning outcomes"
 - Modify: `scripts/world_class_hands_on_check.sh`
 - Modify: `test/curriculum-contract.test.js`
 
-- [ ] **Step 1: Add failing generation tests**
+- [x] **Step 1: Add failing generation tests**
 
 Test that running the generator twice produces byte-identical output and the report contains:
 
@@ -643,15 +643,15 @@ Test that running the generator twice produces byte-identical output and the rep
 
 Also assert the report lists every S1-S15 row and contains the sentence `Documentation does not count as runtime verification.`.
 
-- [ ] **Step 2: Verify generator-not-found failure**
+- [x] **Step 2: Verify generator-not-found failure**
 
 Run `node --test test/curriculum-contract.test.js`.
 
-- [ ] **Step 3: Implement deterministic Markdown generation**
+- [x] **Step 3: Implement deterministic Markdown generation**
 
 Create `scripts/generate_curriculum_coverage.js` using `loadManifests`. It writes only `docs/curriculum/coverage.md`, with fixed headings, counts in maturity order, and rows in manifest order. Do not include generation timestamps because they break deterministic output.
 
-- [ ] **Step 4: Add the canonical curriculum gate**
+- [x] **Step 4: Add the canonical curriculum gate**
 
 Create executable `scripts/curriculum_check.sh` that:
 
@@ -663,13 +663,13 @@ node "$ROOT_DIR/scripts/generate_curriculum_coverage.js" --check
 
 The check mode must compare expected and tracked bytes without modifying the working tree.
 
-- [ ] **Step 5: Retain compatibility without keyword-based maturity**
+- [x] **Step 5: Retain compatibility without keyword-based maturity**
 
 Modify `world_class_curriculum_check.sh` to run `curriculum_check.sh` first. Keep HTML accessibility and structure checks, but delete `required_terms` as a completion signal.
 
 Modify `world_class_hands_on_check.sh` so its top summary is calculated from manifests. Topic prose/file checks may remain under a separate `Supporting material` heading, but they must not increment maturity totals.
 
-- [ ] **Step 6: Generate, test, and commit**
+- [x] **Step 6: Generate, test, and commit**
 
 Run:
 
@@ -701,7 +701,7 @@ git commit -m "fix(curriculum): derive coverage from runtime maturity"
 - Modify: `scripts/generate_scenario_html.js`
 - Modify: `test/product-readiness.test.js`
 
-- [ ] **Step 1: Write failing copy and mapping regressions**
+- [x] **Step 1: Write failing copy and mapping regressions**
 
 Add product-readiness assertions that:
 
@@ -712,7 +712,7 @@ Add product-readiness assertions that:
 - S7 title is Cross-Layer Incident and public copy does not claim genuine APT or Lateral Movement.
 - scenario evaluation does not call all S1-S15 executable labs.
 
-- [ ] **Step 2: Run the focused test and verify failures**
+- [x] **Step 2: Run the focused test and verify failures**
 
 Run:
 
@@ -722,7 +722,7 @@ node --test --test-name-pattern "OWASP|MITRE|cross-layer|curriculum" test/produc
 
 Expected: failures cite the current API6-API8 table, S5/S8 mappings, S7 copy, and evaluation table.
 
-- [ ] **Step 3: Correct source documentation and generators**
+- [x] **Step 3: Correct source documentation and generators**
 
 Apply these exact semantic changes:
 
@@ -740,7 +740,7 @@ Apply these exact semantic changes:
 - Publish all generated pages and assets through validated, same-directory atomic writes that reject symlink and non-regular destinations.
 - Describe S15 as an integrated capstone and keep checklist levels explicitly non-certifying.
 
-- [ ] **Step 4: Regenerate HTML and run regressions**
+- [x] **Step 4: Regenerate HTML and run regressions**
 
 Run:
 
@@ -753,7 +753,7 @@ git diff --check
 
 Expected: all product tests and HTML checks pass.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add docs scenarios attack/scripts/s7_lateral.sh scripts/generate_scenario_html.js test/product-readiness.test.js
@@ -769,7 +769,7 @@ git commit -m "fix(curriculum): correct security framework semantics"
 - Modify: `.github/PULL_REQUEST_TEMPLATE.md`
 - Modify: `test/product-readiness.test.js`
 
-- [ ] **Step 1: Write failing gate-contract tests**
+- [x] **Step 1: Write failing gate-contract tests**
 
 Assert that:
 
@@ -779,15 +779,15 @@ Assert that:
 - README links `docs/curriculum/coverage.md` and documents `scripts/learn list`, `show`, `validate`, and `doctor`;
 - PR template asks for manifest maturity and platform evidence when a lab changes.
 
-- [ ] **Step 2: Verify focused failures**
+- [x] **Step 2: Verify focused failures**
 
 Run `node --test --test-name-pattern "curriculum foundation gate" test/product-readiness.test.js`.
 
-- [ ] **Step 3: Update the local gate**
+- [x] **Step 3: Update the local gate**
 
 Run root tests before Docker builds and add `curriculum_check.sh` before generated HTML checks. Renumber the displayed steps consistently. Do not weaken `REQUIRE_RUNTIME` behavior.
 
-- [ ] **Step 4: Update CI**
+- [x] **Step 4: Update CI**
 
 In the Compose validation job, replace the single product-readiness invocation with:
 
@@ -798,13 +798,13 @@ In the Compose validation job, replace the single product-readiness invocation w
 
 In the docs job, regenerate `docs/curriculum/coverage.md` and include it in the committed-output diff check.
 
-- [ ] **Step 5: Update public entry points and PR evidence**
+- [x] **Step 5: Update public entry points and PR evidence**
 
 README must explain the four maturity values, link the generated coverage report, and state that `verified` requires attack, observation/control, remediation, regression, assessment, evidence, and cleanup checks.
 
 The PR template adds checkboxes for affected lab IDs, platform, maturity transition, and cleanup evidence.
 
-- [ ] **Step 6: Run the complete static gate and commit**
+- [x] **Step 6: Run the complete static gate and commit**
 
 Run:
 
