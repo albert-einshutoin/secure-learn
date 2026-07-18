@@ -77,8 +77,8 @@ function validManifest() {
     mode: 'docker-lab',
     maturity: 'runnable',
     platforms: {
-      required: ['docker-desktop-macos'],
-      optional: ['docker-desktop-windows', 'docker-engine-linux'],
+      required: ['docker-desktop-macos', 'docker-desktop-windows', 'docker-engine-linux'],
+      optional: [],
     },
     standards: {
       mitre_attack: ['T1595'],
@@ -528,8 +528,8 @@ test('legacy manifests preserve platform, evidence, and safe workflow boundaries
       required: ['linux-vm'],
       optional: [],
     } : {
-      required: ['docker-desktop-macos'],
-      optional: ['docker-desktop-windows', 'docker-engine-linux'],
+      required: ['docker-desktop-macos', 'docker-desktop-windows', 'docker-engine-linux'],
+      optional: [],
     });
     assert.equal(manifest.version, 1);
     assert.equal(manifest.safety.external_network, false);

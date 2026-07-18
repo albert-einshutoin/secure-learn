@@ -196,8 +196,8 @@ test('doctor chooses only the current OS platform declared by a Docker lab', () 
   const manifest = {
     id: 's1',
     platforms: {
-      required: ['docker-desktop-macos'],
-      optional: ['docker-desktop-windows', 'docker-engine-linux'],
+      required: ['docker-desktop-macos', 'docker-desktop-windows', 'docker-engine-linux'],
+      optional: [],
     },
     safety: { target_services: ['app'], allowed_cidrs: ['172.23.0.0/24'], external_network: false },
   };
@@ -225,7 +225,7 @@ test('doctor chooses only the current OS platform declared by a Docker lab', () 
 test('doctor dependency injection cannot be activated by product environment variables', () => {
   const manifest = {
     id: 's1',
-    platforms: { required: ['docker-desktop-macos'], optional: ['docker-desktop-windows', 'docker-engine-linux'] },
+    platforms: { required: ['docker-desktop-macos', 'docker-desktop-windows', 'docker-engine-linux'], optional: [] },
     safety: { target_services: ['app'], allowed_cidrs: ['172.23.0.0/24'], external_network: false },
   };
   assert.throws(() => doctorManifest(manifest, {
