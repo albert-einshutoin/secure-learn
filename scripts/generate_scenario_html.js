@@ -3232,76 +3232,197 @@ function buildOutputs() {
   return outputs;
 }
 
-function safePublishOutputs({ root: repositoryRoot, outDir: outputDirectory, outputs, allowedPaths }) {
+function safePublishOutputs({
+  root: repositoryRoot,
+  outDir: outputDirectory,
+  outputs,
+  allowedPaths,
+  operations = {},
+}) {
   const rootReal = safeDirectory(repositoryRoot, 'repository root');
-  const outReal = safeContainedDirectory(outputDirectory, rootReal, 'output directory');
-  const assetsReal = outputs.has('assets/scenario.css')
-    ? safeContainedDirectory(path.join(outputDirectory, 'assets'), rootReal, 'asset directory')
+  const outReal = bootstrapContainedDirectory(
+    repositoryRoot,
+    outputDirectory,
+    rootReal,
+    'output directory',
+  );
+  const assetsReal = [...outputs.keys()].some((relativePath) => relativePath.startsWith('assets/'))
+    ? bootstrapContainedDirectory(
+      repositoryRoot,
+      path.join(outputDirectory, 'assets'),
+      rootReal,
+      'asset directory',
+    )
     : null;
-  const destinations = [];
+  const lock = acquireWriterLock(outReal);
 
-  // Validate every destination before creating any temporary file. This keeps
-  // a bad late entry from partially publishing an otherwise valid batch.
-  for (const [relativePath, content] of outputs) {
-    if (!allowedPaths.has(relativePath)) throw new Error(`output path is not allowed: ${relativePath}`);
-    const parts = relativePath.split('/');
-    const validShape = parts.length === 1 || (parts.length === 2 && parts[0] === 'assets');
-    if (!validShape || parts.some((part) => !/^[a-z0-9][a-z0-9.-]*$/i.test(part))) {
-      throw new Error(`output path must use a static basename: ${relativePath}`);
-    }
-    const parent = parts.length === 2 ? assetsReal : outReal;
-    const destination = path.join(parent, parts.at(-1));
-    if (!isWithin(rootReal, destination)) throw new Error('output destination escapes repository root');
-    const status = lstatIfPresent(destination);
-    if (status) {
-      if (status.isSymbolicLink()) throw new Error(`output destination is a symlink: ${relativePath}`);
-      if (!status.isFile()) throw new Error(`output destination must be a regular file: ${relativePath}`);
-    }
-    destinations.push({
-      relativePath,
-      destination,
-      parent,
-      content: Buffer.isBuffer(content) ? content : Buffer.from(content),
-    });
-  }
-
-  const staged = [];
   try {
-    for (const item of destinations) {
-      const temporary = path.join(
-        item.parent,
-        `.${path.basename(item.destination)}.${process.pid}.${randomUUID()}.tmp`,
-      );
-      const flags = fs.constants.O_WRONLY | fs.constants.O_CREAT | fs.constants.O_EXCL
-        | (fs.constants.O_NOFOLLOW || 0);
-      const descriptor = fs.openSync(temporary, flags, 0o644);
-      try {
-        let offset = 0;
-        while (offset < item.content.length) {
-          offset += fs.writeSync(descriptor, item.content, offset, item.content.length - offset);
-        }
-        fs.fsyncSync(descriptor);
-      } finally {
-        fs.closeSync(descriptor);
+    const destinations = [];
+
+    // Validate every destination before creating any temporary file. This keeps
+    // a bad late entry from partially publishing an otherwise valid batch.
+    for (const [relativePath, content] of outputs) {
+      if (!allowedPaths.has(relativePath)) throw new Error(`output path is not allowed: ${relativePath}`);
+      const parts = relativePath.split('/');
+      const validShape = parts.length === 1 || (parts.length === 2 && parts[0] === 'assets');
+      if (!validShape || parts.some((part) => !/^[a-z0-9][a-z0-9.-]*$/i.test(part))) {
+        throw new Error(`output path must use a static basename: ${relativePath}`);
       }
-      staged.push({ ...item, temporary });
+      const parent = parts.length === 2 ? assetsReal : outReal;
+      const destination = path.join(parent, parts.at(-1));
+      if (!isWithin(rootReal, destination)) throw new Error('output destination escapes repository root');
+      const status = lstatIfPresent(destination);
+      if (status) {
+        if (status.isSymbolicLink()) throw new Error(`output destination is a symlink: ${relativePath}`);
+        if (!status.isFile()) throw new Error(`output destination must be a regular file: ${relativePath}`);
+      }
+      destinations.push({
+        relativePath,
+        destination,
+        parent,
+        existed: Boolean(status),
+        content: Buffer.isBuffer(content) ? content : Buffer.from(content),
+      });
     }
 
-    const syncedDirectories = new Set();
-    for (const item of staged) {
-      fs.renameSync(item.temporary, item.destination);
-      syncedDirectories.add(item.parent);
+    const staged = [];
+    try {
+      for (const item of destinations) {
+        const temporary = path.join(
+          item.parent,
+          `.${path.basename(item.destination)}.${process.pid}.${randomUUID()}.tmp`,
+        );
+        const stagedItem = { ...item, temporary };
+        staged.push(stagedItem);
+        const flags = fs.constants.O_WRONLY | fs.constants.O_CREAT | fs.constants.O_EXCL
+          | (fs.constants.O_NOFOLLOW || 0);
+        const descriptor = fs.openSync(temporary, flags, 0o644);
+        try {
+          // Creation modes are filtered by umask, so enforce the public
+          // generated-file contract on the opened inode before publication.
+          fs.fchmodSync(descriptor, 0o644);
+          let offset = 0;
+          while (offset < item.content.length) {
+            offset += fs.writeSync(descriptor, item.content, offset, item.content.length - offset);
+          }
+          fs.fsyncSync(descriptor);
+        } finally {
+          fs.closeSync(descriptor);
+        }
+      }
+
+      publishTransaction(staged, operations);
+    } finally {
+      removeArtifacts(staged.map((item) => item.temporary));
     }
-    for (const directory of syncedDirectories) fsyncDirectory(directory);
   } finally {
+    releaseWriterLock(lock);
+  }
+}
+
+function publishTransaction(staged, operations) {
+  const renameSync = operations.renameSync || fs.renameSync;
+  const fsyncSync = operations.fsyncSync || fs.fsyncSync;
+  const journal = [];
+  const directories = new Set();
+
+  try {
     for (const item of staged) {
+      const entry = {
+        ...item,
+        backup: item.existed
+          ? path.join(item.parent, `.${path.basename(item.destination)}.${process.pid}.${randomUUID()}.backup`)
+          : null,
+        backupMoved: false,
+        published: false,
+      };
+      journal.push(entry);
+      directories.add(item.parent);
+
+      if (entry.backup) {
+        renameSync(entry.destination, entry.backup);
+        entry.backupMoved = true;
+      }
+      renameSync(entry.temporary, entry.destination);
+      entry.published = true;
+    }
+
+    // The injected durability barrier remains before the commit point. Any
+    // rename or fsync failure can therefore restore the complete prior set.
+    for (const directory of directories) fsyncDirectory(directory, fsyncSync);
+  } catch (publicationError) {
+    const rollbackErrors = rollbackJournal(journal);
+    for (const directory of directories) {
       try {
-        fs.unlinkSync(item.temporary);
+        fsyncDirectory(directory);
       } catch (error) {
-        if (error.code !== 'ENOENT') throw error;
+        rollbackErrors.push(error);
       }
     }
+    if (rollbackErrors.length > 0) {
+      throw new AggregateError(
+        [publicationError, ...rollbackErrors],
+        `scenario publication failed and rollback was incomplete: ${publicationError.message}`,
+      );
+    }
+    throw publicationError;
   }
+
+  removeArtifacts(journal.map((entry) => entry.backup).filter(Boolean));
+  for (const directory of directories) fsyncDirectory(directory);
+}
+
+function rollbackJournal(journal) {
+  const errors = [];
+  for (const entry of [...journal].reverse()) {
+    try {
+      if (entry.published) unlinkIfPresent(entry.destination);
+      if (entry.backupMoved) fs.renameSync(entry.backup, entry.destination);
+      unlinkIfPresent(entry.temporary);
+      unlinkIfPresent(entry.backup);
+    } catch (error) {
+      errors.push(error);
+    }
+  }
+  return errors;
+}
+
+function acquireWriterLock(outputDirectory) {
+  const lockPath = path.join(outputDirectory, '.scenario-generator.lock');
+  const existing = lstatIfPresent(lockPath);
+  if (existing) {
+    if (existing.isSymbolicLink()) throw new Error('scenario generator lock must not be a symlink');
+    if (!existing.isFile()) throw new Error('scenario generator lock must be a regular file');
+    throw new Error('scenario generator lock exists: another writer may be active or the lock may be stale; remove it only after confirming no generator is running');
+  }
+
+  const flags = fs.constants.O_WRONLY | fs.constants.O_CREAT | fs.constants.O_EXCL
+    | (fs.constants.O_NOFOLLOW || 0);
+  let descriptor;
+  let ownsLock = false;
+  try {
+    descriptor = fs.openSync(lockPath, flags, 0o600);
+    ownsLock = true;
+    fs.fchmodSync(descriptor, 0o600);
+    fs.writeFileSync(descriptor, `${process.pid}\n`);
+    fs.fsyncSync(descriptor);
+    fs.closeSync(descriptor);
+    descriptor = undefined;
+    fsyncDirectory(outputDirectory);
+    return { lockPath, outputDirectory };
+  } catch (error) {
+    if (descriptor !== undefined) fs.closeSync(descriptor);
+    if (ownsLock) unlinkIfPresent(lockPath);
+    if (error.code === 'EEXIST') {
+      throw new Error('scenario generator lock exists: another writer may be active or the lock may be stale; remove it only after confirming no generator is running');
+    }
+    throw error;
+  }
+}
+
+function releaseWriterLock({ lockPath, outputDirectory }) {
+  unlinkIfPresent(lockPath);
+  fsyncDirectory(outputDirectory);
 }
 
 function lstatIfPresent(candidate) {
@@ -3320,23 +3441,55 @@ function safeDirectory(directory, label) {
   return fs.realpathSync(directory);
 }
 
-function safeContainedDirectory(directory, rootReal, label) {
-  const real = safeDirectory(directory, label);
-  if (!isWithin(rootReal, real)) throw new Error(`${label} escapes repository root`);
-  return real;
+function bootstrapContainedDirectory(repositoryRoot, directory, rootReal, label) {
+  const rootPath = path.resolve(repositoryRoot);
+  const targetPath = path.resolve(directory);
+  const relative = path.relative(rootPath, targetPath);
+  if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
+    throw new Error(`${label} escapes repository root`);
+  }
+
+  let current = rootPath;
+  for (const segment of relative.split(path.sep).filter(Boolean)) {
+    current = path.join(current, segment);
+    const status = lstatIfPresent(current);
+    if (!status) {
+      fs.mkdirSync(current, { mode: 0o755 });
+      fs.chmodSync(current, 0o755);
+    } else {
+      if (status.isSymbolicLink()) throw new Error(`${label} segment must not be a symlink: ${segment}`);
+      if (!status.isDirectory()) throw new Error(`${label} segment must be a directory: ${segment}`);
+    }
+    const real = fs.realpathSync(current);
+    if (!isWithin(rootReal, real)) throw new Error(`${label} escapes repository root`);
+  }
+  return fs.realpathSync(targetPath);
 }
 
 function isWithin(rootReal, candidate) {
   return candidate === rootReal || candidate.startsWith(`${rootReal}${path.sep}`);
 }
 
-function fsyncDirectory(directory) {
+function fsyncDirectory(directory, sync = fs.fsyncSync) {
   const descriptor = fs.openSync(directory, fs.constants.O_RDONLY);
   try {
-    fs.fsyncSync(descriptor);
+    sync(descriptor);
   } finally {
     fs.closeSync(descriptor);
   }
+}
+
+function unlinkIfPresent(candidate) {
+  if (!candidate) return;
+  try {
+    fs.unlinkSync(candidate);
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+  }
+}
+
+function removeArtifacts(candidates) {
+  for (const candidate of candidates) unlinkIfPresent(candidate);
 }
 
 function main() {
