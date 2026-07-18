@@ -77,8 +77,8 @@ function validManifest() {
     mode: 'docker-lab',
     maturity: 'runnable',
     platforms: {
-      required: ['docker-desktop'],
-      optional: [],
+      required: ['docker-desktop-macos'],
+      optional: ['docker-desktop-windows', 'docker-engine-linux'],
     },
     standards: {
       mitre_attack: ['T1595'],
@@ -524,9 +524,12 @@ test('legacy manifests preserve platform, evidence, and safe workflow boundaries
   assert.deepEqual(manifests.filter(({ maturity }) => maturity === 'documented').map(({ id }) => id), ['s15']);
 
   for (const manifest of manifests) {
-    assert.deepEqual(manifest.platforms, {
-      required: [hostAssisted.has(manifest.id) ? 'linux-vm' : 'docker-desktop'],
+    assert.deepEqual(manifest.platforms, hostAssisted.has(manifest.id) ? {
+      required: ['linux-vm'],
       optional: [],
+    } : {
+      required: ['docker-desktop-macos'],
+      optional: ['docker-desktop-windows', 'docker-engine-linux'],
     });
     assert.equal(manifest.version, 1);
     assert.equal(manifest.safety.external_network, false);
@@ -612,9 +615,9 @@ test('learner CLI lists labs deterministically from any working directory', () =
   assert.equal(result.status, 0, result.stderr);
   const lines = result.stdout.trimEnd().split('\n');
   assert.equal(lines.length, 15);
-  assert.equal(lines[0], 's1\trunnable\tdocker-desktop\tPort Scan');
+  assert.equal(lines[0], 's1\trunnable\tdocker-desktop-macos,docker-desktop-windows,docker-engine-linux\tPort Scan');
   assert.equal(lines[4], 's5\texternal\tlinux-vm\tImportant File Tampering');
-  assert.equal(lines[14], 's15\tdocumented\tdocker-desktop\tIntegrated Capstone');
+  assert.equal(lines[14], 's15\tdocumented\tdocker-desktop-macos,docker-desktop-windows,docker-engine-linux\tIntegrated Capstone');
   assert.equal(result.stderr, '');
 });
 
