@@ -174,10 +174,18 @@ test('caller booleans cannot promote runnable or unobserved verified manifests',
   );
 });
 
-test('trusted runner issues verified evidence only after independent process observations', (t) => {
+test('verified issuance stays closed for arbitrary roots, caller results, claimed platforms, and PATH interpreters', (t) => {
   const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'secure-learn-evidence-runner-'));
   t.after(() => fs.rmSync(fixtureRoot, { recursive: true, force: true }));
   fs.mkdirSync(path.join(fixtureRoot, 'curriculum', 'labs'), { recursive: true });
+  const fakeBin = path.join(fixtureRoot, 'fake-bin');
+  const marker = path.join(fixtureRoot, 'fake-bash-ran');
+  fs.mkdirSync(fakeBin);
+  fs.writeFileSync(
+    path.join(fakeBin, 'bash'),
+    `#!/bin/sh\nprintf used > '${marker}'\nexec /bin/sh "$@"\n`,
+    { mode: 0o755 },
+  );
 
   const manifest = structuredClone(S1_MANIFEST);
   manifest.maturity = 'verified';
@@ -192,7 +200,7 @@ test('trusted runner issues verified evidence only after independent process obs
   fs.mkdirSync(path.join(fixtureRoot, 'runner'));
   for (const [name, [relativePath, stages]] of Object.entries(commands)) {
     const observations = Object.fromEntries(stages.map((stage) => [stage, true]));
-    const script = `#!/bin/sh\nprintf '%s\\n' '${JSON.stringify({ observations })}'\n`;
+    const script = `#!/usr/bin/env bash\nprintf '%s\\n' '${JSON.stringify({ observations })}'\n`;
     fs.writeFileSync(path.join(fixtureRoot, relativePath), script, { mode: 0o755 });
     const spec = { path: relativePath, args: [] };
     if (name === 'verifier') manifest.assessment.verifier = spec;
@@ -203,20 +211,23 @@ test('trusted runner issues verified evidence only after independent process obs
     JSON.stringify(manifest),
   );
   const loaded = loadManifests(fixtureRoot)[0];
-  const receipt = runVerifiedEvidence(
-    validInput({ results: passingResults() }),
-    { manifest: loaded },
-  );
-  assert.equal(receipt.outcome, 'verified');
-  assert.equal(verifyEvidence(receipt, { manifest: loaded }), true);
-
-  const attackPath = path.join(fixtureRoot, commands.attack[0]);
-  fs.unlinkSync(attackPath);
-  fs.symlinkSync(path.join(fixtureRoot, commands.verify[0]), attackPath);
-  assert.throws(
-    () => runVerifiedEvidence(validInput({ results: passingResults() }), { manifest: loaded }),
-    /symlink/,
-  );
+  const originalPath = process.env.PATH;
+  process.env.PATH = `${fakeBin}${path.delimiter}${originalPath}`;
+  try {
+    assert.throws(
+      () => runVerifiedEvidence(
+        validInput({
+          platform: 'docker-desktop-windows',
+          results: passingResults(),
+        }),
+        { manifest: loaded },
+      ),
+      /verified evidence issuance is closed/,
+    );
+  } finally {
+    process.env.PATH = originalPath;
+  }
+  assert.equal(fs.existsSync(marker), false, 'closed issuer must not resolve a caller PATH interpreter');
 });
 
 test('sorts result keys deterministically while preserving meaningful changes', () => {
