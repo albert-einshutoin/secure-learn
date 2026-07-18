@@ -3327,6 +3327,7 @@ function safePublishOutputs({
 function publishTransaction(staged, operations) {
   const renameSync = operations.renameSync || fs.renameSync;
   const fsyncSync = operations.fsyncSync || fs.fsyncSync;
+  const unlinkSync = operations.unlinkSync || fs.unlinkSync;
   const journal = [];
   const directories = new Set();
 
@@ -3372,7 +3373,15 @@ function publishTransaction(staged, operations) {
     throw publicationError;
   }
 
-  removeArtifacts(journal.map((entry) => entry.backup).filter(Boolean));
+  try {
+    removeArtifacts(journal.map((entry) => entry.backup).filter(Boolean), unlinkSync);
+  } catch (error) {
+    const remaining = findPublicationArtifacts(staged[0].parent);
+    throw new Error(
+      `scenario publication committed but backup cleanup is incomplete; recovery required for: ${remaining.join(', ') || 'unknown artifact'}`,
+      { cause: error },
+    );
+  }
   for (const directory of directories) fsyncDirectory(directory);
 }
 
@@ -3393,6 +3402,12 @@ function rollbackJournal(journal) {
 
 function acquireWriterLock(outputDirectory) {
   const lockPath = path.join(outputDirectory, '.scenario-generator.lock');
+  const artifacts = findPublicationArtifacts(outputDirectory);
+  if (artifacts.length > 0) {
+    throw new Error(
+      `scenario publication recovery required; inspect and restore or remove transaction artifacts before retrying: ${artifacts.join(', ')}`,
+    );
+  }
   const existing = lstatIfPresent(lockPath);
   if (existing) {
     if (existing.isSymbolicLink()) throw new Error('scenario generator lock must not be a symlink');
@@ -3483,17 +3498,32 @@ function fsyncDirectory(directory, sync = fs.fsyncSync) {
   }
 }
 
-function unlinkIfPresent(candidate) {
+function unlinkIfPresent(candidate, unlinkSync = fs.unlinkSync) {
   if (!candidate) return;
   try {
-    fs.unlinkSync(candidate);
+    unlinkSync(candidate);
   } catch (error) {
     if (error.code !== 'ENOENT') throw error;
   }
 }
 
-function removeArtifacts(candidates) {
-  for (const candidate of candidates) unlinkIfPresent(candidate);
+function removeArtifacts(candidates, unlinkSync = fs.unlinkSync) {
+  for (const candidate of candidates) unlinkIfPresent(candidate, unlinkSync);
+}
+
+function findPublicationArtifacts(outputDirectory) {
+  const directories = [outputDirectory, path.join(outputDirectory, 'assets')];
+  const artifacts = [];
+  for (const directory of directories) {
+    const status = lstatIfPresent(directory);
+    if (!status || !status.isDirectory() || status.isSymbolicLink()) continue;
+    for (const name of fs.readdirSync(directory)) {
+      if (/^\..+\.(?:tmp|backup)$/.test(name)) {
+        artifacts.push(path.relative(outputDirectory, path.join(directory, name)));
+      }
+    }
+  }
+  return artifacts.sort();
 }
 
 function main() {
