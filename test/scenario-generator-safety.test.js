@@ -2,6 +2,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const { spawnSync } = require('node:child_process');
 const test = require('node:test');
 
 const generator = require('../scripts/generate_scenario_html');
@@ -58,12 +59,190 @@ test('safe publisher writes deterministic content with explicit file mode', (t) 
   assert.equal(fs.statSync(path.join(fixture.outDir, 'index.html')).mode & 0o777, 0o644);
 });
 
-function makeFixture(t) {
+test('safe publisher bootstraps only the expected directory chain', (t) => {
+  const fixture = makeFixture(t, { createOutputTree: false });
+
+  generator.safePublishOutputs({
+    root: fixture.root,
+    outDir: fixture.outDir,
+    outputs: new Map([['index.html', 'hello'], ['assets/scenario.css', 'css']]),
+    allowedPaths: new Set(['index.html', 'assets/scenario.css']),
+  });
+
+  assert.equal(fs.readFileSync(path.join(fixture.outDir, 'index.html'), 'utf8'), 'hello');
+  assert.equal(fs.readFileSync(path.join(fixture.assetDir, 'scenario.css'), 'utf8'), 'css');
+});
+
+test('safe publisher rejects a symlink in a bootstrapped directory segment', (t) => {
+  const fixture = makeFixture(t, { createOutputTree: false });
+  const external = path.join(fixture.base, 'external');
+  fs.mkdirSync(external);
+  fs.symlinkSync(external, path.join(fixture.root, 'docs'));
+
+  assert.throws(() => generator.safePublishOutputs({
+    root: fixture.root,
+    outDir: fixture.outDir,
+    outputs: new Map([['index.html', 'hello']]),
+    allowedPaths: new Set(['index.html']),
+  }), /symlink/i);
+  assert.deepEqual(fs.readdirSync(external), []);
+});
+
+test('safe publisher enforces 0644 under a restrictive process umask', (t) => {
+  const fixture = makeFixture(t);
+  const previous = process.umask(0o077);
+  try {
+    generator.safePublishOutputs({
+      root: fixture.root,
+      outDir: fixture.outDir,
+      outputs: new Map([['index.html', 'hello']]),
+      allowedPaths: new Set(['index.html']),
+    });
+  } finally {
+    process.umask(previous);
+  }
+
+  assert.equal(fs.statSync(path.join(fixture.outDir, 'index.html')).mode & 0o777, 0o644);
+});
+
+test('safe publisher fails closed on an existing writer lock before staging', (t) => {
+  const fixture = makeFixture(t);
+  const destination = path.join(fixture.outDir, 'index.html');
+  const lock = path.join(fixture.outDir, '.scenario-generator.lock');
+  fs.writeFileSync(destination, 'old');
+  fs.writeFileSync(lock, 'other writer');
+
+  assert.throws(() => generator.safePublishOutputs({
+    root: fixture.root,
+    outDir: fixture.outDir,
+    outputs: new Map([['index.html', 'new']]),
+    allowedPaths: new Set(['index.html']),
+  }), /another writer|stale lock/i);
+  assert.equal(fs.readFileSync(destination, 'utf8'), 'old');
+  assert.deepEqual(generatedArtifacts(fixture.outDir), ['.scenario-generator.lock']);
+});
+
+for (const failAt of [2, 10]) {
+  test(`safe publisher rolls back every file when rename ${failAt} fails`, (t) => {
+    const fixture = makeFixture(t);
+    const outputs = seededOutputs(fixture, 6);
+    const before = snapshotOutputs(fixture.outDir, outputs.keys());
+    let renames = 0;
+
+    assert.throws(() => generator.safePublishOutputs({
+      root: fixture.root,
+      outDir: fixture.outDir,
+      outputs,
+      allowedPaths: new Set(outputs.keys()),
+      operations: {
+        renameSync(...args) {
+          renames += 1;
+          if (renames === failAt) throw Object.assign(new Error(`rename fault ${failAt}`), { code: 'EIO' });
+          return fs.renameSync(...args);
+        },
+      },
+    }), new RegExp(`rename fault ${failAt}`));
+
+    assert.deepEqual(snapshotOutputs(fixture.outDir, outputs.keys()), before);
+    assert.deepEqual(generatedArtifacts(fixture.outDir), []);
+  });
+}
+
+test('safe publisher rolls back published files when directory fsync fails', (t) => {
+  const fixture = makeFixture(t);
+  const outputs = seededOutputs(fixture, 3);
+  const before = snapshotOutputs(fixture.outDir, outputs.keys());
+
+  assert.throws(() => generator.safePublishOutputs({
+    root: fixture.root,
+    outDir: fixture.outDir,
+    outputs,
+    allowedPaths: new Set(outputs.keys()),
+    operations: {
+      fsyncSync() {
+        throw Object.assign(new Error('fsync fault'), { code: 'EIO' });
+      },
+    },
+  }), /fsync fault/);
+
+  assert.deepEqual(snapshotOutputs(fixture.outDir, outputs.keys()), before);
+  assert.deepEqual(generatedArtifacts(fixture.outDir), []);
+});
+
+test('S7 records an nmap exit 7 and continues the bounded event report', (t) => {
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 's7-nonzero-'));
+  t.after(() => fs.rmSync(base, { recursive: true, force: true }));
+  const bin = path.join(base, 'bin');
+  const results = path.join(base, 'results');
+  fs.mkdirSync(bin);
+  writeExecutable(path.join(bin, 'nmap'), '#!/bin/sh\necho "bounded scan output"\nexit 7\n');
+  writeExecutable(path.join(bin, 'jq'), '#!/bin/sh\ncat\n');
+  writeExecutable(path.join(bin, 'curl'), `#!/bin/sh
+case " $* " in
+  *" -o /dev/null "*) printf '429' ;;
+  *" -I "*) printf 'HTTP/1.1 200 OK\\n' ;;
+  *) printf '\\nHTTP_CODE:401\\n' ;;
+esac
+exit 0
+`);
+
+  const run = spawnSync('/bin/bash', [path.join(__dirname, '..', 'attack/scripts/s7_lateral.sh')], {
+    cwd: path.join(__dirname, '..'),
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      PATH: `${bin}:/usr/bin:/bin`,
+      OUTPUT_DIR: results,
+      DELAY: '0',
+    },
+  });
+
+  assert.equal(run.status, 0, run.stderr || run.stdout);
+  const reports = fs.readdirSync(results).filter((name) => name.endsWith('.md'));
+  assert.equal(reports.length, 1);
+  const report = fs.readFileSync(path.join(results, reports[0]), 'utf8');
+  assert.match(`${run.stdout}\n${report}`, /exit status: 7/i);
+  assert.match(report, /Phase 6: DoS Attempt/);
+  assert.doesNotMatch(report, /admin:admin|user:user|guest:guest/);
+});
+
+function makeFixture(t, { createOutputTree = true } = {}) {
   const base = fs.mkdtempSync(path.join(os.tmpdir(), 'scenario-generator-'));
   t.after(() => fs.rmSync(base, { recursive: true, force: true }));
   const root = path.join(base, 'repo');
   const outDir = path.join(root, 'docs', 'scenario-guides');
   const assetDir = path.join(outDir, 'assets');
-  fs.mkdirSync(assetDir, { recursive: true });
+  if (createOutputTree) fs.mkdirSync(assetDir, { recursive: true });
+  else fs.mkdirSync(root);
   return { base, root, outDir, assetDir };
+}
+
+function seededOutputs(fixture, count) {
+  const outputs = new Map();
+  for (let index = 0; index < count; index += 1) {
+    const relative = `page-${index}.html`;
+    const destination = path.join(fixture.outDir, relative);
+    fs.writeFileSync(destination, `old-${index}`, { mode: index % 2 ? 0o600 : 0o640 });
+    fs.chmodSync(destination, index % 2 ? 0o600 : 0o640);
+    outputs.set(relative, `new-${index}`);
+  }
+  return outputs;
+}
+
+function snapshotOutputs(outputDirectory, relativePaths) {
+  return [...relativePaths].map((relative) => {
+    const destination = path.join(outputDirectory, relative);
+    return [relative, fs.readFileSync(destination), fs.statSync(destination).mode & 0o777];
+  });
+}
+
+function generatedArtifacts(directory) {
+  return fs.readdirSync(directory, { recursive: true })
+    .filter((name) => /\.tmp$|\.backup$|\.scenario-generator\.lock$/.test(name))
+    .sort();
+}
+
+function writeExecutable(file, content) {
+  fs.writeFileSync(file, content);
+  fs.chmodSync(file, 0o755);
 }
