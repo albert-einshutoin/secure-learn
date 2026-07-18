@@ -71,6 +71,7 @@ assert_publisher_hardening() {
   [[ "$(docker inspect -f '{{json .HostConfig.CapDrop}}' "$container_id")" == '["ALL"]' ]] || fail "$service does not drop all capabilities"
   [[ "$(docker inspect -f '{{index .HostConfig.Sysctls "net.ipv4.ip_forward"}}' "$container_id")" == "0" ]] || fail "$service enables IP forwarding"
   [[ "$(docker inspect -f '{{json .HostConfig.SecurityOpt}}' "$container_id")" == '["no-new-privileges:true"]' ]] || fail "$service permits privilege escalation"
+  [[ "$(docker inspect -f '{{.HostConfig.PidsLimit}}' "$container_id")" == "80" ]] || fail "$service does not enforce its PID limit"
   echo "[PASS] $service runtime hardening is intact."
 }
 
@@ -150,23 +151,81 @@ done
 assert_publisher_hardening app-publisher
 assert_publisher_hardening db-publisher
 
-# Keep slightly more sockets open than socat's child limit. The publisher must
-# remain alive under bounded pressure and recover as soon as the probe closes.
-node "$ROOT_DIR/scripts/lib/publisher_connection_limit_probe.js" \
-  > "$EVIDENCE_DIR/publisher-connection-limit.json" &
+# Open all sockets from one Bash process inside Kali. This bypasses Docker
+# Desktop's host-forwarding backlog without forking one client per connection.
+pressure_status="$EVIDENCE_DIR/publisher-pressure.tmp"
+"${COMPOSE[@]}" exec -T kali bash -c '
+  set -euo pipefail
+  requested=70
+  declare -a descriptors=()
+  cleanup_fds() {
+    local descriptor
+    for descriptor in "${descriptors[@]}"; do
+      socket_fd="$descriptor"
+      exec {socket_fd}>&-
+    done
+  }
+  trap cleanup_fds EXIT INT TERM
+  for ((index = 0; index < requested; index += 1)); do
+    if exec {socket_fd}<>/dev/tcp/172.23.0.10/3000; then
+      descriptors+=("$socket_fd")
+    else
+      break
+    fi
+  done
+  printf "requested=%d opened=%d\n" "$requested" "${#descriptors[@]}"
+  sleep 10
+' > "$pressure_status" &
 CONNECTION_PROBE_PID=$!
-sleep 3
-kill -0 "$CONNECTION_PROBE_PID" 2>/dev/null || fail "publisher connection-limit probe exited early"
-publisher_pid_count="$("${COMPOSE[@]}" exec -T app-publisher sh -c 'set -- /proc/[0-9]*; echo "$#"' | tr -d '[:space:]')"
-publisher_child_count=$((publisher_pid_count - 1))
-((publisher_pid_count <= 80)) || fail "app-publisher exceeded its 80 PID limit: $publisher_pid_count"
-((publisher_child_count <= 64)) || fail "app-publisher exceeded its 64 child limit: $publisher_child_count"
-[[ "$("${COMPOSE[@]}" ps -q app-publisher | xargs docker inspect -f '{{.State.Running}}')" == "true" ]] \
-  || fail "app-publisher stopped under bounded connection pressure"
+
+pressure_deadline=$((SECONDS + 10))
+while [[ ! -s "$pressure_status" ]] && ((SECONDS < pressure_deadline)); do
+  sleep 1
+done
+[[ -s "$pressure_status" ]] || fail "Kali publisher pressure probe did not report readiness"
+IFS=' =' read -r requested_label requested_connections opened_label opened_connections < "$pressure_status"
+[[ "$requested_label" == "requested" && "$opened_label" == "opened" ]] \
+  || fail "Kali publisher pressure probe returned malformed evidence"
+[[ "$requested_connections" =~ ^[0-9]+$ && "$opened_connections" =~ ^[0-9]+$ ]] \
+  || fail "Kali publisher pressure probe returned non-numeric evidence"
+((requested_connections == 70)) || fail "Kali publisher pressure request changed"
+((opened_connections >= 65)) || fail "Kali publisher pressure opened only $opened_connections connections"
+kill -0 "$CONNECTION_PROBE_PID" 2>/dev/null || fail "Kali publisher pressure probe exited early"
+
+container_id="$("${COMPOSE[@]}" ps -q app-publisher)"
+[[ -n "$container_id" ]] || fail "app-publisher container was not created"
+samples_json=""
+max_publisher_pids=0
+max_publisher_children=0
+for sample_index in $(seq 1 5); do
+  top_output="$(docker top "$container_id" -eo pid,ppid,comm)" \
+    || fail "docker top failed for app-publisher"
+  process_counts="$(printf '%s\n' "$top_output" | "$ROOT_DIR/scripts/lib/count_publisher_processes.sh")" \
+    || fail "docker top returned malformed app-publisher evidence"
+  read -r publisher_pid_count publisher_child_count <<< "$process_counts"
+  ((publisher_pid_count <= 80)) || fail "app-publisher exceeded its 80 PID limit: $publisher_pid_count"
+  ((publisher_child_count <= 64)) || fail "app-publisher exceeded its 64 child limit: $publisher_child_count"
+  ((publisher_pid_count > max_publisher_pids)) && max_publisher_pids=$publisher_pid_count
+  ((publisher_child_count > max_publisher_children)) && max_publisher_children=$publisher_child_count
+  [[ "$(docker inspect -f '{{.State.Running}}' "$container_id")" == "true" ]] \
+    || fail "app-publisher stopped under bounded connection pressure"
+  [[ -z "$samples_json" ]] || samples_json+=','
+  samples_json+="{\"index\":$sample_index,\"pids\":$publisher_pid_count,\"children\":$publisher_child_count}"
+  sleep 1
+done
+((max_publisher_pids <= 80)) || fail "app-publisher sampled PID maximum exceeded 80"
+((max_publisher_children <= 64)) || fail "app-publisher sampled child maximum exceeded 64"
+((max_publisher_children >= 10)) || fail "publisher pressure did not create enough children: $max_publisher_children"
+
 wait "$CONNECTION_PROBE_PID"
 CONNECTION_PROBE_PID=""
 wait_for_url http://127.0.0.1:3000/health "Application after publisher pressure"
-echo "[PASS] app-publisher stays within PID/child limits and recovers (pids=$publisher_pid_count, children=$publisher_child_count)."
+printf '{"requested":%d,"opened":%d,"samples":[%s],"max_pids":%d,"max_children":%d,"limits":{"pids":80,"children":64},"recovered":true}\n' \
+  "$requested_connections" "$opened_connections" "$samples_json" \
+  "$max_publisher_pids" "$max_publisher_children" \
+  > "$EVIDENCE_DIR/publisher-connection-limit.json"
+rm -f "$pressure_status"
+echo "[PASS] app-publisher stays within PID/child limits and recovers (max_pids=$max_publisher_pids, max_children=$max_publisher_children)."
 
 # A Kali request must still cross eth0 in the shared target namespace after
 # the data network was split out; otherwise the lab would silently bypass IDS.
