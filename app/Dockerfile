@@ -16,7 +16,7 @@ WORKDIR /app
 
 # npm is required only in build stages. Removing its package tree from the
 # runtime image reduces both executable attack surface and scanner noise.
-RUN apk add --no-cache su-exec \
+RUN apk add --no-cache su-exec=0.3-r0 \
   && addgroup -g 10001 -S appgroup \
   && adduser -S appuser -u 10001 -G appgroup \
   && mkdir -p /var/log/app \
