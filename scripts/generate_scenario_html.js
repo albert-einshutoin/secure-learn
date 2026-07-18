@@ -3373,14 +3373,25 @@ function publishTransaction(staged, operations) {
     throw publicationError;
   }
 
+  let cleanupTarget;
   try {
-    removeArtifacts(journal.map((entry) => entry.backup).filter(Boolean), unlinkSync);
+    for (const backup of journal.map((entry) => entry.backup).filter(Boolean)) {
+      // Retain the attempted path before unlinking because some filesystems can
+      // remove the directory entry and still report an I/O error to the caller.
+      cleanupTarget = backup;
+      unlinkIfPresent(backup, unlinkSync);
+    }
   } catch (error) {
     const rootEntry = staged.find((item) => path.basename(item.parent) !== 'assets');
     const publicationRoot = rootEntry ? rootEntry.parent : path.dirname(staged[0].parent);
     const remaining = findPublicationArtifacts(publicationRoot);
+    const failedTarget = describeCleanupTarget(publicationRoot, cleanupTarget);
+    const errorCode = describeCleanupErrorCode(error);
+    const recovery = remaining.length > 0
+      ? `recovery required for: ${remaining.join(', ')}`
+      : 'recovery scan found no remaining transaction artifact';
     throw new Error(
-      `scenario publication committed but backup cleanup is incomplete; recovery required for: ${remaining.join(', ') || 'unknown artifact'}`,
+      `scenario publication committed but backup cleanup failed at unlink for ${failedTarget} (${errorCode}); ${recovery}`,
       { cause: error },
     );
   }
@@ -3511,6 +3522,22 @@ function unlinkIfPresent(candidate, unlinkSync = fs.unlinkSync) {
 
 function removeArtifacts(candidates, unlinkSync = fs.unlinkSync) {
   for (const candidate of candidates) unlinkIfPresent(candidate, unlinkSync);
+}
+
+function describeCleanupTarget(publicationRoot, candidate) {
+  if (!candidate || !isWithin(publicationRoot, candidate)) return 'generated backup artifact';
+  const relative = path.relative(publicationRoot, candidate).split(path.sep).join('/');
+  const validLocation = !relative.includes('/') || relative.startsWith('assets/');
+  const basename = path.posix.basename(relative);
+  const validArtifact = /^\.[a-z0-9][a-z0-9.-]*\.\d+\.[0-9a-f-]+\.backup$/i.test(basename);
+  return validLocation && validArtifact && Buffer.byteLength(relative) <= 256
+    ? relative
+    : 'generated backup artifact';
+}
+
+function describeCleanupErrorCode(error) {
+  const allowedCodes = new Set(['EACCES', 'EBUSY', 'EIO', 'EISDIR', 'ENOTDIR', 'EPERM', 'EROFS']);
+  return allowedCodes.has(error && error.code) ? error.code : 'UNKNOWN';
 }
 
 function findPublicationArtifacts(outputDirectory) {
