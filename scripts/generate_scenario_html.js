@@ -7,6 +7,7 @@ const { loadManifests } = require('./lib/curriculum');
 
 const root = path.resolve(__dirname, '..');
 const outDir = path.join(root, 'docs', 'scenario-guides');
+const PUBLICATION_ARTIFACT_SCAN_LIMIT = 64;
 const labManifests = new Map(
   loadManifests(root).map((manifest) => [manifest.id.toUpperCase(), manifest]),
 );
@@ -3384,15 +3385,11 @@ function publishTransaction(staged, operations) {
   } catch (error) {
     const rootEntry = staged.find((item) => path.basename(item.parent) !== 'assets');
     const publicationRoot = rootEntry ? rootEntry.parent : path.dirname(staged[0].parent);
-    const remaining = findPublicationArtifacts(publicationRoot);
+    const remaining = scanPublicationArtifacts(publicationRoot);
     const failedTarget = describeCleanupTarget(publicationRoot, cleanupTarget);
     const errorCode = describeCleanupErrorCode(error);
-    const recovery = remaining.length > 0
-      ? `recovery required for: ${remaining.join(', ')}`
-      : 'recovery scan found no remaining transaction artifact';
     throw new Error(
-      `scenario publication committed but backup cleanup failed at unlink for ${failedTarget} (${errorCode}); ${recovery}`,
-      { cause: error },
+      `scenario publication committed but backup cleanup failed at unlink for ${failedTarget} (${errorCode}); remaining artifact count=${formatArtifactCount(remaining)}`,
     );
   }
   for (const directory of directories) fsyncDirectory(directory);
@@ -3415,10 +3412,10 @@ function rollbackJournal(journal) {
 
 function acquireWriterLock(outputDirectory) {
   const lockPath = path.join(outputDirectory, '.scenario-generator.lock');
-  const artifacts = findPublicationArtifacts(outputDirectory);
-  if (artifacts.length > 0) {
+  const artifacts = scanPublicationArtifacts(outputDirectory);
+  if (artifacts.count > 0) {
     throw new Error(
-      `scenario publication recovery required; inspect and restore or remove transaction artifacts before retrying: ${artifacts.join(', ')}`,
+      `scenario publication recovery required; inspect and restore or remove transaction artifacts before retrying; remaining artifact count=${formatArtifactCount(artifacts)}`,
     );
   }
   const existing = lstatIfPresent(lockPath);
@@ -3540,19 +3537,34 @@ function describeCleanupErrorCode(error) {
   return allowedCodes.has(error && error.code) ? error.code : 'UNKNOWN';
 }
 
-function findPublicationArtifacts(outputDirectory) {
+function scanPublicationArtifacts(outputDirectory) {
   const directories = [outputDirectory, path.join(outputDirectory, 'assets')];
-  const artifacts = [];
+  let artifactCount = 0;
   for (const directory of directories) {
     const status = lstatIfPresent(directory);
     if (!status || !status.isDirectory() || status.isSymbolicLink()) continue;
-    for (const name of fs.readdirSync(directory)) {
-      if (/^\..+\.(?:tmp|backup)$/.test(name)) {
-        artifacts.push(path.relative(outputDirectory, path.join(directory, name)));
+    // Stream and cap directory entries so an attacker-controlled recovery tree
+    // cannot force an unbounded allocation or get its filenames into logs.
+    const handle = fs.opendirSync(directory);
+    try {
+      let entry;
+      while ((entry = handle.readSync()) !== null) {
+        if (/^\..+\.(?:tmp|backup)$/.test(entry.name)) {
+          if (artifactCount === PUBLICATION_ARTIFACT_SCAN_LIMIT) {
+            return { count: artifactCount, truncated: true };
+          }
+          artifactCount += 1;
+        }
       }
+    } finally {
+      handle.closeSync();
     }
   }
-  return artifacts.sort();
+  return { count: artifactCount, truncated: false };
+}
+
+function formatArtifactCount({ count, truncated }) {
+  return `${count}${truncated ? '+' : ''}`;
 }
 
 function main() {
