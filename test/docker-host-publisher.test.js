@@ -24,7 +24,7 @@ function assertHardenedPublisher(service, listenPort, destination) {
   assert.deepEqual(service.entrypoint, ['/usr/bin/socat']);
   assert.equal(service.pids_limit, 80);
   assert.equal(service.cpus, 0.5);
-  assert.equal(service.mem_limit, '128m');
+  assert.equal(service.mem_limit, String(128 * 1024 * 1024));
   assert.deepEqual(service.ulimits.nofile, { soft: 256, hard: 512 });
   assert.deepEqual(service.command, [
     `TCP-LISTEN:${listenPort},fork,reuseaddr,max-children=64`,
@@ -107,4 +107,17 @@ test('all build-time Alpine packages are pinned exactly', () => {
   assert.match(appDockerfile, /^RUN apk add --no-cache su-exec=0\.3-r0/m);
   assert.match(publisherDockerfile, /^RUN apk add --no-cache socat=1\.8\.1\.3-r0/m);
   assert.match(ipsDockerfile, /^RUN apk add --no-cache iptables=1\.8\.11-r1$/m);
+});
+
+test('publisher pressure probe is fixed to loopback and the bounded CI contract', () => {
+  const probe = fs.readFileSync(path.join(root, 'scripts/lib/publisher_connection_limit_probe.js'), 'utf8');
+  const freshStack = fs.readFileSync(path.join(root, 'scripts/fresh_stack_e2e.sh'), 'utf8');
+
+  assert.match(probe, /TARGET_HOST = '127\.0\.0\.1'/);
+  assert.match(probe, /TARGET_PORT = 3000/);
+  assert.match(probe, /CONNECTIONS = 70/);
+  assert.doesNotMatch(probe, /process\.argv|child_process|exec\(|spawn\(/);
+  assert.match(freshStack, /publisher_pid_count <= 80/);
+  assert.match(freshStack, /publisher_child_count <= 64/);
+  assert.match(freshStack, /Application after publisher pressure/);
 });

@@ -11,6 +11,7 @@ COMPOSE_LEARNING=(docker compose --project-name "$PROJECT_NAME" -f "$ROOT_DIR/do
 COMPOSE_IPS=(docker compose --project-name "$PROJECT_NAME" -f "$ROOT_DIR/docker-compose.yml" -f "$ROOT_DIR/docker-compose.ips.yml")
 EVIDENCE_DIR="${EVIDENCE_DIR:-$ROOT_DIR/reports/fresh-stack}"
 STARTUP_TIMEOUT="${STARTUP_TIMEOUT:-360}"
+CONNECTION_PROBE_PID=""
 
 mkdir -p "$EVIDENCE_DIR"
 
@@ -22,6 +23,10 @@ fail() {
 collect_and_clean() {
   local status=$?
   set +e
+  if [[ -n "$CONNECTION_PROBE_PID" ]]; then
+    kill "$CONNECTION_PROBE_PID" 2>/dev/null || true
+    wait "$CONNECTION_PROBE_PID" 2>/dev/null || true
+  fi
   "${COMPOSE[@]}" ps -a > "$EVIDENCE_DIR/compose-ps.txt" 2>&1
   "${COMPOSE[@]}" logs --no-color > "$EVIDENCE_DIR/compose.log" 2>&1
   "${COMPOSE_LEARNING[@]}" --profile phase11-network-edge --profile phase8-distributed down --volumes --remove-orphans > "$EVIDENCE_DIR/learning-cleanup.log" 2>&1
@@ -144,6 +149,24 @@ done
 
 assert_publisher_hardening app-publisher
 assert_publisher_hardening db-publisher
+
+# Keep slightly more sockets open than socat's child limit. The publisher must
+# remain alive under bounded pressure and recover as soon as the probe closes.
+node "$ROOT_DIR/scripts/lib/publisher_connection_limit_probe.js" \
+  > "$EVIDENCE_DIR/publisher-connection-limit.json" &
+CONNECTION_PROBE_PID=$!
+sleep 3
+kill -0 "$CONNECTION_PROBE_PID" 2>/dev/null || fail "publisher connection-limit probe exited early"
+publisher_pid_count="$("${COMPOSE[@]}" exec -T app-publisher sh -c 'set -- /proc/[0-9]*; echo "$#"' | tr -d '[:space:]')"
+publisher_child_count=$((publisher_pid_count - 1))
+((publisher_pid_count <= 80)) || fail "app-publisher exceeded its 80 PID limit: $publisher_pid_count"
+((publisher_child_count <= 64)) || fail "app-publisher exceeded its 64 child limit: $publisher_child_count"
+[[ "$("${COMPOSE[@]}" ps -q app-publisher | xargs docker inspect -f '{{.State.Running}}')" == "true" ]] \
+  || fail "app-publisher stopped under bounded connection pressure"
+wait "$CONNECTION_PROBE_PID"
+CONNECTION_PROBE_PID=""
+wait_for_url http://127.0.0.1:3000/health "Application after publisher pressure"
+echo "[PASS] app-publisher stays within PID/child limits and recovers."
 
 # A Kali request must still cross eth0 in the shared target namespace after
 # the data network was split out; otherwise the lab would silently bypass IDS.

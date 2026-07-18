@@ -171,6 +171,13 @@ services:
     image: secure-learn-host-publisher:local
     container_name: soc-lab-app-publisher
     user: "65532:65532"
+    pids_limit: 80
+    cpus: 0.50
+    mem_limit: 128m
+    ulimits:
+      nofile:
+        soft: 256
+        hard: 512
     read_only: true
     cap_drop:
       - ALL
@@ -179,7 +186,7 @@ services:
     sysctls:
       net.ipv4.ip_forward: "0"
     entrypoint: ["/usr/bin/socat"]
-    command: ["TCP-LISTEN:3000,fork,reuseaddr", "TCP:172.23.0.20:3000"]
+    command: ["TCP-LISTEN:3000,fork,reuseaddr,max-children=64", "TCP:172.23.0.20:3000"]
     networks:
       app_net:
         ipv4_address: 172.23.0.10
@@ -198,6 +205,13 @@ services:
     image: secure-learn-host-publisher:local
     container_name: soc-lab-db-publisher
     user: "65532:65532"
+    pids_limit: 80
+    cpus: 0.50
+    mem_limit: 128m
+    ulimits:
+      nofile:
+        soft: 256
+        hard: 512
     read_only: true
     cap_drop:
       - ALL
@@ -206,7 +220,7 @@ services:
     sysctls:
       net.ipv4.ip_forward: "0"
     entrypoint: ["/usr/bin/socat"]
-    command: ["TCP-LISTEN:15432,fork,reuseaddr", "TCP:172.25.0.40:5432"]
+    command: ["TCP-LISTEN:15432,fork,reuseaddr,max-children=64", "TCP:172.25.0.40:5432"]
     networks:
       data_net:
         ipv4_address: 172.25.0.10

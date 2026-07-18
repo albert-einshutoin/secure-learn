@@ -174,6 +174,13 @@ services:
       - phase12-kubernetes-platform
       - capstone
     user: "65532:65532"
+    pids_limit: 80
+    cpus: 0.50
+    mem_limit: 128m
+    ulimits:
+      nofile:
+        soft: 256
+        hard: 512
     read_only: true
     cap_drop:
       - ALL
@@ -182,7 +189,7 @@ services:
     sysctls:
       net.ipv4.ip_forward: "0"
     entrypoint: ["/usr/bin/socat"]
-    command: ["TCP-LISTEN:8080,fork,reuseaddr", "TCP:172.23.0.50:8080"]
+    command: ["TCP-LISTEN:8080,fork,reuseaddr,max-children=64", "TCP:172.23.0.50:8080"]
     networks:
       app_net:
         ipv4_address: 172.23.0.11
@@ -203,6 +210,13 @@ services:
       - phase16-distributed-reliability
       - capstone
     user: "65532:65532"
+    pids_limit: 80
+    cpus: 0.50
+    mem_limit: 128m
+    ulimits:
+      nofile:
+        soft: 256
+        hard: 512
     read_only: true
     cap_drop:
       - ALL
@@ -211,7 +225,7 @@ services:
     sysctls:
       net.ipv4.ip_forward: "0"
     entrypoint: ["/usr/bin/socat"]
-    command: ["TCP-LISTEN:6380,fork,reuseaddr", "TCP:172.23.0.60:6379"]
+    command: ["TCP-LISTEN:6380,fork,reuseaddr,max-children=64", "TCP:172.23.0.60:6379"]
     networks:
       app_net:
         ipv4_address: 172.23.0.12
