@@ -166,7 +166,7 @@ publisher_child_count=$((publisher_pid_count - 1))
 wait "$CONNECTION_PROBE_PID"
 CONNECTION_PROBE_PID=""
 wait_for_url http://127.0.0.1:3000/health "Application after publisher pressure"
-echo "[PASS] app-publisher stays within PID/child limits and recovers."
+echo "[PASS] app-publisher stays within PID/child limits and recovers (pids=$publisher_pid_count, children=$publisher_child_count)."
 
 # A Kali request must still cross eth0 in the shared target namespace after
 # the data network was split out; otherwise the lab would silently bypass IDS.
