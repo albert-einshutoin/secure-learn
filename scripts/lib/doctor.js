@@ -28,7 +28,11 @@ const DOCKER_PLATFORM_BY_OS = Object.freeze({
   win32: 'docker-desktop-windows',
   linux: 'docker-engine-linux',
 });
-const CONTEXT_BY_OS = Object.freeze({ darwin: 'desktop-linux', win32: 'desktop-linux', linux: 'default' });
+const CONTEXTS_BY_OS = Object.freeze({
+  darwin: Object.freeze(['desktop-linux']),
+  win32: Object.freeze(['desktop-linux']),
+  linux: Object.freeze(['default', 'rootless']),
+});
 const CONTEXT_FORMAT = '{{json .Endpoints.docker.Host}}';
 const INFO_FORMAT = '{"operatingSystem":{{json .OperatingSystem}},"osType":{{json .OSType}},"name":{{json .Name}}}';
 const MAX_DOCKER_OUTPUT = 64 * 1024;
@@ -172,13 +176,18 @@ function checkDockerPlatform(options = {}) {
   };
   const failure = { ok: false, message: 'Docker platform is not ready.' };
   const platformId = DOCKER_PLATFORM_BY_OS[platform];
-  const context = CONTEXT_BY_OS[platform];
-  if (!platformId || !context) return failure;
+  const allowedContexts = CONTEXTS_BY_OS[platform];
+  if (!platformId || !allowedContexts) return failure;
 
   const binary = dependencies.findDocker();
   if (typeof binary !== 'string' || !isAbsoluteForPlatform(binary, platform)) return failure;
 
   try {
+    // Validate the active context because learners subsequently invoke plain
+    // `docker compose`; checking an unused local context would not bound that command.
+    const context = runDocker(binary, ['context', 'show'], dependencies);
+    if (!allowedContexts.includes(context)) return failure;
+
     const contextOutput = runDocker(binary, [
       'context', 'inspect', context, '--format', CONTEXT_FORMAT,
     ], dependencies);

@@ -21,13 +21,18 @@ const composeConfig = JSON.stringify({
   },
 });
 
-function platformSpawn(calls, { contextHost, identity, composeVersion = '2.36.0', config = composeConfig }) {
+function platformSpawn(calls, {
+  contextHost,
+  identity,
+  context = contextHost.startsWith('unix:///run/user/') ? 'rootless'
+    : contextHost === 'unix:///var/run/docker.sock' ? 'default'
+      : 'desktop-linux',
+  composeVersion = '2.36.0',
+  config = composeConfig,
+}) {
   return (binary, argv, options) => {
     calls.push({ binary, argv, options });
     if (argv[0] === 'context' && argv[1] === 'show') {
-      const context = contextHost.startsWith('unix:///run/user/') ? 'rootless'
-        : contextHost === 'unix:///var/run/docker.sock' ? 'default'
-          : 'desktop-linux';
       return { status: 0, stdout: `${context}\n`, stderr: '' };
     }
     if (argv[0] === 'context') {
@@ -152,7 +157,11 @@ test('Docker doctor rejects remote, ambiguous, spoofed, old, and incapable engin
     for (const contextHost of badHosts) {
       const result = checkDockerPlatform({
         ...base,
-        spawn: platformSpawn([], { contextHost, identity: identities[platform] }),
+        spawn: platformSpawn([], {
+          context: platform === 'linux' ? 'default' : 'desktop-linux',
+          contextHost,
+          identity: identities[platform],
+        }),
       });
       assert.equal(result.ok, false, `${platform} must reject ${contextHost}`);
     }
@@ -171,6 +180,7 @@ test('Docker doctor rejects remote, ambiguous, spoofed, old, and incapable engin
       const result = checkDockerPlatform({
         ...base,
         spawn: platformSpawn([], {
+          context: platform === 'linux' ? 'default' : 'desktop-linux',
           contextHost: expectedHost,
           identity: identities[platform],
           ...override,
