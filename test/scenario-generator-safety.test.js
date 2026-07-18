@@ -182,6 +182,37 @@ test('safe publisher rolls back published files when directory fsync fails', (t)
   assert.deepEqual(generatedArtifacts(fixture.outDir), []);
 });
 
+test('safe publisher fails closed when committed backup cleanup is incomplete', (t) => {
+  const fixture = makeFixture(t);
+  const outputs = seededOutputs(fixture, 2);
+  let cleanupAttempts = 0;
+
+  assert.throws(() => generator.safePublishOutputs({
+    root: fixture.root,
+    outDir: fixture.outDir,
+    outputs,
+    allowedPaths: new Set(outputs.keys()),
+    operations: {
+      unlinkSync(candidate) {
+        cleanupAttempts += 1;
+        if (cleanupAttempts === 1) throw Object.assign(new Error('unlink fault'), { code: 'EIO' });
+        return fs.unlinkSync(candidate);
+      },
+    },
+  }), /committed|cleanup|recovery/i);
+
+  for (const [relative, content] of outputs) {
+    assert.equal(fs.readFileSync(path.join(fixture.outDir, relative), 'utf8'), content);
+  }
+  assert.ok(generatedArtifacts(fixture.outDir).some((name) => name.endsWith('.backup')));
+  assert.throws(() => generator.safePublishOutputs({
+    root: fixture.root,
+    outDir: fixture.outDir,
+    outputs,
+    allowedPaths: new Set(outputs.keys()),
+  }), /recovery|required|artifact/i);
+});
+
 test('S7 records an nmap exit 7 and continues the bounded event report', (t) => {
   const base = fs.mkdtempSync(path.join(os.tmpdir(), 's7-nonzero-'));
   t.after(() => fs.rmSync(base, { recursive: true, force: true }));
