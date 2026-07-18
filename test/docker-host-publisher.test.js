@@ -7,7 +7,7 @@ const test = require('node:test');
 const root = path.resolve(__dirname, '..');
 
 function composeConfig(files) {
-  const args = ['compose'];
+  const args = ['compose', '--profile', 'capstone'];
   for (const file of files) args.push('-f', path.join(root, file));
   args.push('config', '--format', 'json');
   const result = spawnSync('docker', args, { cwd: root, encoding: 'utf8' });
@@ -74,4 +74,3 @@ test('host publisher image is immutable, non-root, and installs no runtime depen
   assert.match(dockerfile, /^ENTRYPOINT \["\/usr\/bin\/socat"\]$/m);
   assert.doesNotMatch(dockerfile, /curl|wget|ENTRYPOINT \[".*sh/);
 });
-

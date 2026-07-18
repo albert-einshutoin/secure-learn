@@ -46,11 +46,15 @@ services:
     networks:
       app_net:
         ipv4_address: 172.23.0.20
+        priority: 1000
         aliases:
           - app
           - target-app
-    ports:
-      - "127.0.0.1:3000:3000"
+      data_net:
+        ipv4_address: 172.25.0.20
+        priority: 100
+    sysctls:
+      net.ipv4.ip_forward: "0"
     read_only: true
     cap_drop:
       - ALL
@@ -143,16 +147,12 @@ services:
     container_name: soc-lab-db
     hostname: db
     networks:
-      app_net:
-        ipv4_address: 172.23.0.40
+      data_net:
+        ipv4_address: 172.25.0.40
     environment:
       - POSTGRES_USER=soclab
       - POSTGRES_PASSWORD=soclab_password
       - POSTGRES_DB=soclab
-    ports:
-      # Host-only publish keeps DB integration tests runnable without exposing
-      # the lab database beyond the local machine.
-      - "127.0.0.1:15432:5432"
     volumes:
       - db_data:/var/lib/postgresql/data
       - ./app/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
@@ -161,6 +161,63 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
+
+  # Docker Desktop does not forward host ports directly into an internal
+  # bridge. These non-root TCP publishers are the only members of host_access;
+  # IP forwarding stays disabled so they cannot become routes around the lab.
+  app-publisher:
+    build:
+      context: ./docker/host-publisher
+    image: secure-learn-host-publisher:local
+    container_name: soc-lab-app-publisher
+    user: "65532:65532"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    sysctls:
+      net.ipv4.ip_forward: "0"
+    entrypoint: ["/usr/bin/socat"]
+    command: ["TCP-LISTEN:3000,fork,reuseaddr", "TCP:172.23.0.20:3000"]
+    networks:
+      app_net:
+        ipv4_address: 172.23.0.10
+      host_access:
+        ipv4_address: 172.26.0.10
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      app:
+        condition: service_healthy
+    restart: unless-stopped
+
+  db-publisher:
+    build:
+      context: ./docker/host-publisher
+    image: secure-learn-host-publisher:local
+    container_name: soc-lab-db-publisher
+    user: "65532:65532"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    sysctls:
+      net.ipv4.ip_forward: "0"
+    entrypoint: ["/usr/bin/socat"]
+    command: ["TCP-LISTEN:15432,fork,reuseaddr", "TCP:172.25.0.40:5432"]
+    networks:
+      data_net:
+        ipv4_address: 172.25.0.10
+      host_access:
+        ipv4_address: 172.26.0.11
+    ports:
+      - "127.0.0.1:15432:15432"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
 
   # ============================================
   # Defense - Fail2ban
@@ -274,7 +331,6 @@ services:
     hostname: filebeat
     user: root
     networks:
-      - app_net
       - monitor_net
     volumes:
       - ./elk/filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
@@ -294,13 +350,28 @@ services:
 # Networks
 # ============================================
 networks:
-  # Application network - Kali to Suricata/App and App to DB
+  # Attack network - Kali to Suricata/App only.
   app_net:
     driver: bridge
     internal: true
     ipam:
       config:
         - subnet: 172.23.0.0/24
+
+  # Application data plane. Kali never joins this network.
+  data_net:
+    driver: bridge
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.25.0.0/24
+
+  # Host ingress plane. Only hardened TCP publishers join this bridge.
+  host_access:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.26.0.0/24
 
   # Monitor network - Filebeat to ELK
   monitor_net:
