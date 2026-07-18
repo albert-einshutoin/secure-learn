@@ -193,7 +193,11 @@ scripts/learn doctor s3
 
 Dockerラボの `platforms.required` は累積要件ではなく、**実行時にいずれか1つを満たす代替候補（one-of）** です。現在は `docker-desktop-macos`、`docker-desktop-windows`、`docker-engine-linux` を明示しています。意味論を曖昧にしないため `platforms.optional` は予約済みの空配列です。
 
-`scripts/learn doctor <id>` は現在のOSに対応する候補がmanifestにあることを確認したうえで、macOS/WindowsではローカルDocker Desktop、Linuxではローカルまたはrootless Docker Engineだけを許可します。SSH/TCP/cloud contextや未知のsocketを拒否し、Docker Compose 2.36.0以上を数値比較し、`interface_name` が `eth0` / `eth1` として実際に解釈されることまで検査します。
+`scripts/learn doctor <id>` は現在のOSに対応する候補がmanifestにあることを確認したうえで、macOS/WindowsではローカルDocker Desktop、Linuxではローカルまたはrootless Docker Engineだけを許可します。`DOCKER_HOST` / `DOCKER_CONTEXT` は大文字小文字や前後空白にかかわらず、設定されていれば拒否します。SSH/TCP/cloud contextや未知のsocketも拒否し、Docker Compose 2.36.0以上を正式版SemVerとして数値比較します。
+
+doctorはclient-sideの `compose config` だけを成功根拠にしません。固定された一時project `secure-learn-doctor` を起動し、隔離されたAlpineコンテナ内でapp/data networkがそれぞれ `eth0` / `eth1` と指定IPへ実装されたことを観測し、成功・失敗のどちらでもコンテナ、network、volumeをcleanupします。このruntime probeを含むため、初回は固定digestのAlpine image取得時間がかかることがあります。
+
+POSIXホストではsocketを `lstat` し、symlinkではないsocket種別、rootful/rootlessに対応する所有者、group/other書込み不可のmodeも確認します。ただし、ローカルsocketの先にあるpeerが別ホストへのproxyではないことを暗号学的に証明する仕組みではありません。doctorはローカル設定のfail-closed検査であり、ホスト管理者や同一権限ユーザーが改変したdaemon／socketの真正性をattestするものではありません。
 
 S5/S6は通常のDockerホストやDockerコンテナではなく、使い捨てLinux VM内部でreceiptを発行し、同じVM内で `scripts/learn doctor s5` または `scripts/learn doctor s6` を実行します。このreceiptは運用者が確認した **operator-attested** なローカル安全制御であり、ハイパーバイザーのスナップショット取得を暗号学的に証明するもの（not cryptographic attestation）ではありません。発行手順と限界は [Disposable Linux VM Adapter](docs/vm-adapter.md) を参照してください。
 
