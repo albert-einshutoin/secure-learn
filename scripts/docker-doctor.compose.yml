@@ -1,0 +1,33 @@
+services:
+  interface-probe:
+    image: alpine:3.22@sha256:14358309a308569c32bdc37e2e0e9694be33a9d99e68afb0f5ff33cc1f695dce
+    command:
+      - sh
+      - -ec
+      - |
+        ip -o -4 addr show dev eth0 | grep -F 'inet 172.30.251.10/24 ' >/dev/null
+        ip -o -4 addr show dev eth1 | grep -F 'inet 172.30.252.10/24 ' >/dev/null
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      doctor_app:
+        interface_name: eth0
+        ipv4_address: 172.30.251.10
+      doctor_data:
+        interface_name: eth1
+        ipv4_address: 172.30.252.10
+
+networks:
+  doctor_app:
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.30.251.0/24
+  doctor_data:
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.30.252.0/24

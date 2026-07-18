@@ -31,7 +31,7 @@ function platformSpawn(calls, {
       : 'desktop-linux',
   composeVersion = '2.36.0',
   config = composeConfig,
-  server = { apiVersion: '1.54', os: 'linux', version: '29.5.3' },
+  server = { apiVersion: '1.54', os: 'linux', version: identity.serverVersion },
   runtimeStatus = 0,
   cleanupStatus = 0,
 }) {
@@ -137,7 +137,8 @@ for (const scenario of cases) {
     for (const call of calls) {
       assert.equal(call.options.cwd, root);
       assert.equal(call.options.shell, false);
-      assert.equal(call.options.timeout, 15_000);
+      const expectedTimeout = call.argv.includes('up') ? 120_000 : call.argv.includes('down') ? 30_000 : 15_000;
+      assert.equal(call.options.timeout, expectedTimeout);
       assert.equal(call.options.maxBuffer, 64 * 1024);
       assert.equal(call.options.env.PATH, scenario.expectedPath);
       assert.equal(call.options.env.DOCKER_CLI_HINTS, 'false');
@@ -213,6 +214,7 @@ test('Docker doctor rejects remote, ambiguous, spoofed, old, and incapable engin
       { identity: { operatingSystem: 'Docker Desktop', osType: 'windows', name: 'docker-desktop', serverVersion: '29.5.3' } },
       { identity: { operatingSystem: 'Docker Desktop', osType: 'linux', name: 'remote', serverVersion: '29.5.3' } },
       { server: { apiVersion: 'unknown', os: 'linux', version: '29.5.3' } },
+      { server: { apiVersion: 1.54, os: 'linux', version: '29.5.3' } },
       { server: { apiVersion: '1.54', os: 'windows', version: '29.5.3' } },
       { composeVersion: '2.35.99' },
       { config: JSON.stringify({ services: { 'target-netns': { networks: { app_net: {}, data_net: {} } } } }) },

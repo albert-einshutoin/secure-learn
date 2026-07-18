@@ -34,9 +34,12 @@ const CONTEXTS_BY_OS = Object.freeze({
   linux: Object.freeze(['default', 'rootless']),
 });
 const CONTEXT_FORMAT = '{{json .Endpoints.docker.Host}}';
-const INFO_FORMAT = '{"operatingSystem":{{json .OperatingSystem}},"osType":{{json .OSType}},"name":{{json .Name}}}';
+const INFO_FORMAT = '{"operatingSystem":{{json .OperatingSystem}},"osType":{{json .OSType}},"name":{{json .Name}},"serverVersion":{{json .ServerVersion}}}';
+const VERSION_FORMAT = '{"apiVersion":{{json .Server.APIVersion}},"os":{{json .Server.Os}},"version":{{json .Server.Version}}}';
 const MAX_DOCKER_OUTPUT = 64 * 1024;
 const MINIMUM_COMPOSE_VERSION = Object.freeze([2, 36, 0]);
+const PROBE_COMPOSE_FILE = 'scripts/docker-doctor.compose.yml';
+const PROBE_PROJECT = 'secure-learn-doctor';
 
 function isAbsoluteForPlatform(value, platform) {
   return platform === 'win32' ? path.win32.isAbsolute(value) : path.posix.isAbsolute(value);
@@ -75,12 +78,12 @@ function commandEnvironment(dependencies) {
   };
 }
 
-function runDocker(binary, argv, dependencies) {
+function runDocker(binary, argv, dependencies, timeout = 15_000) {
   const result = dependencies.spawn(binary, argv, {
     cwd: dependencies.repositoryRoot,
     encoding: 'utf8',
     shell: false,
-    timeout: 15_000,
+    timeout,
     maxBuffer: MAX_DOCKER_OUTPUT,
     windowsHide: true,
     env: commandEnvironment(dependencies),
@@ -91,7 +94,9 @@ function runDocker(binary, argv, dependencies) {
     || result.error
     || result.status !== 0
     || typeof result.stdout !== 'string'
+    || typeof result.stderr !== 'string'
     || Buffer.byteLength(result.stdout, 'utf8') > MAX_DOCKER_OUTPUT
+    || Buffer.byteLength(result.stderr, 'utf8') > MAX_DOCKER_OUTPUT
   ) {
     throw new Error('Docker platform is not ready.');
   }
@@ -100,7 +105,8 @@ function runDocker(binary, argv, dependencies) {
 
 function parseComposeVersion(value) {
   if (typeof value !== 'string') return null;
-  const match = /^v?(\d{1,6})\.(\d{1,6})\.(\d{1,6})(?:[-+][0-9A-Za-z.-]+)?$/u.exec(value);
+  const component = '(?:0|[1-9]\\d{0,5})';
+  const match = new RegExp(`^(${component})\\.(${component})\\.(${component})$`, 'u').exec(value);
   if (!match) return null;
   const version = match.slice(1).map(Number);
   for (let index = 0; index < MINIMUM_COMPOSE_VERSION.length; index += 1) {
@@ -110,7 +116,7 @@ function parseComposeVersion(value) {
   return version;
 }
 
-function expectedContextHost(dependencies) {
+function expectedContextHost(dependencies, context) {
   if (dependencies.platform === 'darwin') {
     if (!path.posix.isAbsolute(dependencies.home)) return null;
     return `unix://${dependencies.home}/.docker/run/docker.sock`;
@@ -120,28 +126,55 @@ function expectedContextHost(dependencies) {
     return 'npipe:////./pipe/dockerDesktopLinuxEngine';
   }
   if (dependencies.platform === 'linux') {
-    const allowed = new Set(['unix:///var/run/docker.sock']);
-    if (Number.isSafeInteger(dependencies.uid) && dependencies.uid >= 0) {
-      allowed.add(`unix:///run/user/${dependencies.uid}/docker.sock`);
+    if (context === 'default') return 'unix:///var/run/docker.sock';
+    if (context === 'rootless' && Number.isSafeInteger(dependencies.uid) && dependencies.uid >= 0) {
+      return `unix:///run/user/${dependencies.uid}/docker.sock`;
     }
-    return allowed;
   }
   return null;
 }
 
-function contextIsLocal(contextHost, dependencies) {
-  const expected = expectedContextHost(dependencies);
-  return expected instanceof Set ? expected.has(contextHost) : contextHost === expected;
+function contextIsLocal(contextHost, dependencies, context) {
+  return contextHost === expectedContextHost(dependencies, context);
+}
+
+function hasDockerTargetOverride(env) {
+  if (env === null || typeof env !== 'object') return true;
+  return Object.keys(env).some((key) => {
+    const normalized = key.trim().toUpperCase();
+    return normalized === 'DOCKER_HOST' || normalized === 'DOCKER_CONTEXT';
+  });
+}
+
+function socketMetadataMatches(contextHost, dependencies, context) {
+  if (dependencies.platform === 'win32') return true;
+  if (!contextHost.startsWith('unix://')) return false;
+  const socketPath = contextHost.slice('unix://'.length);
+  const expectedUid = dependencies.platform === 'linux' && context === 'default' ? 0 : dependencies.uid;
+  if (!Number.isSafeInteger(expectedUid) || expectedUid < 0) return false;
+  const stat = dependencies.lstat(socketPath);
+  return stat !== null
+    && typeof stat === 'object'
+    && typeof stat.isSocket === 'function'
+    && stat.isSocket()
+    && stat.uid === expectedUid
+    && Number.isInteger(stat.mode)
+    && (stat.mode & 0o022) === 0;
 }
 
 function identityMatches(identity, platform) {
+  const boundedText = (value) => typeof value === 'string'
+    && value.length > 0
+    && value.length <= 255
+    && !/[\u0000-\u001F\u007F-\u009F]/u.test(value);
   if (
     identity === null
     || typeof identity !== 'object'
     || Array.isArray(identity)
-    || Object.keys(identity).sort().join(',') !== 'name,operatingSystem,osType'
-    || typeof identity.operatingSystem !== 'string'
-    || typeof identity.name !== 'string'
+    || Object.keys(identity).sort().join(',') !== 'name,operatingSystem,osType,serverVersion'
+    || !boundedText(identity.operatingSystem)
+    || !boundedText(identity.name)
+    || typeof identity.serverVersion !== 'string'
     || identity.operatingSystem.length === 0
     || identity.name.length === 0
     || identity.osType !== 'linux'
@@ -155,6 +188,20 @@ function identityMatches(identity, platform) {
   return platform === 'linux' && identity.operatingSystem !== 'Docker Desktop';
 }
 
+function serverMatches(server, identity) {
+  return server !== null
+    && typeof server === 'object'
+    && !Array.isArray(server)
+    && Object.keys(server).sort().join(',') === 'apiVersion,os,version'
+    && typeof server.apiVersion === 'string'
+    && typeof server.os === 'string'
+    && typeof server.version === 'string'
+    && /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/u.test(server.apiVersion)
+    && server.os === 'linux'
+    && /^(?:0|[1-9]\d{0,5})\.(?:0|[1-9]\d{0,5})\.(?:0|[1-9]\d{0,5})(?:[-+][0-9A-Za-z.-]+)?$/u.test(server.version)
+    && server.version === identity.serverVersion;
+}
+
 function hasInterfaceNameCapability(config) {
   if (config === null || typeof config !== 'object' || Array.isArray(config)) return false;
   const networks = config.services?.['target-netns']?.networks;
@@ -164,20 +211,45 @@ function hasInterfaceNameCapability(config) {
     && networks.data_net?.interface_name === 'eth1';
 }
 
+function runInterfaceProbe(binary, context, dependencies) {
+  const prefix = [
+    '--context', context, 'compose', '--project-name', PROBE_PROJECT,
+    '-f', PROBE_COMPOSE_FILE,
+  ];
+  let probeError;
+  try {
+    runDocker(binary, [
+      ...prefix, 'up', '--abort-on-container-exit', '--exit-code-from', 'interface-probe',
+    ], dependencies, 120_000);
+  } catch (error) {
+    probeError = error;
+  } finally {
+    try {
+      runDocker(binary, [...prefix, 'down', '--volumes', '--remove-orphans'], dependencies, 30_000);
+    } catch (cleanupError) {
+      probeError = cleanupError;
+    }
+  }
+  if (probeError) throw probeError;
+}
+
 function checkDockerPlatform(options = {}) {
   const platform = options.platform || process.platform;
   const dependencies = {
     platform,
     home: options.home || os.homedir(),
     uid: options.uid ?? (typeof process.getuid === 'function' ? process.getuid() : null),
+    env: options.env || process.env,
     repositoryRoot: options.repositoryRoot || fs.realpathSync(path.resolve(__dirname, '../..')),
     findDocker: options.findDocker || (() => findDockerBinary(platform)),
+    lstat: options.lstat || fs.lstatSync,
     spawn: options.spawn || spawnSync,
   };
   const failure = { ok: false, message: 'Docker platform is not ready.' };
   const platformId = DOCKER_PLATFORM_BY_OS[platform];
   const allowedContexts = CONTEXTS_BY_OS[platform];
   if (!platformId || !allowedContexts) return failure;
+  if (hasDockerTargetOverride(dependencies.env)) return failure;
 
   const binary = dependencies.findDocker();
   if (typeof binary !== 'string' || !isAbsoluteForPlatform(binary, platform)) return failure;
@@ -191,12 +263,20 @@ function checkDockerPlatform(options = {}) {
     const contextOutput = runDocker(binary, [
       'context', 'inspect', context, '--format', CONTEXT_FORMAT,
     ], dependencies);
-    if (!contextIsLocal(JSON.parse(contextOutput), dependencies)) return failure;
+    const contextHost = JSON.parse(contextOutput);
+    if (!contextIsLocal(contextHost, dependencies, context)) return failure;
+    if (!socketMetadataMatches(contextHost, dependencies, context)) return failure;
 
     const infoOutput = runDocker(binary, [
       '--context', context, 'info', '--format', INFO_FORMAT,
     ], dependencies);
-    if (!identityMatches(JSON.parse(infoOutput), platform)) return failure;
+    const identity = JSON.parse(infoOutput);
+    if (!identityMatches(identity, platform)) return failure;
+
+    const serverOutput = runDocker(binary, [
+      '--context', context, 'version', '--format', VERSION_FORMAT,
+    ], dependencies);
+    if (!serverMatches(JSON.parse(serverOutput), identity)) return failure;
 
     const versionOutput = runDocker(binary, [
       '--context', context, 'compose', 'version', '--short',
@@ -207,6 +287,7 @@ function checkDockerPlatform(options = {}) {
       '--context', context, 'compose', '-f', 'docker-compose.yml', 'config', '--format', 'json',
     ], dependencies);
     if (!hasInterfaceNameCapability(JSON.parse(configOutput))) return failure;
+    runInterfaceProbe(binary, context, dependencies);
   } catch {
     // Docker output and errors may contain environment data; never reflect it.
     return failure;
@@ -252,7 +333,7 @@ function doctorManifest(manifest, options = {}) {
   if (!expectedPlatform || !manifest.platforms.required.includes(expectedPlatform)) {
     throw new Error('Current Docker platform is not declared by this lab.');
   }
-  const result = checkDocker({ platform, repositoryRoot });
+  const result = checkDocker({ platform, repositoryRoot, env });
   if (!result.ok || result.platform !== expectedPlatform) throw new Error('Docker platform is not ready.');
   return `${result.message}\n${safetyOutput(manifest.safety)}\n`;
 }
@@ -262,4 +343,5 @@ module.exports = {
   doctorManifest,
   INFO_FORMAT,
   parseComposeVersion,
+  VERSION_FORMAT,
 };
