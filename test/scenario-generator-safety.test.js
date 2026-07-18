@@ -201,7 +201,7 @@ exit 0
   const reports = fs.readdirSync(results).filter((name) => name.endsWith('.md'));
   assert.equal(reports.length, 1);
   const report = fs.readFileSync(path.join(results, reports[0]), 'utf8');
-  assert.match(`${run.stdout}\n${report}`, /exit status: 7/i);
+  assert.match(report, /exit status[^\n]*7/i);
   assert.match(report, /Phase 6: DoS Attempt/);
   assert.doesNotMatch(report, /admin:admin|user:user|guest:guest/);
 });
