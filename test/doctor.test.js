@@ -1,5 +1,6 @@
 const assert = require('node:assert/strict');
 const { spawnSync } = require('node:child_process');
+const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
 
@@ -362,6 +363,13 @@ test('runtime probes use invocation-scoped random projects with exact cleanup is
     return upProject;
   });
   assert.notEqual(projects[0], projects[1]);
+});
+
+test('runtime probe delegates IPAM to Docker so concurrent projects cannot overlap fixed subnets', () => {
+  const source = fs.readFileSync(path.join(root, 'scripts', 'docker-doctor.compose.yml'), 'utf8');
+  assert.doesNotMatch(source, /ipv4_address|subnet:/u);
+  assert.match(source, /\/sys\/class\/net\/eth0/u);
+  assert.match(source, /\/sys\/class\/net\/eth1/u);
 });
 
 test('Docker Engine and API versions enforce the documented 20.10.0 and 1.41 minimums', () => {
