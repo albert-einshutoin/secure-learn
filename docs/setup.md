@@ -14,7 +14,7 @@
 ### 必要なソフトウェア
 
 - Docker Engine 20.10以上
-- Docker Compose 2.0以上
+- Docker Compose 2.36.0以上（macOS/WindowsはDocker Desktop 4.42.0以上）
 - Git
 
 ## インストール

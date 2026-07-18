@@ -872,7 +872,7 @@ git diff --check main...HEAD
 git status --short --branch
 ```
 
-Expected: audits and tests pass; Compose is valid; the fresh stack proves Docker Desktop/Linux host publishing without opening attack or data-plane egress, route bypasses remain blocked, and Suricata observes the application path on `eth0`; only intentional branch commits differ from main; worktree is clean.
+Expected: audits and tests pass; Compose is valid; the fresh stack proves Docker Desktop/Linux host publishing without opening attack or data-plane egress, route bypasses remain blocked, publisher CPU/memory/PID/file-descriptor/child limits survive bounded connection pressure and recover, and Suricata observes the application path on `eth0`; only intentional branch commits differ from main; worktree is clean.
 
 - [x] **Step 3: Review dangerous execution paths**
 

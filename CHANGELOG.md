@@ -21,7 +21,7 @@ All notable changes to Secure Learn are documented here. This project follows [S
 
 - Bound learner attack targets to manifest-declared services and private CIDRs, kept learner execution on fixed argv boundaries, and isolated generated evidence with restrictive permissions and ignored runtime paths.
 - Included the digest-pinned IPS helper in build verification, Trivy reports, SPDX SBOMs, and release checksums, and documented the Docker socket as a trusted release-tooling-only exception.
-- Kept attack and database networks internal on Linux and Docker Desktop while restoring loopback-only host access through a digest-pinned, non-root, read-only, capability-free TCP publisher with IP forwarding disabled; fresh-stack E2E now proves egress, route-bypass, data-plane, and IDS boundaries.
+- Kept attack and database networks internal on Linux and Docker Desktop while restoring loopback-only host access through a digest-pinned, non-root, read-only, capability-free TCP publisher with IP forwarding disabled and bounded CPU, memory, PID, file-descriptor, and child-connection limits; fresh-stack E2E now proves egress, route-bypass, resource-exhaustion, data-plane, and IDS boundaries.
 - Added the host publisher as a fourth release image with Trivy, SPDX SBOM, checksum, and GitHub artifact attestation evidence.
 - This foundation does not claim executable AppSec, Kubernetes, DFIR, Linux, or cloud expansion labs; those remain follow-up slices until their own verification workflows satisfy the `verified` contract.
 
