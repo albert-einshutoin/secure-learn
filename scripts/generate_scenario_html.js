@@ -3259,7 +3259,7 @@ function safePublishOutputs({
       'asset directory',
     )
     : null;
-  const lock = acquireWriterLock(outReal);
+  const lock = acquireWriterLock(outReal, operations);
 
   try {
     const destinations = [];
@@ -3385,11 +3385,11 @@ function publishTransaction(staged, operations) {
   } catch (error) {
     const rootEntry = staged.find((item) => path.basename(item.parent) !== 'assets');
     const publicationRoot = rootEntry ? rootEntry.parent : path.dirname(staged[0].parent);
-    const remaining = scanPublicationArtifacts(publicationRoot);
+    const remaining = scanPublicationArtifacts(publicationRoot, operations);
     const failedTarget = describeCleanupTarget(publicationRoot, cleanupTarget);
     const errorCode = describeCleanupErrorCode(error);
     throw new Error(
-      `scenario publication committed but backup cleanup failed at unlink for ${failedTarget} (${errorCode}); remaining artifact count=${formatArtifactCount(remaining)}`,
+      `scenario publication committed but backup cleanup failed at unlink for ${failedTarget} (${errorCode}); ${describeArtifactScan(remaining)}`,
     );
   }
   for (const directory of directories) fsyncDirectory(directory);
@@ -3410,9 +3410,12 @@ function rollbackJournal(journal) {
   return errors;
 }
 
-function acquireWriterLock(outputDirectory) {
+function acquireWriterLock(outputDirectory, operations) {
   const lockPath = path.join(outputDirectory, '.scenario-generator.lock');
-  const artifacts = scanPublicationArtifacts(outputDirectory);
+  const artifacts = scanPublicationArtifacts(outputDirectory, operations);
+  if (artifacts.status === 'unavailable') {
+    throw new Error('scenario publication recovery scan unavailable; refusing to acquire writer lock');
+  }
   if (artifacts.count > 0) {
     throw new Error(
       `scenario publication recovery required; inspect and restore or remove transaction artifacts before retrying; remaining artifact count=${formatArtifactCount(artifacts)}`,
@@ -3537,34 +3540,64 @@ function describeCleanupErrorCode(error) {
   return allowedCodes.has(error && error.code) ? error.code : 'UNKNOWN';
 }
 
-function scanPublicationArtifacts(outputDirectory) {
-  const directories = [outputDirectory, path.join(outputDirectory, 'assets')];
-  let artifactCount = 0;
-  for (const directory of directories) {
-    const status = lstatIfPresent(directory);
-    if (!status || !status.isDirectory() || status.isSymbolicLink()) continue;
-    // Stream and cap directory entries so an attacker-controlled recovery tree
-    // cannot force an unbounded allocation or get its filenames into logs.
-    const handle = fs.opendirSync(directory);
-    try {
-      let entry;
-      while ((entry = handle.readSync()) !== null) {
-        if (/^\..+\.(?:tmp|backup)$/.test(entry.name)) {
-          if (artifactCount === PUBLICATION_ARTIFACT_SCAN_LIMIT) {
-            return { count: artifactCount, truncated: true };
-          }
-          artifactCount += 1;
-        }
+function scanPublicationArtifacts(outputDirectory, operations = {}) {
+  try {
+    const lstatSync = operations.lstatSync || fs.lstatSync;
+    const opendirSync = operations.opendirSync || fs.opendirSync;
+    const directories = [outputDirectory, path.join(outputDirectory, 'assets')];
+    let artifactCount = 0;
+    for (const directory of directories) {
+      let status;
+      try {
+        status = lstatSync(directory);
+      } catch (error) {
+        if (error.code === 'ENOENT') continue;
+        throw error;
       }
-    } finally {
-      handle.closeSync();
+      if (!status.isDirectory() || status.isSymbolicLink()) continue;
+      // Stream and cap directory entries so an attacker-controlled recovery
+      // tree cannot force an allocation or get its filenames into diagnostics.
+      const handle = opendirSync(directory);
+      try {
+        let entry;
+        while ((entry = handle.readSync()) !== null) {
+          if (/^\..+\.(?:tmp|backup)$/.test(entry.name)) {
+            if (artifactCount === PUBLICATION_ARTIFACT_SCAN_LIMIT) {
+              return artifactScanResult('ok', artifactCount, true);
+            }
+            artifactCount += 1;
+          }
+        }
+      } finally {
+        // A read failure must still attempt close; either failure is reduced to
+        // the same fixed unavailable result by the outer diagnostic boundary.
+        handle.closeSync();
+      }
     }
+    return artifactScanResult('ok', artifactCount, false);
+  } catch {
+    return artifactScanResult('unavailable');
   }
-  return { count: artifactCount, truncated: false };
 }
 
-function formatArtifactCount({ count, truncated }) {
-  return `${count}${truncated ? '+' : ''}`;
+function formatArtifactCount({ count, capped }) {
+  return `${count}${capped ? '+' : ''}`;
+}
+
+function describeArtifactScan(scan) {
+  return scan.status === 'unavailable'
+    ? 'remaining artifact scan=unavailable'
+    : `remaining artifact count=${formatArtifactCount(scan)}`;
+}
+
+function artifactScanResult(status, count, capped) {
+  const result = Object.create(null);
+  result.status = status;
+  if (status === 'ok') {
+    result.count = count;
+    result.capped = capped;
+  }
+  return Object.freeze(result);
 }
 
 function main() {
