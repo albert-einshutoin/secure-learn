@@ -425,6 +425,19 @@ test('verifies canonical receipts and returns false for integrity tampering', ()
   }
 });
 
+test('verification rejects a caller-rehashed all-true receipt while attested issuance is closed', () => {
+  const forged = structuredClone(createReceipt(validInput()));
+  forged.results.cleanup = true;
+  forged.outcome = 'verified';
+  const { sha256, ...body } = forged;
+  forged.sha256 = createHash('sha256').update(JSON.stringify(sortForHash(body))).digest('hex');
+
+  assert.throws(
+    () => verifyReceipt(forged),
+    /verified evidence verification is closed/,
+  );
+});
+
 test('rejects trusted-policy mismatch even if an embedded permissive policy is rehashed', () => {
   const evidence = structuredClone(createReceipt(validInput()));
   assert.throws(() => verifyEvidence(evidence, { manifest: S14_MANIFEST }), /manifest id must match evidence lab/);
