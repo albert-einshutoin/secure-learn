@@ -22,8 +22,12 @@ function assertHardenedPublisher(service, listenPort, destination) {
   assert.deepEqual(service.security_opt, ['no-new-privileges:true']);
   assert.deepEqual(service.sysctls, { 'net.ipv4.ip_forward': '0' });
   assert.deepEqual(service.entrypoint, ['/usr/bin/socat']);
+  assert.equal(service.pids_limit, 80);
+  assert.equal(service.cpus, 0.5);
+  assert.equal(service.mem_limit, '128m');
+  assert.deepEqual(service.ulimits.nofile, { soft: 256, hard: 512 });
   assert.deepEqual(service.command, [
-    `TCP-LISTEN:${listenPort},fork,reuseaddr`,
+    `TCP-LISTEN:${listenPort},fork,reuseaddr,max-children=64`,
     `TCP:${destination}`,
   ]);
 }
@@ -93,4 +97,14 @@ test('host publisher image is immutable, non-root, and installs no runtime depen
   assert.match(dockerfile, /^USER 65532:65532$/m);
   assert.match(dockerfile, /^ENTRYPOINT \["\/usr\/bin\/socat"\]$/m);
   assert.doesNotMatch(dockerfile, /curl|wget|ENTRYPOINT \[".*sh/);
+});
+
+test('all build-time Alpine packages are pinned exactly', () => {
+  const appDockerfile = fs.readFileSync(path.join(root, 'app/Dockerfile'), 'utf8');
+  const publisherDockerfile = fs.readFileSync(path.join(root, 'docker/host-publisher/Dockerfile'), 'utf8');
+  const ipsDockerfile = fs.readFileSync(path.join(root, 'docker/ips-iptables/Dockerfile'), 'utf8');
+
+  assert.match(appDockerfile, /^RUN apk add --no-cache su-exec=0\.3-r0/m);
+  assert.match(publisherDockerfile, /^RUN apk add --no-cache socat=1\.8\.1\.3-r0/m);
+  assert.match(ipsDockerfile, /^RUN apk add --no-cache iptables=1\.8\.11-r1$/m);
 });

@@ -485,6 +485,13 @@ test('runtime verification is mandatory in CI and can be required locally', () =
   assert.match(freshStack, /down --volumes/);
 });
 
+test('README states the Compose version required for deterministic IDS interfaces', () => {
+  const readme = read('README.md');
+  assert.match(readme, /Docker Desktop 4\.42\.0以上/);
+  assert.match(readme, /Docker Compose 2\.36\.0以上/);
+  assert.match(readme, /interface_name/);
+});
+
 test('release contract includes version, changelog, SBOM, and vulnerability scanning', () => {
   assert.match(read('VERSION').trim(), /^\d+\.\d+\.\d+$/);
   assert.match(read('CHANGELOG.md'), /## \[1\.0\.0\]/);
