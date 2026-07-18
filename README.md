@@ -175,6 +175,8 @@ trusted runnerは `attack` から `startup, attack`、`verify` から `telemetry
 
 receiptの `sha256` は、正規化された内容が発行後に変わったことを検出するためのtamper-evidenceです。署名でも、発行者の身元や実行環境の真正性を証明するcryptographic attestationでもありません。第三者に真正性を証明する用途では、別途署名鍵と検証可能な署名チェーンが必要です。
 
+したがって `verifyEvidence(...) === true` が保証するのは、trusted manifestとの内容整合性とSHA-256の一致までです。保存済みreceiptが本当にtrusted runnerから発行されたことはオフライン検証できず、書き込み権限を持つ利用者が同じ形式とdigestを再構成することも防ぎません。runner由来の真正性が必要な配布・監査境界では、このkeyless receipt単体を使わないでください。
+
 ```bash
 # 全ラボの成熟度・対応プラットフォーム候補を一覧表示
 scripts/learn list
