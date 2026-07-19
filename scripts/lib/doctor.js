@@ -39,8 +39,10 @@ const INFO_FORMAT = '{"operatingSystem":{{json .OperatingSystem}},"osType":{{jso
 const VERSION_FORMAT = '{"apiVersion":{{json .Server.APIVersion}},"os":{{json .Server.Os}},"version":{{json .Server.Version}}}';
 const MAX_DOCKER_OUTPUT = 64 * 1024;
 const MINIMUM_COMPOSE_VERSION = Object.freeze([2, 36, 0]);
-const MINIMUM_ENGINE_VERSION = Object.freeze([20, 10, 0]);
-const MINIMUM_API_VERSION = Object.freeze([1, 41]);
+// Compose interface_name reaches the daemon through the endpoint ifname API,
+// so both client syntax support and the Engine 28.1/API 1.49 contract are required.
+const MINIMUM_ENGINE_VERSION = Object.freeze([28, 1, 0]);
+const MINIMUM_API_VERSION = Object.freeze([1, 49]);
 const PROBE_COMPOSE_FILE = 'scripts/docker-doctor.compose.yml';
 
 function isAbsoluteForPlatform(value, platform) {

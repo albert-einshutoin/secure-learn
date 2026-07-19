@@ -489,19 +489,21 @@ test('fresh-stack CI pins a compatible Docker Engine and verifies its local cont
   const workflow = read('.github/workflows/ci.yml');
   const setup = 'docker/setup-docker-action@6d7cfa65f60a9dda7b46e5513fa982536f3c9877';
   const setupIndex = workflow.indexOf(setup);
-  const versionIndex = workflow.indexOf('docker version', setupIndex);
-  const e2eIndex = workflow.indexOf('scripts/fresh_stack_e2e.sh', versionIndex);
+  const contractIndex = workflow.indexOf('name: Verify local Docker runtime contract', setupIndex);
+  const e2eIndex = workflow.indexOf('scripts/fresh_stack_e2e.sh', contractIndex);
 
   assert.ok(setupIndex >= 0, 'fresh-stack must use the immutable setup-docker-action v5.3.0 commit');
   assert.match(workflow.slice(setupIndex), /version:\s*v28\.5\.2/);
   assert.match(workflow.slice(setupIndex), /context:\s*secure-learn-ci/);
   assert.doesNotMatch(workflow.slice(setupIndex, e2eIndex), /version:\s*latest|tcp-port:|set-host:\s*true/);
-  assert.ok(versionIndex > setupIndex, 'Docker contract gate must run after engine setup');
-  assert.ok(e2eIndex > versionIndex, 'Docker contract gate must run before fresh-stack E2E');
-  assert.match(workflow.slice(versionIndex, e2eIndex), /docker context show/);
-  assert.match(workflow.slice(versionIndex, e2eIndex), /docker context inspect/);
-  assert.match(workflow.slice(versionIndex, e2eIndex), /28\.5\.2/);
-  assert.match(workflow.slice(versionIndex, e2eIndex), /1\.49/);
+  assert.ok(contractIndex > setupIndex, 'Docker contract gate must run after engine setup');
+  assert.ok(e2eIndex > contractIndex, 'Docker contract gate must run before fresh-stack E2E');
+  const contract = workflow.slice(contractIndex, e2eIndex);
+  assert.match(contract, /docker context show/);
+  assert.match(contract, /docker context inspect/);
+  assert.match(contract, /docker version/);
+  assert.match(contract, /28\.5\.2/);
+  assert.match(contract, /1\.49/);
 });
 
 test('public setup docs state the Engine, API, and Compose requirements for deterministic IDS interfaces', () => {

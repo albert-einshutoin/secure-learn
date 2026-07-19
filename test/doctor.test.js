@@ -293,7 +293,7 @@ test('learner CLI rejects Docker target overrides including blank and alternate-
 });
 
 test('Linux context and socket must match the rootful or rootless ownership boundary exactly', () => {
-  const identity = { operatingSystem: 'Ubuntu 24.04', osType: 'linux', name: 'local', serverVersion: '27.5.1' };
+  const identity = { operatingSystem: 'Ubuntu 24.04', osType: 'linux', name: 'local', serverVersion: '28.5.2' };
   for (const [context, contextHost, uid] of [
     ['default', 'unix:///run/user/1000/docker.sock', 1000],
     ['rootless', 'unix:///var/run/docker.sock', 0],
@@ -317,7 +317,7 @@ test('POSIX Docker sockets accept safe 0660 group access and reject unsafe metad
     lstat: () => socketStat(0, 999, 0o140660),
     spawn: platformSpawn(rootfulCalls, {
       context: 'default', contextHost: 'unix:///var/run/docker.sock',
-      identity: { operatingSystem: 'Ubuntu 24.04', osType: 'linux', name: 'local', serverVersion: '27.5.1' },
+      identity: { operatingSystem: 'Ubuntu 24.04', osType: 'linux', name: 'local', serverVersion: '28.5.2' },
     }),
   }).ok, true);
 
@@ -328,7 +328,7 @@ test('POSIX Docker sockets accept safe 0660 group access and reject unsafe metad
     lstat: () => socketStat(1000, 1000, 0o140660),
     spawn: platformSpawn(rootlessCalls, {
       context: 'rootless', contextHost: 'unix:///run/user/1000/docker.sock',
-      identity: { operatingSystem: 'Ubuntu 24.04', osType: 'linux', name: 'local', serverVersion: '27.5.1' },
+      identity: { operatingSystem: 'Ubuntu 24.04', osType: 'linux', name: 'local', serverVersion: '28.5.2' },
     }),
   }).ok, true);
 
@@ -374,6 +374,7 @@ test('runtime probe delegates IPAM to Docker so concurrent projects cannot overl
 
 test('Docker Engine and API versions enforce the documented 28.1.0 and 1.49 minimums', () => {
   const versions = [
+    [{ apiVersion: '1.41', os: 'linux', version: '20.10.0' }, false],
     [{ apiVersion: '1.48', os: 'linux', version: '28.1.0' }, false],
     [{ apiVersion: '1.49', os: 'linux', version: '28.0.4' }, false],
     [{ apiVersion: '1.49', os: 'linux', version: '28.1.0-rc.1' }, false],
