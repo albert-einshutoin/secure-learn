@@ -539,6 +539,18 @@ test('release contract includes version, changelog, SBOM, and vulnerability scan
   assert.match(workflow, /gh release edit[\s\S]*--draft=false/);
 });
 
+test('release policy records the CI Docker archive verification residual risk and follow-up gate', () => {
+  const policy = read('docs/release-policy.md');
+  const changelog = read('CHANGELOG.md');
+
+  assert.match(policy, /setup-docker-action/);
+  assert.match(policy, /CDN[\s\S]*(?:checksum|provenance)/i);
+  assert.match(policy, /does not independently verify|独立[^\n]*検証しない/i);
+  assert.match(policy, /future[\s\S]*(?:checksum|signature|provenance)|将来[\s\S]*(?:checksum|署名|provenance)/i);
+  assert.match(changelog, /Docker CE 29\.6\.2[\s\S]*security/i);
+  assert.doesNotMatch(changelog, /fresh-stack CI daemon to Docker CE 28\.5\.2/);
+});
+
 test('GitHub Actions dependencies are pinned to immutable commits', () => {
   const workflowFiles = fs
     .readdirSync(path.join(root, '.github/workflows'))
