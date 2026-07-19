@@ -493,17 +493,14 @@ test('fresh-stack CI pins a compatible Docker Engine and verifies its local cont
   const e2eIndex = workflow.indexOf('scripts/fresh_stack_e2e.sh', contractIndex);
 
   assert.ok(setupIndex >= 0, 'fresh-stack must use the immutable setup-docker-action v5.3.0 commit');
-  assert.match(workflow.slice(setupIndex), /version:\s*v28\.5\.2/);
-  assert.match(workflow.slice(setupIndex), /context:\s*secure-learn-ci/);
+  assert.match(workflow.slice(setupIndex), /with:\n\s+version:\s*v29\.6\.2\n\s+context:\s*secure-learn-ci/);
   assert.doesNotMatch(workflow.slice(setupIndex, e2eIndex), /version:\s*latest|tcp-port:|set-host:\s*true/);
   assert.ok(contractIndex > setupIndex, 'Docker contract gate must run after engine setup');
   assert.ok(e2eIndex > contractIndex, 'Docker contract gate must run before fresh-stack E2E');
   const contract = workflow.slice(contractIndex, e2eIndex);
-  assert.match(contract, /docker context show/);
-  assert.match(contract, /docker context inspect/);
-  assert.match(contract, /docker version/);
-  assert.match(contract, /28\.5\.2/);
-  assert.match(contract, /1\.49/);
+  assert.match(contract, /EXPECTED_DOCKER_SOCKET:\s*\$\{\{ steps\.setup-docker\.outputs\.sock \}\}/);
+  assert.match(contract, /run:\s*scripts\/verify_ci_docker_runtime\.sh/);
+  assert.doesNotMatch(contract, /docker context show|docker context inspect|docker version/);
 });
 
 test('public setup docs state the Engine, API, and Compose requirements for deterministic IDS interfaces', () => {

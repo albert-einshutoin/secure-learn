@@ -396,6 +396,33 @@ test('Docker Engine and API versions enforce the documented 28.1.0 and 1.49 mini
   }
 });
 
+test('Docker Engine 28.1 and API 1.49 boundary is enforced on every supported host OS', () => {
+  for (const scenario of cases) {
+    for (const [server, expected] of [
+      [{ apiVersion: '1.49', os: 'linux', version: '28.0.4' }, false],
+      [{ apiVersion: '1.48', os: 'linux', version: '28.1.0' }, false],
+      [{ apiVersion: '1.49', os: 'linux', version: '28.1.0' }, true],
+    ]) {
+      const identity = { ...scenario.identity, serverVersion: server.version };
+      const result = checkDockerPlatform({
+        platform: scenario.platform,
+        home: scenario.home,
+        uid: scenario.uid,
+        gid: scenario.platform === 'darwin' ? 20 : 1000,
+        groups: scenario.platform === 'linux' && scenario.context === 'default' ? [999] : [20, 1000],
+        env: {},
+        repositoryRoot: root,
+        findDocker: () => scenario.platform === 'win32' ? 'C:\\trusted\\docker.exe' : '/trusted/docker',
+        lstat: () => scenario.platform === 'linux' && scenario.context === 'default'
+          ? socketStat(0, 999, 0o140660)
+          : socketStat(scenario.uid, scenario.platform === 'darwin' ? 20 : scenario.uid),
+        spawn: platformSpawn([], { ...scenario, identity, server }),
+      });
+      assert.equal(result.ok, expected, `${scenario.name}: ${JSON.stringify(server)}`);
+    }
+  }
+});
+
 test('runtime interface probe always cleans up after probe or cleanup failure', () => {
   for (const statuses of [{ runtimeStatus: 7, cleanupStatus: 0 }, { runtimeStatus: 0, cleanupStatus: 9 }]) {
     const calls = [];
