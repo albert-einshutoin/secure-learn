@@ -92,7 +92,7 @@ const cases = [
     uid: 1000,
     context: 'default',
     contextHost: 'unix:///var/run/docker.sock',
-    identity: { operatingSystem: 'Ubuntu 24.04', osType: 'linux', name: 'student-workstation', serverVersion: '27.5.1' },
+    identity: { operatingSystem: 'Ubuntu 24.04', osType: 'linux', name: 'student-workstation', serverVersion: '28.5.2' },
     expectedPlatform: 'docker-engine-linux',
     expectedPath: '/usr/bin:/bin:/usr/sbin:/sbin',
   },
@@ -103,7 +103,7 @@ const cases = [
     uid: 1000,
     context: 'rootless',
     contextHost: 'unix:///run/user/1000/docker.sock',
-    identity: { operatingSystem: 'Ubuntu 24.04', osType: 'linux', name: 'student-workstation', serverVersion: '27.5.1' },
+    identity: { operatingSystem: 'Ubuntu 24.04', osType: 'linux', name: 'student-workstation', serverVersion: '28.5.2' },
     expectedPlatform: 'docker-engine-linux',
     expectedPath: '/usr/bin:/bin:/usr/sbin:/sbin',
   },
@@ -190,7 +190,7 @@ test('Docker doctor rejects remote, ambiguous, spoofed, old, and incapable engin
   const identities = {
     darwin: { operatingSystem: 'Docker Desktop', osType: 'linux', name: 'docker-desktop', serverVersion: '29.5.3' },
     win32: { operatingSystem: 'Docker Desktop', osType: 'linux', name: 'docker-desktop', serverVersion: '29.5.3' },
-    linux: { operatingSystem: 'Ubuntu 24.04', osType: 'linux', name: 'local', serverVersion: '27.5.1' },
+    linux: { operatingSystem: 'Ubuntu 24.04', osType: 'linux', name: 'local', serverVersion: '28.5.2' },
   };
   const homes = { darwin: '/Users/student', win32: 'C:\\Users\\student', linux: '/home/student' };
   const badHosts = ['tcp://127.0.0.1:2375', 'ssh://student@host', 'https://cloud.example', 'unix:///tmp/docker.sock', 'npipe:////./pipe/ambiguous'];
@@ -372,12 +372,15 @@ test('runtime probe delegates IPAM to Docker so concurrent projects cannot overl
   assert.match(source, /\/sys\/class\/net\/eth1/u);
 });
 
-test('Docker Engine and API versions enforce the documented 20.10.0 and 1.41 minimums', () => {
-  for (const server of [
-    { apiVersion: '1.40', os: 'linux', version: '27.5.1' },
-    { apiVersion: '1.54', os: 'linux', version: '20.9.99' },
-    { apiVersion: '1.54', os: 'linux', version: '20.10.0-rc.1' },
-  ]) {
+test('Docker Engine and API versions enforce the documented 28.1.0 and 1.49 minimums', () => {
+  const versions = [
+    [{ apiVersion: '1.48', os: 'linux', version: '28.1.0' }, false],
+    [{ apiVersion: '1.49', os: 'linux', version: '28.0.4' }, false],
+    [{ apiVersion: '1.49', os: 'linux', version: '28.1.0-rc.1' }, false],
+    [{ apiVersion: '1.49', os: 'linux', version: '28.1.0' }, true],
+    [{ apiVersion: '1.51', os: 'linux', version: '28.5.2' }, true],
+  ];
+  for (const [server, expected] of versions) {
     const calls = [];
     const result = checkDockerPlatform({
       platform: 'linux', home: '/home/student', uid: 1000, gid: 1000, groups: [999], env: {},
@@ -388,7 +391,7 @@ test('Docker Engine and API versions enforce the documented 20.10.0 and 1.41 min
         identity: { operatingSystem: 'Ubuntu 24.04', osType: 'linux', name: 'local', serverVersion: server.version },
       }),
     });
-    assert.equal(result.ok, false, JSON.stringify(server));
+    assert.equal(result.ok, expected, JSON.stringify(server));
   }
 });
 

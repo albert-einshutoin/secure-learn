@@ -485,11 +485,35 @@ test('runtime verification is mandatory in CI and can be required locally', () =
   assert.match(freshStack, /down --volumes/);
 });
 
-test('README states the Compose version required for deterministic IDS interfaces', () => {
+test('fresh-stack CI pins a compatible Docker Engine and verifies its local contract before E2E', () => {
+  const workflow = read('.github/workflows/ci.yml');
+  const setup = 'docker/setup-docker-action@6d7cfa65f60a9dda7b46e5513fa982536f3c9877';
+  const setupIndex = workflow.indexOf(setup);
+  const versionIndex = workflow.indexOf('docker version', setupIndex);
+  const e2eIndex = workflow.indexOf('scripts/fresh_stack_e2e.sh', versionIndex);
+
+  assert.ok(setupIndex >= 0, 'fresh-stack must use the immutable setup-docker-action v5.3.0 commit');
+  assert.match(workflow.slice(setupIndex), /version:\s*v28\.5\.2/);
+  assert.match(workflow.slice(setupIndex), /context:\s*secure-learn-ci/);
+  assert.doesNotMatch(workflow.slice(setupIndex, e2eIndex), /version:\s*latest|tcp-port:|set-host:\s*true/);
+  assert.ok(versionIndex > setupIndex, 'Docker contract gate must run after engine setup');
+  assert.ok(e2eIndex > versionIndex, 'Docker contract gate must run before fresh-stack E2E');
+  assert.match(workflow.slice(versionIndex, e2eIndex), /docker context show/);
+  assert.match(workflow.slice(versionIndex, e2eIndex), /docker context inspect/);
+  assert.match(workflow.slice(versionIndex, e2eIndex), /28\.5\.2/);
+  assert.match(workflow.slice(versionIndex, e2eIndex), /1\.49/);
+});
+
+test('public setup docs state the Engine, API, and Compose requirements for deterministic IDS interfaces', () => {
   const readme = read('README.md');
-  assert.match(readme, /Docker Desktop 4\.42\.0以上/);
-  assert.match(readme, /Docker Compose 2\.36\.0以上/);
-  assert.match(readme, /interface_name/);
+  const setup = read('docs/setup.md');
+  for (const document of [readme, setup]) {
+    assert.match(document, /Docker Engine 28\.1\.0(?:以上|／API 1\.49)/);
+    assert.match(document, /API 1\.49/);
+    assert.match(document, /Docker Compose 2\.36\.0以上/);
+    assert.match(document, /interface_name/);
+    assert.doesNotMatch(document, /Docker Engine 20\.10\.0|API 1\.41/);
+  }
 });
 
 test('release contract includes version, changelog, SBOM, and vulnerability scanning', () => {
