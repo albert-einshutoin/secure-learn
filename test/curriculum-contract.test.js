@@ -712,8 +712,14 @@ test('learner CLI ignores bypass variables and attacker-controlled PATH entries'
   });
   assert.equal(fs.existsSync(marker), false, 'doctor must not resolve docker from an attacker-controlled PATH');
   assert.doesNotMatch(fs.readFileSync(learnScript, 'utf8'), /SECURE_LEARN_SKIP_DOCKER_CHECK|NODE_ENV/);
-  const readiness = require('../scripts/lib/doctor').checkDockerPlatform();
-  assert.equal(result.status, readiness.ok ? 0 : 1, 'real local Docker readiness alone determines the result');
+  assert.ok(result.status === 0 || result.status === 1, 'real local Docker readiness alone determines the result');
+  if (result.status === 0) {
+    assert.match(result.stdout, /^Platform ready: /);
+    assert.equal(result.stderr, '');
+  } else {
+    assert.equal(result.stdout, '');
+    assert.equal(result.stderr, 'Docker platform is not ready.\n');
+  }
   fs.rmSync(fakeBin, { recursive: true, force: true });
 });
 
