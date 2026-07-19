@@ -64,6 +64,25 @@ function runLearn(args, options = {}) {
   });
 }
 
+function runLearnMain(args, overrides = {}) {
+  let stdout = '';
+  let stderr = '';
+  const manifest = {
+    id: 's1',
+    safety: { target_services: ['app'], allowed_cidrs: ['172.23.0.0/24'], external_network: false },
+  };
+  const { main } = require('../scripts/learn');
+  const status = main(args, {
+    repositoryRoot: root,
+    loadManifests: () => [manifest],
+    loadStandards: () => ({}),
+    stdout: { write: (value) => { stdout += value; } },
+    stderr: { write: (value) => { stderr += value; } },
+    ...overrides,
+  });
+  return { status, stdout, stderr, manifest };
+}
+
 function readJson(relativePath) {
   return JSON.parse(fs.readFileSync(path.join(root, relativePath), 'utf8'));
 }
@@ -698,7 +717,34 @@ test('learner CLI separates unknown labs from reserved commands', () => {
   assert.equal(reserved.stderr, "Command 'attack' is reserved for the executable-lab slices.\n");
 });
 
-test('learner CLI ignores bypass variables and attacker-controlled PATH entries', () => {
+test('learner CLI doctor main exposes race-free success and generic failure contracts', () => {
+  const calls = [];
+  const success = runLearnMain(['doctor', 's1'], {
+    env: { NODE_ENV: 'test', SECURE_LEARN_SKIP_DOCKER_CHECK: '1' },
+    doctorManifest: (manifest, options) => {
+      calls.push({ manifest, options });
+      return 'Platform ready: docker-engine-linux\nAllowed services: app\nAllowed CIDRs: 172.23.0.0/24\nExternal network: disabled\n';
+    },
+  });
+  assert.equal(success.status, 0);
+  assert.equal(success.stdout, 'Platform ready: docker-engine-linux\nAllowed services: app\nAllowed CIDRs: 172.23.0.0/24\nExternal network: disabled\n');
+  assert.equal(success.stderr, '');
+  assert.equal(calls.length, 1, 'the success contract must detect an always-failing doctor regression');
+  assert.equal(calls[0].manifest, success.manifest);
+  assert.deepEqual(calls[0].options, { repositoryRoot: root });
+
+  const failure = runLearnMain(['doctor', 's1'], {
+    doctorManifest: () => { throw new Error('Docker platform is not ready.'); },
+  });
+  assert.deepEqual(failure, {
+    status: 1,
+    stdout: '',
+    stderr: 'Docker platform is not ready.\n',
+    manifest: failure.manifest,
+  });
+});
+
+test('learner CLI never executes attacker-controlled PATH entries and preserves bounded output', () => {
   const fakeBin = fs.mkdtempSync(path.join(os.tmpdir(), 'secure-learn-fake-bin-'));
   const marker = path.join(fakeBin, 'executed');
   fs.writeFileSync(path.join(fakeBin, 'docker'), `#!/bin/sh\ntouch "${marker}"\n`, { mode: 0o755 });
@@ -712,7 +758,7 @@ test('learner CLI ignores bypass variables and attacker-controlled PATH entries'
   });
   assert.equal(fs.existsSync(marker), false, 'doctor must not resolve docker from an attacker-controlled PATH');
   assert.doesNotMatch(fs.readFileSync(learnScript, 'utf8'), /SECURE_LEARN_SKIP_DOCKER_CHECK|NODE_ENV/);
-  assert.ok(result.status === 0 || result.status === 1, 'real local Docker readiness alone determines the result');
+  assert.ok(result.status === 0 || result.status === 1);
   if (result.status === 0) {
     assert.match(result.stdout, /^Platform ready: /);
     assert.equal(result.stderr, '');
