@@ -12,6 +12,7 @@ All notable changes to Secure Learn are documented here. This project follows [S
 
 ### Changed
 
+- Raised the Docker runtime contract to Engine 28.1.0/API 1.49 for Compose `interface_name`, and pinned the fresh-stack CI daemon to Docker CE 28.5.2 with a fail-closed local-socket/version gate.
 - Corrected public OWASP API and MITRE ATT&CK taxonomy, scenario semantics, and generated guides while retaining the existing public S1-S15 URLs.
 - Enforced manifest, coverage, taxonomy, generator-idempotency, and safety contracts in the canonical local quality gate and CI.
 - Stage all release evidence on a draft before publication so immutable releases never expose a partial asset set.
