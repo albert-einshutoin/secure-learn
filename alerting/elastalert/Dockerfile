@@ -1,4 +1,4 @@
-FROM jertel/elastalert2@sha256:e59d793cbed71600a9e99bd1a7c3bb67cd641729d8e26894f4ae0a9816be91b0
+FROM jertel/elastalert2@sha256:e3df603867eeab32e3aae4e1dacf6bb35f0834d41b80dab8bdc11d8d787563fe
 
 USER root
 
