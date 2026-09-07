@@ -1,4 +1,4 @@
-FROM kalilinux/kali-rolling@sha256:8a1ea7281085ffef4963e82766c70869d7db910df88dcbb1f03d2899420b9577
+FROM kalilinux/kali-rolling@sha256:c6d78f57ebfdd9fec428a8b04f74876e66fddd08dfd328c076224a552e7332a3
 
 ENV DEBIAN_FRONTEND=noninteractive
 
