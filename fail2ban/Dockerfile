@@ -1,4 +1,4 @@
-FROM crazymax/fail2ban@sha256:7cd8a427a44675397398a8dace2a3d755e62c72527f8730e4fd37697731a9321
+FROM crazymax/fail2ban@sha256:a23171aff23e536c5a7ed03a367249f71d2488d59f7a68b385f044bbc02e21e1
 
 # Copy configuration files
 COPY jail.local /etc/fail2ban/jail.local
