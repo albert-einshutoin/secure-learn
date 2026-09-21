@@ -1,4 +1,4 @@
-FROM jasonish/suricata:8.0.6@sha256:73728b916f4be9f9b5b84012221ffa6feac1653cf663f8acd65b6c98b8ae797b
+FROM jasonish/suricata:8.0.7@sha256:7ca2546f7f2735f621b981b6a5ec84fb962984636f7629a1a2fa6a324d4b6840
 
 # Copy custom configuration and rules.
 # The upstream image declares /etc/suricata and /var/lib/suricata as VOLUMEs,
