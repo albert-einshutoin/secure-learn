@@ -20,7 +20,7 @@
     "start:prod": "node dist/main"
   },
   "dependencies": {
-    "@nestjs/common": "^11.1.27",
+    "@nestjs/common": "^11.1.28",
     "@nestjs/core": "^11.1.27",
     "@nestjs/platform-express": "^11.1.27",
     "express-rate-limit": "^8.5.2",
